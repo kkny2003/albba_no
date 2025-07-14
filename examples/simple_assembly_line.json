@@ -1,0 +1,156 @@
+{
+  "directed": true,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "process_id": "START",
+      "process_name": "원자재 투입",
+      "process_type": "transport",
+      "duration": 0.5,
+      "resources": [
+        "conveyor"
+      ],
+      "capacity": 10,
+      "cost": 5.0,
+      "description": "원자재를 컨베이어에 투입",
+      "id": "START"
+    },
+    {
+      "process_id": "CUT",
+      "process_name": "절단 공정",
+      "process_type": "manufacturing",
+      "duration": 2.0,
+      "resources": [
+        "cutting_machine",
+        "operator1"
+      ],
+      "capacity": 1,
+      "cost": 15.0,
+      "description": "원자재를 필요한 크기로 절단",
+      "id": "CUT"
+    },
+    {
+      "process_id": "DRILL",
+      "process_name": "드릴링 공정",
+      "process_type": "manufacturing",
+      "duration": 1.5,
+      "resources": [
+        "drill_machine",
+        "operator2"
+      ],
+      "capacity": 2,
+      "cost": 12.0,
+      "description": "구멍을 뚫는 공정",
+      "id": "DRILL"
+    },
+    {
+      "process_id": "ASSEMBLE",
+      "process_name": "조립 공정",
+      "process_type": "assembly",
+      "duration": 3.0,
+      "resources": [
+        "operator3",
+        "operator4",
+        "assembly_tools"
+      ],
+      "capacity": 1,
+      "cost": 25.0,
+      "description": "부품들을 조립",
+      "id": "ASSEMBLE"
+    },
+    {
+      "process_id": "QC",
+      "process_name": "품질 검사",
+      "process_type": "quality_control",
+      "duration": 1.0,
+      "resources": [
+        "qc_inspector",
+        "measuring_tools"
+      ],
+      "capacity": 3,
+      "cost": 8.0,
+      "description": "제품 품질을 검사",
+      "id": "QC"
+    },
+    {
+      "process_id": "PACK",
+      "process_name": "포장 공정",
+      "process_type": "assembly",
+      "duration": 0.8,
+      "resources": [
+        "packing_machine",
+        "operator5"
+      ],
+      "capacity": 2,
+      "cost": 6.0,
+      "description": "제품을 포장",
+      "id": "PACK"
+    },
+    {
+      "process_id": "SHIP",
+      "process_name": "출고",
+      "process_type": "transport",
+      "duration": 0.3,
+      "resources": [
+        "forklift",
+        "operator6"
+      ],
+      "capacity": 5,
+      "cost": 3.0,
+      "description": "완제품을 출고",
+      "id": "SHIP"
+    }
+  ],
+  "links": [
+    {
+      "transport_time": 0.2,
+      "transport_cost": 1.0,
+      "batch_size": 1,
+      "condition": "원자재가 준비되면",
+      "source": "START",
+      "target": "CUT"
+    },
+    {
+      "transport_time": 0.3,
+      "transport_cost": 1.5,
+      "batch_size": 1,
+      "condition": "절단이 완료되면",
+      "source": "CUT",
+      "target": "DRILL"
+    },
+    {
+      "transport_time": 0.1,
+      "transport_cost": 0.5,
+      "batch_size": 1,
+      "condition": "드릴링이 완료되면",
+      "source": "DRILL",
+      "target": "ASSEMBLE"
+    },
+    {
+      "transport_time": 0.2,
+      "transport_cost": 1.0,
+      "batch_size": 1,
+      "condition": "조립이 완료되면",
+      "source": "ASSEMBLE",
+      "target": "QC"
+    },
+    {
+      "transport_time": 0.1,
+      "transport_cost": 0.5,
+      "batch_size": 1,
+      "condition": "품질검사 통과시",
+      "source": "QC",
+      "target": "PACK"
+    },
+    {
+      "transport_time": 0.2,
+      "transport_cost": 1.0,
+      "batch_size": 1,
+      "condition": "포장이 완료되면",
+      "source": "PACK",
+      "target": "SHIP"
+    }
+  ],
+  "graph_name": "간단한 조립라인"
+}
