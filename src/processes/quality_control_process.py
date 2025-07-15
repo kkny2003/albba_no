@@ -1,6 +1,6 @@
 from .base_process import BaseProcess
 from typing import Any, List
-from ..models.resource import Resource, ResourceRequirement, ResourceType
+from ..Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
 class QualityControlProcess(BaseProcess):

@@ -3,9 +3,9 @@
 # 간단한 공장 시뮬레이션 예제
 import simpy  # 시뮬레이션을 위한 라이브러리
 from src.core.simulation_engine import SimulationEngine  # 시뮬레이션 엔진 임포트
-from src.models.machine import Machine  # 기계 모델 임포트
-from src.models.worker import Worker  # 작업자 모델 임포트
-from src.models.product import Product  # 제품 모델 임포트
+from src.Resource.machine import Machine  # 기계 모델 임포트
+from src.Resource.worker import Worker  # 작업자 모델 임포트
+from src.Resource.product import Product  # 제품 모델 임포트
 
 # 공장 클래스 정의
 class SimpleFactory:

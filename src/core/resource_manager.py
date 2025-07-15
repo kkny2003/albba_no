@@ -1,5 +1,5 @@
 from typing import List, Dict, Optional, Any
-from ..models.resource import Resource, ResourceRequirement, ResourceType
+from ..Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
 class ResourceManager:

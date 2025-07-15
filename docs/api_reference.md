@@ -72,16 +72,6 @@
   - `start_process()`: 제조 공정을 시작합니다.
   - `end_process()`: 제조 공정을 종료합니다.
 
-### 3.4 Process Graph
-
-- **클래스**: `ProcessGraph`
-- **설명**: 공정 흐름을 그래프 구조로 입력하고 관리합니다. 각 노드는 공정(예: 제조, 조립, 품질관리 등)을 나타내며, 엣지는 공정 간의 순서를 나타냅니다.
-- **메서드**:
-  - `add_process(process_name, process_obj=None)`: 공정 노드를 그래프에 추가합니다.
-  - `add_flow(from_process, to_process)`: 두 공정 간의 흐름(엣지)을 추가합니다.
-  - `get_order()`: 위상 정렬을 통해 전체 공정 순서를 반환합니다.
-  - `visualize()`: 공정 그래프를 시각화합니다.
-
 ### 3.2 Assembly Process
 
 - **클래스**: `AssemblyProcess`
