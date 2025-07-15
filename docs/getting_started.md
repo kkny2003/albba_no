@@ -45,33 +45,6 @@ engine = SimulationEngine()
 engine.run()
 ```
 
-### 2.2. 공정 흐름을 그래프 기반으로 입력하기
-
-공정 흐름을 그래프 구조로 입력하려면 `ProcessGraph` 클래스를 사용할 수 있습니다. 예시:
-
-```python
-from src.processes import ProcessGraph
-
-# 공정 그래프 인스턴스 생성
-process_graph = ProcessGraph()
-
-# 공정 노드 추가
-process_graph.add_process('제조')
-process_graph.add_process('조립')
-process_graph.add_process('품질관리')
-
-# 공정 간 흐름(순서) 추가
-process_graph.add_flow('제조', '조립')
-process_graph.add_flow('조립', '품질관리')
-
-# 전체 공정 순서 확인
-order = process_graph.get_order()
-print('공정 순서:', order)
-
-# 그래프 시각화
-process_graph.visualize()
-```
-
 ### 2.2. 모델 정의
 
 모델을 정의하려면 `src/models/` 디렉토리 내의 클래스를 사용합니다. 예를 들어, 기계 모델을 정의하려면 `machine.py` 파일을 참조하세요.

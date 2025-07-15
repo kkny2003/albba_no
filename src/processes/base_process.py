@@ -6,7 +6,7 @@
 from typing import List, Optional, Any, Union, Dict
 from abc import ABC, abstractmethod
 import uuid
-from ..models.resource import Resource, ResourceRequirement, ResourceType
+from ..Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
 class ProcessChain:

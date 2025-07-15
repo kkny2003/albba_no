@@ -2,9 +2,9 @@
 
 # 필요한 라이브러리 임포트
 import simpy
-from src.models.machine import Machine  # 기계 모델 임포트
-from src.models.worker import Worker    # 작업자 모델 임포트
-from src.models.product import Product    # 제품 모델 임포트
+from src.Resource.machine import Machine  # 기계 모델 임포트
+from src.Resource.worker import Worker    # 작업자 모델 임포트
+from src.Resource.product import Product    # 제품 모델 임포트
 from src.processes.assembly_process import AssemblyProcess  # 조립 공정 임포트
 
 # 시뮬레이션 환경 설정

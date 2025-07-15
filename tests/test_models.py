@@ -1,8 +1,8 @@
 import unittest
-from src.models.machine import Machine  # 기계 모델 임포트
-from src.models.worker import Worker    # 작업자 모델 임포트
-from src.models.product import Product    # 제품 모델 임포트
-from src.models.transport import Transport  # 운송 모델 임포트
+from src.Resource.machine import Machine  # 기계 모델 임포트
+from src.Resource.worker import Worker    # 작업자 모델 임포트
+from src.Resource.product import Product    # 제품 모델 임포트
+from src.Resource.transport import Transport  # 운송 모델 임포트
 
 class TestMachine(unittest.TestCase):  # 기계 모델 테스트 클래스
     def setUp(self):

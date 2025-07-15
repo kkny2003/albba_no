@@ -9,7 +9,7 @@ import os
 # 프로젝트 루트 디렉토리를 Python 경로에 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.models.resource import (Resource, ResourceRequirement, ResourceType, 
+from src.Resource.helper import (Resource, ResourceRequirement, ResourceType, 
                                 create_transport_resource, create_product_resource,
                                 create_worker_resource, create_machine_resource)
 from src.core.resource_manager import ResourceManager
