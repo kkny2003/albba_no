@@ -879,7 +879,14 @@ class GroupWrapperProcess(BaseProcess):
         Args:
             group: 래핑할 다중공정 그룹
         """
+        # 그룹 내 첫 번째 공정의 env를 가져와서 BaseProcess에 전달
+        if not group.processes:
+            raise ValueError("그룹에 최소 하나의 공정이 있어야 합니다")
+        
+        env = group.processes[0].env  # 첫 번째 공정의 SimPy 환경 가져오기
+        
         super().__init__(
+            env=env,  # env 파라미터 추가
             process_id=f"wrapper_{group.group_id}",
             process_name=f"그룹({group.get_group_summary()})"
         )
