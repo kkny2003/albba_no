@@ -1,19 +1,15 @@
 """
-고급 자원 관리 모듈
+SimPy 기반 고급 자원 관리 모듈
 자원 경합, 예약, 스케줄링, 우선순위 기반 할당 등을 지원하는 고급 자원 관리 시스템
 """
 
-import threading
-import time
-from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, List, Optional, Set, Tuple, Callable, Any
+import simpy
+from typing import Dict, List, Optional, Set, Tuple, Callable, Any, Generator
 from dataclasses import dataclass, field
 from enum import Enum
-from queue import PriorityQueue, Queue
 import uuid
-from datetime import datetime, timedelta
 
-from ..Resource.helper import Resource, ResourceType, ResourceRequirement
+from Resource.helper import Resource, ResourceType, ResourceRequirement
 
 
 class ResourceStatus(Enum):
@@ -40,9 +36,9 @@ class ResourceReservation:
     resource_id: str
     requester_id: str
     priority: int
-    start_time: datetime
-    duration: timedelta
-    created_at: datetime = field(default_factory=datetime.now)
+    start_time: float
+    duration: float
+    created_at: float = field(default=0.0)
     
     def __lt__(self, other):
         """우선순위 큐를 위한 비교 연산자 (높은 우선순위가 먼저)"""
@@ -54,461 +50,430 @@ class ResourceAllocation:
     """자원 할당 정보"""
     allocation_id: str
     resource_id: str
-    process_id: str
-    allocated_at: datetime
-    expected_release_at: Optional[datetime] = None
-    actual_release_at: Optional[datetime] = None
+    requester_id: str
+    allocated_amount: float
+    allocation_time: float
+    expected_release_time: Optional[float] = None
 
 
 @dataclass
 class ResourceMetrics:
-    """자원 성능 지표"""
+    """자원 사용 메트릭"""
     resource_id: str
+    total_allocation_time: float = 0.0
     total_requests: int = 0
     successful_allocations: int = 0
-    failed_allocations: int = 0
-    total_usage_time: float = 0.0
     average_wait_time: float = 0.0
     utilization_rate: float = 0.0
-    last_updated: datetime = field(default_factory=datetime.now)
+    last_updated: float = field(default=0.0)
 
 
 class AdvancedResourceManager:
-    """고급 자원 관리자 클래스"""
+    """SimPy 기반 고급 자원 관리자 클래스"""
     
-    def __init__(self, allocation_strategy: AllocationStrategy = AllocationStrategy.PRIORITY):
+    def __init__(self, env: simpy.Environment, strategy: AllocationStrategy = AllocationStrategy.FIFO):
         """
         고급 자원 관리자 초기화
         
         Args:
-            allocation_strategy: 자원 할당 전략
+            env: SimPy 환경 객체
+            strategy: 자원 할당 전략
         """
-        self.allocation_strategy = allocation_strategy
+        self.env = env
+        self.strategy = strategy
         
-        # 자원 관련 데이터 구조
-        self.resources: Dict[str, Resource] = {}                    # 자원 정보
-        self.resource_status: Dict[str, ResourceStatus] = {}        # 자원 상태
-        self.resource_capacities: Dict[str, float] = {}             # 자원 용량
-        self.resource_current_usage: Dict[str, float] = {}          # 현재 사용량
+        # 자원 관리
+        self.resources: Dict[str, simpy.Resource] = {}
+        self.resource_metadata: Dict[str, Dict[str, Any]] = {}
+        self.resource_status: Dict[str, ResourceStatus] = {}
+        self.resource_metrics: Dict[str, ResourceMetrics] = {}
         
-        # 예약 및 할당 관련
-        self.reservations: Dict[str, ResourceReservation] = {}      # 예약 정보
-        self.active_allocations: Dict[str, ResourceAllocation] = {} # 활성 할당
-        self.allocation_history: List[ResourceAllocation] = []      # 할당 이력
+        # 예약 및 할당 관리
+        self.reservations: Dict[str, ResourceReservation] = {}
+        self.allocations: Dict[str, ResourceAllocation] = {}
+        self.wait_queues: Dict[str, List[Tuple[str, int, float]]] = {}  # (requester_id, priority, request_time)
         
-        # 대기열 관리
-        self.wait_queues: Dict[str, PriorityQueue] = {}            # 자원별 대기열
-        self.process_wait_times: Dict[str, float] = {}             # 프로세스별 대기 시간
+        # 통계
+        self.allocation_history: List[ResourceAllocation] = []
+        self.total_requests = 0
+        self.successful_allocations = 0
         
-        # 성능 지표
-        self.resource_metrics: Dict[str, ResourceMetrics] = {}     # 자원별 성능 지표
+        # 스케줄링 관련
+        self._monitoring_process = None
         
-        # 스레딩 관련
-        self._lock = threading.RLock()                             # 스레드 안전성을 위한 락
-        self._resource_locks: Dict[str, threading.Lock] = {}       # 자원별 락
-        
-        # 스케줄러
-        self._scheduler_running = False
-        self._scheduler_thread: Optional[threading.Thread] = None
-        
-        print(f"고급 자원 관리자 초기화 완료 (할당 전략: {allocation_strategy.value})")
-    
-    def register_resource(self, resource: Resource, capacity: float = 1.0) -> None:
+    def register_resource(self, resource_id: str, capacity: int, resource_type: ResourceType = None, **metadata):
         """
-        자원을 시스템에 등록
+        자원을 등록합니다.
         
         Args:
-            resource: 등록할 자원
-            capacity: 자원 용량 (동시 사용 가능한 양)
+            resource_id: 자원 ID
+            capacity: 자원 용량
+            resource_type: 자원 타입
+            **metadata: 추가 메타데이터
         """
-        with self._lock:
-            self.resources[resource.resource_id] = resource
-            self.resource_status[resource.resource_id] = ResourceStatus.AVAILABLE
-            self.resource_capacities[resource.resource_id] = capacity
-            self.resource_current_usage[resource.resource_id] = 0.0
-            
-            # 대기열 및 락 초기화
-            self.wait_queues[resource.resource_id] = PriorityQueue()
-            self._resource_locks[resource.resource_id] = threading.Lock()
-            
-            # 성능 지표 초기화
-            self.resource_metrics[resource.resource_id] = ResourceMetrics(
-                resource_id=resource.resource_id
-            )
-            
-            print(f"자원 등록: {resource.name} (용량: {capacity}, ID: {resource.resource_id})")
-    
-    def request_resource(self, resource_id: str, process_id: str, 
-                        required_amount: float = 1.0, priority: int = 5,
-                        max_wait_time: Optional[float] = None) -> Optional[str]:
+        self.resources[resource_id] = simpy.Resource(self.env, capacity=capacity)
+        self.resource_status[resource_id] = ResourceStatus.AVAILABLE
+        self.resource_metadata[resource_id] = {
+            'capacity': capacity,
+            'type': resource_type,
+            'description': metadata.get('description', ''),
+            'properties': metadata.get('properties', {}),
+            **metadata
+        }
+        self.resource_metrics[resource_id] = ResourceMetrics(resource_id=resource_id)
+        self.wait_queues[resource_id] = []
+        
+        print(f"[시간 {self.env.now:.1f}] 고급 자원 등록: {resource_id} (용량: {capacity}, 타입: {resource_type})")
+        
+    def request_resource_with_priority(self, resource_id: str, requester_id: str, 
+                                     priority: int = 5, duration: float = None) -> Generator[simpy.Event, None, Optional[str]]:
         """
-        자원 요청 (차단 방식)
+        우선순위를 가진 자원 요청
         
         Args:
-            resource_id: 요청할 자원 ID
-            process_id: 요청하는 프로세스 ID
-            required_amount: 필요한 자원 양
+            resource_id: 자원 ID
+            requester_id: 요청자 ID
             priority: 우선순위 (1-10, 높을수록 우선)
-            max_wait_time: 최대 대기 시간 (초)
+            duration: 예상 사용 시간
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
             
         Returns:
-            Optional[str]: 할당 ID (실패시 None)
+            Optional[str]: 할당 ID 또는 None
         """
-        start_time = time.time()
+        self.total_requests += 1
+        request_time = self.env.now
         
-        with self._lock:
-            # 자원 존재 확인
-            if resource_id not in self.resources:
-                print(f"자원 요청 실패: 존재하지 않는 자원 ID {resource_id}")
-                return None
+        if resource_id not in self.resources:
+            print(f"[시간 {self.env.now:.1f}] 자원 요청 실패: {resource_id} (존재하지 않는 자원)")
+            return None
+            
+        # 메트릭 업데이트
+        self.resource_metrics[resource_id].total_requests += 1
+            
+        print(f"[시간 {self.env.now:.1f}] 우선순위 자원 요청: {resource_id} by {requester_id} (우선순위: {priority})")
+        
+        # 우선순위 기반 대기열에 추가
+        self.wait_queues[resource_id].append((requester_id, priority, request_time))
+        self.wait_queues[resource_id].sort(key=lambda x: (-x[1], x[2]))  # 우선순위 높은 순, 요청 시간 빠른 순
+        
+        # 자원 요청
+        with self.resources[resource_id].request() as request:
+            yield request
+            
+            # 대기 시간 계산
+            wait_time = self.env.now - request_time
+            
+            # 할당 성공
+            allocation_id = str(uuid.uuid4())
+            allocation = ResourceAllocation(
+                allocation_id=allocation_id,
+                resource_id=resource_id,
+                requester_id=requester_id,
+                allocated_amount=1.0,
+                allocation_time=self.env.now,
+                expected_release_time=self.env.now + duration if duration else None
+            )
+            
+            self.allocations[allocation_id] = allocation
+            self.allocation_history.append(allocation)
+            self.successful_allocations += 1
             
             # 메트릭 업데이트
             metrics = self.resource_metrics[resource_id]
-            metrics.total_requests += 1
+            metrics.successful_allocations += 1
+            metrics.average_wait_time = ((metrics.average_wait_time * (metrics.successful_allocations - 1)) + wait_time) / metrics.successful_allocations
+            metrics.last_updated = self.env.now
             
-            print(f"자원 요청: {self.resources[resource_id].name} "
-                  f"(프로세스: {process_id}, 필요량: {required_amount}, 우선순위: {priority})")
-        
-        # 자원 할당 시도
-        allocation_id = self._try_allocate_resource(
-            resource_id, process_id, required_amount, priority, max_wait_time
-        )
-        
-        # 대기 시간 기록
-        wait_time = time.time() - start_time
-        self.process_wait_times[process_id] = wait_time
-        
-        with self._lock:
-            metrics = self.resource_metrics[resource_id]
-            if allocation_id:
-                metrics.successful_allocations += 1
-                print(f"자원 할당 성공: {allocation_id} (대기 시간: {wait_time:.2f}초)")
-            else:
-                metrics.failed_allocations += 1
-                print(f"자원 할당 실패: {resource_id} (대기 시간: {wait_time:.2f}초)")
+            # 대기열에서 제거
+            self.wait_queues[resource_id] = [
+                item for item in self.wait_queues[resource_id] 
+                if item[0] != requester_id
+            ]
             
-            # 평균 대기 시간 업데이트
-            total_allocations = metrics.successful_allocations + metrics.failed_allocations
-            if total_allocations > 0:
-                metrics.average_wait_time = (
-                    (metrics.average_wait_time * (total_allocations - 1) + wait_time) / total_allocations
-                )
-        
-        return allocation_id
-    
-    def _try_allocate_resource(self, resource_id: str, process_id: str, 
-                              required_amount: float, priority: int,
-                              max_wait_time: Optional[float]) -> Optional[str]:
+            print(f"[시간 {self.env.now:.1f}] 자원 할당 완료: {resource_id} to {requester_id} (할당 ID: {allocation_id}, 대기시간: {wait_time:.1f})")
+            return allocation_id
+            
+    def make_reservation(self, resource_id: str, requester_id: str, start_time: float, 
+                        duration: float, priority: int = 5) -> Optional[str]:
         """
-        자원 할당 시도 (내부 메서드)
+        자원 예약
         
         Args:
             resource_id: 자원 ID
-            process_id: 프로세스 ID
-            required_amount: 필요한 양
+            requester_id: 요청자 ID
+            start_time: 시작 시간
+            duration: 사용 시간
             priority: 우선순위
-            max_wait_time: 최대 대기 시간
             
         Returns:
-            Optional[str]: 할당 ID
+            Optional[str]: 예약 ID 또는 None
         """
-        resource_lock = self._resource_locks[resource_id]
-        start_wait_time = time.time()
-        
-        while True:
-            with resource_lock:
-                # 자원 가용성 확인
-                if self._is_resource_available(resource_id, required_amount):
-                    # 즉시 할당 가능
-                    allocation_id = self._allocate_resource_immediately(
-                        resource_id, process_id, required_amount
-                    )
-                    return allocation_id
+        if resource_id not in self.resources:
+            return None
             
-            # 대기 시간 초과 확인
-            if max_wait_time and (time.time() - start_wait_time) > max_wait_time:
-                print(f"자원 할당 타임아웃: {resource_id} (최대 대기 시간 {max_wait_time}초 초과)")
-                return None
-            
-            # 대기열에 추가하고 잠시 대기
-            self._add_to_wait_queue(resource_id, process_id, required_amount, priority)
-            time.sleep(0.1)  # 짧은 대기 후 재시도
-    
-    def _is_resource_available(self, resource_id: str, required_amount: float) -> bool:
-        """
-        자원 가용성 확인
-        
-        Args:
-            resource_id: 자원 ID
-            required_amount: 필요한 양
-            
-        Returns:
-            bool: 사용 가능 여부
-        """
-        if self.resource_status[resource_id] != ResourceStatus.AVAILABLE:
-            return False
-        
-        capacity = self.resource_capacities[resource_id]
-        current_usage = self.resource_current_usage[resource_id]
-        
-        return (current_usage + required_amount) <= capacity
-    
-    def _allocate_resource_immediately(self, resource_id: str, process_id: str, 
-                                     required_amount: float) -> str:
-        """
-        자원 즉시 할당
-        
-        Args:
-            resource_id: 자원 ID
-            process_id: 프로세스 ID
-            required_amount: 필요한 양
-            
-        Returns:
-            str: 할당 ID
-        """
-        allocation_id = str(uuid.uuid4())
-        
-        # 할당 정보 생성
-        allocation = ResourceAllocation(
-            allocation_id=allocation_id,
+        reservation_id = str(uuid.uuid4())
+        reservation = ResourceReservation(
+            reservation_id=reservation_id,
             resource_id=resource_id,
-            process_id=process_id,
-            allocated_at=datetime.now()
+            requester_id=requester_id,
+            priority=priority,
+            start_time=start_time,
+            duration=duration,
+            created_at=self.env.now
         )
         
-        # 상태 업데이트
-        self.active_allocations[allocation_id] = allocation
-        self.resource_current_usage[resource_id] += required_amount
+        self.reservations[reservation_id] = reservation
+        print(f"[시간 {self.env.now:.1f}] 자원 예약: {resource_id} by {requester_id} (예약 ID: {reservation_id})")
+        return reservation_id
         
-        # 용량이 모두 사용되면 상태를 IN_USE로 변경
-        if self.resource_current_usage[resource_id] >= self.resource_capacities[resource_id]:
-            self.resource_status[resource_id] = ResourceStatus.IN_USE
-        
-        return allocation_id
-    
-    def _add_to_wait_queue(self, resource_id: str, process_id: str, 
-                          required_amount: float, priority: int) -> None:
+    def cancel_reservation(self, reservation_id: str) -> bool:
         """
-        대기열에 프로세스 추가
+        예약 취소
         
         Args:
-            resource_id: 자원 ID
-            process_id: 프로세스 ID
-            required_amount: 필요한 양
-            priority: 우선순위
-        """
-        wait_item = (priority, process_id, required_amount, time.time())
-        self.wait_queues[resource_id].put(wait_item)
-    
-    def release_resource(self, allocation_id: str) -> bool:
-        """
-        자원 해제
-        
-        Args:
-            allocation_id: 할당 ID
+            reservation_id: 예약 ID
             
         Returns:
-            bool: 해제 성공 여부
+            bool: 취소 성공 여부
         """
-        with self._lock:
-            if allocation_id not in self.active_allocations:
-                print(f"자원 해제 실패: 존재하지 않는 할당 ID {allocation_id}")
-                return False
-            
-            allocation = self.active_allocations[allocation_id]
-            resource_id = allocation.resource_id
-            
-            # 할당 정보 업데이트
-            allocation.actual_release_at = datetime.now()
-            
-            # 사용량 감소
-            # 여기서는 단순화를 위해 1.0으로 가정 (실제로는 할당시 양을 저장해야 함)
-            self.resource_current_usage[resource_id] -= 1.0
-            if self.resource_current_usage[resource_id] < 0:
-                self.resource_current_usage[resource_id] = 0.0
-            
-            # 상태 업데이트
-            if self.resource_current_usage[resource_id] < self.resource_capacities[resource_id]:
-                self.resource_status[resource_id] = ResourceStatus.AVAILABLE
-            
-            # 할당 이력으로 이동
-            self.allocation_history.append(allocation)
-            del self.active_allocations[allocation_id]
-            
-            # 성능 지표 업데이트
-            usage_duration = (allocation.actual_release_at - allocation.allocated_at).total_seconds()
-            metrics = self.resource_metrics[resource_id]
-            metrics.total_usage_time += usage_duration
-            
-            resource_name = self.resources[resource_id].name
-            print(f"자원 해제: {resource_name} (할당 ID: {allocation_id}, 사용 시간: {usage_duration:.2f}초)")
-            
-            # 대기 중인 프로세스들 처리
-            self._process_wait_queue(resource_id)
-            
+        if reservation_id in self.reservations:
+            reservation = self.reservations[reservation_id]
+            del self.reservations[reservation_id]
+            print(f"[시간 {self.env.now:.1f}] 예약 취소: {reservation.resource_id} (예약 ID: {reservation_id})")
             return True
-    
-    def _process_wait_queue(self, resource_id: str) -> None:
-        """
-        대기열 처리 (자원 해제 후 호출)
+        return False
         
-        Args:
-            resource_id: 자원 ID
+    def get_resource_utilization(self, resource_id: str) -> float:
         """
-        wait_queue = self.wait_queues[resource_id]
-        
-        while not wait_queue.empty():
-            try:
-                priority, process_id, required_amount, wait_start_time = wait_queue.get_nowait()
-                
-                if self._is_resource_available(resource_id, required_amount):
-                    # 대기 중인 프로세스에 자원 할당
-                    allocation_id = self._allocate_resource_immediately(
-                        resource_id, process_id, required_amount
-                    )
-                    
-                    wait_time = time.time() - wait_start_time
-                    print(f"대기열에서 자원 할당: {process_id} (대기 시간: {wait_time:.2f}초)")
-                    break
-                else:
-                    # 아직 할당할 수 없으면 다시 대기열에 추가
-                    wait_queue.put((priority, process_id, required_amount, wait_start_time))
-                    break
-                    
-            except:
-                break
-    
-    def get_resource_status(self, resource_id: str) -> Dict[str, Any]:
-        """
-        자원 상태 정보 반환
+        자원 가동률 계산
         
         Args:
             resource_id: 자원 ID
             
         Returns:
-            Dict[str, Any]: 자원 상태 정보
+            float: 가동률 (0.0 ~ 1.0)
         """
-        with self._lock:
-            if resource_id not in self.resources:
-                return {}
+        if resource_id not in self.resources or self.env.now == 0:
+            return 0.0
             
+        resource = self.resources[resource_id]
+        capacity = self.resource_metadata[resource_id]['capacity']
+        
+        if capacity == 0:
+            return 0.0
+            
+        utilization = len(resource.users) / capacity
+        
+        # 메트릭 업데이트
+        self.resource_metrics[resource_id].utilization_rate = utilization
+        
+        return utilization
+        
+    def get_statistics(self) -> Dict[str, Any]:
+        """
+        자원 관리 통계 반환
+        
+        Returns:
+            Dict[str, Any]: 통계 정보
+        """
+        success_rate = (self.successful_allocations / self.total_requests * 100) if self.total_requests > 0 else 0
+        
+        # 전체 가동률 계산
+        total_utilization = 0.0
+        if self.resources:
+            total_utilization = sum(self.get_resource_utilization(rid) for rid in self.resources) / len(self.resources)
+        
+        return {
+            'simulation_time': self.env.now,
+            'total_requests': self.total_requests,
+            'successful_allocations': self.successful_allocations,
+            'success_rate': success_rate,
+            'active_allocations': len(self.allocations),
+            'total_reservations': len(self.reservations),
+            'resource_count': len(self.resources),
+            'average_utilization': total_utilization,
+            'strategy': self.strategy.value
+        }
+        
+    def get_all_resource_status(self) -> Dict[str, Dict[str, Any]]:
+        """
+        모든 자원의 상태 반환
+        
+        Returns:
+            Dict[str, Dict[str, Any]]: 자원별 상태 정보
+        """
+        status = {}
+        for resource_id in self.resources:
             resource = self.resources[resource_id]
+            metadata = self.resource_metadata[resource_id]
             metrics = self.resource_metrics[resource_id]
             
-            return {
+            status[resource_id] = {
                 'resource_id': resource_id,
-                'name': resource.name,
-                'type': resource.resource_type.value,
                 'status': self.resource_status[resource_id].value,
-                'capacity': self.resource_capacities[resource_id],
-                'current_usage': self.resource_current_usage[resource_id],
-                'utilization_rate': (self.resource_current_usage[resource_id] / 
-                                   self.resource_capacities[resource_id]) * 100,
-                'wait_queue_size': self.wait_queues[resource_id].qsize(),
+                'capacity': metadata['capacity'],
+                'current_users': len(resource.users),
+                'queue_length': len(resource.queue),
+                'utilization': self.get_resource_utilization(resource_id),
+                'wait_queue_length': len(self.wait_queues[resource_id]),
                 'total_requests': metrics.total_requests,
                 'successful_allocations': metrics.successful_allocations,
-                'failed_allocations': metrics.failed_allocations,
                 'average_wait_time': metrics.average_wait_time,
-                'total_usage_time': metrics.total_usage_time
+                'metadata': metadata
             }
-    
-    def get_system_status(self) -> Dict[str, Any]:
-        """
-        전체 시스템 상태 반환
-        
-        Returns:
-            Dict[str, Any]: 시스템 상태 정보
-        """
-        with self._lock:
-            total_resources = len(self.resources)
-            available_resources = sum(1 for status in self.resource_status.values() 
-                                    if status == ResourceStatus.AVAILABLE)
-            active_allocations = len(self.active_allocations)
-            total_wait_queue_size = sum(queue.qsize() for queue in self.wait_queues.values())
             
-            return {
-                'total_resources': total_resources,
-                'available_resources': available_resources,
-                'busy_resources': total_resources - available_resources,
-                'active_allocations': active_allocations,
-                'total_wait_queue_size': total_wait_queue_size,
-                'allocation_strategy': self.allocation_strategy.value,
-                'total_allocation_history': len(self.allocation_history)
-            }
-    
-    def start_resource_monitor(self, monitor_interval: float = 1.0) -> None:
+        return status
+        
+    def start_monitoring(self, update_interval: float = 10.0):
         """
-        자원 모니터링 스레드 시작
+        자원 모니터링 프로세스 시작
         
         Args:
-            monitor_interval: 모니터링 간격 (초)
+            update_interval: 업데이트 간격
         """
-        if self._scheduler_running:
-            print("자원 모니터가 이미 실행 중입니다.")
-            return
+        if self._monitoring_process is None:
+            self._monitoring_process = self.env.process(self._monitoring_loop(update_interval))
+            print(f"[시간 {self.env.now:.1f}] 자원 모니터링 시작 (간격: {update_interval}초)")
+            
+    def _monitoring_loop(self, update_interval: float) -> Generator[simpy.Event, None, None]:
+        """
+        모니터링 루프 (내부 사용)
         
-        self._scheduler_running = True
-        
-        def monitor_loop():
-            """모니터링 루프"""
-            while self._scheduler_running:
-                try:
-                    # 각 자원의 활용률 계산
-                    with self._lock:
-                        for resource_id in self.resources:
-                            metrics = self.resource_metrics[resource_id]
-                            capacity = self.resource_capacities[resource_id]
-                            current_usage = self.resource_current_usage[resource_id]
-                            
-                            if capacity > 0:
-                                metrics.utilization_rate = (current_usage / capacity) * 100
-                            
-                            metrics.last_updated = datetime.now()
+        Args:
+            update_interval: 업데이트 간격
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+        """
+        while True:
+            yield self.env.timeout(update_interval)
+            
+            # 자원 상태 업데이트
+            for resource_id in self.resources:
+                self.get_resource_utilization(resource_id)  # 가동률 업데이트
+                
+            # 예약된 자원 확인 및 처리
+            current_time = self.env.now
+            for reservation_id, reservation in list(self.reservations.items()):
+                if current_time >= reservation.start_time:
+                    # 예약 시간이 되었으므로 자원 우선 할당 처리
+                    print(f"[시간 {self.env.now:.1f}] 예약 시간 도달: {reservation.resource_id} (예약 ID: {reservation_id})")
                     
-                    time.sleep(monitor_interval)
-                    
-                except Exception as e:
-                    print(f"자원 모니터링 오류: {e}")
-                    time.sleep(monitor_interval)
+    def set_resource_status(self, resource_id: str, status: ResourceStatus):
+        """
+        자원 상태 설정
         
-        self._scheduler_thread = threading.Thread(target=monitor_loop, daemon=True)
-        self._scheduler_thread.start()
-        print(f"자원 모니터링 시작 (간격: {monitor_interval}초)")
+        Args:
+            resource_id: 자원 ID
+            status: 새로운 상태
+        """
+        if resource_id in self.resource_status:
+            old_status = self.resource_status[resource_id]
+            self.resource_status[resource_id] = status
+            print(f"[시간 {self.env.now:.1f}] 자원 상태 변경: {resource_id} ({old_status.value} -> {status.value})")
+            
+    def get_resource_queue_info(self, resource_id: str) -> Dict[str, Any]:
+        """
+        특정 자원의 대기열 정보 반환
+        
+        Args:
+            resource_id: 자원 ID
+            
+        Returns:
+            Dict[str, Any]: 대기열 정보
+        """
+        if resource_id not in self.resources:
+            return {}
+            
+        resource = self.resources[resource_id]
+        wait_queue = self.wait_queues[resource_id]
+        
+        return {
+            'resource_id': resource_id,
+            'simpy_queue_length': len(resource.queue),
+            'priority_queue_length': len(wait_queue),
+            'priority_queue': [
+                {
+                    'requester_id': item[0],
+                    'priority': item[1],
+                    'request_time': item[2],
+                    'wait_time': self.env.now - item[2]
+                } for item in wait_queue
+            ]
+        }
     
-    def stop_resource_monitor(self) -> None:
-        """자원 모니터링 스레드 중지"""
-        if self._scheduler_running:
-            self._scheduler_running = False
-            if self._scheduler_thread:
-                self._scheduler_thread.join()
-            print("자원 모니터링 중지")
+    def get_resource_status(self, resource_id: str = None):
+        """
+        자원 상태 조회
+        
+        Args:
+            resource_id: 특정 자원 ID (None이면 모든 자원)
+            
+        Returns:
+            Dict: 자원 상태 정보
+        """
+        if resource_id:
+            if resource_id not in self.resources:
+                return {'error': f'Resource {resource_id} not found'}
+            
+            resource = self.resources[resource_id]
+            return {
+                'resource_id': resource_id,
+                'status': self.resource_status[resource_id],
+                'capacity': resource.capacity,
+                'in_use': resource.count,
+                'available': resource.capacity - resource.count,
+                'queue_length': len(resource.queue),
+                'metadata': self.resource_metadata.get(resource_id, {})
+            }
+        else:
+            # 모든 자원 상태 반환
+            all_status = {}
+            for rid in self.resources:
+                resource = self.resources[rid]
+                all_status[rid] = {
+                    'status': self.resource_status[rid],
+                    'capacity': resource.capacity,
+                    'in_use': resource.count,
+                    'available': resource.capacity - resource.count,
+                    'queue_length': len(resource.queue)
+                }
+            return all_status
     
-    def print_status_report(self) -> None:
-        """상태 리포트 출력"""
-        print("\n" + "=" * 60)
-        print("고급 자원 관리자 상태 리포트")
-        print("=" * 60)
+    def calculate_utilization(self):
+        """
+        자원 활용률 계산
         
-        # 시스템 전체 상태
-        system_status = self.get_system_status()
-        print(f"전체 자원 수: {system_status['total_resources']}")
-        print(f"사용 가능한 자원: {system_status['available_resources']}")
-        print(f"사용 중인 자원: {system_status['busy_resources']}")
-        print(f"활성 할당 수: {system_status['active_allocations']}")
-        print(f"대기열 총 크기: {system_status['total_wait_queue_size']}")
+        Returns:
+            Dict: 활용률 정보
+        """
+        if not self.resources:
+            return {'error': 'No resources registered'}
         
-        print(f"\n개별 자원 상태:")
-        print("-" * 60)
+        utilization_data = {}
+        total_utilization = 0
         
-        # 개별 자원 상태
-        for resource_id in self.resources:
-            status = self.get_resource_status(resource_id)
-            print(f"• {status['name']} ({status['type']})")
-            print(f"  상태: {status['status']}")
-            print(f"  활용률: {status['utilization_rate']:.1f}%")
-            print(f"  요청 수: {status['total_requests']} (성공: {status['successful_allocations']}, 실패: {status['failed_allocations']})")
-            print(f"  평균 대기 시간: {status['average_wait_time']:.2f}초")
-            print(f"  대기열 크기: {status['wait_queue_size']}")
-            print()
+        for resource_id, resource in self.resources.items():
+            if resource.capacity > 0:
+                utilization = resource.count / resource.capacity
+                utilization_data[resource_id] = {
+                    'utilization_rate': utilization,
+                    'in_use': resource.count,
+                    'capacity': resource.capacity,
+                    'percentage': utilization * 100
+                }
+                total_utilization += utilization
         
-        print("=" * 60)
+        if len(self.resources) > 0:
+            average_utilization = total_utilization / len(self.resources)
+        else:
+            average_utilization = 0
+        
+        return {
+            'individual_utilization': utilization_data,
+            'average_utilization': average_utilization,
+            'average_percentage': average_utilization * 100,
+            'total_resources': len(self.resources)
+        }

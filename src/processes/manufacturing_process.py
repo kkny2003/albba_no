@@ -1,27 +1,55 @@
 from .base_process import BaseProcess
-from typing import Any, List
-from ..Resource.helper import Resource, ResourceRequirement, ResourceType
+from typing import Any, List, Generator
+import simpy
+from Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
 class ManufacturingProcess(BaseProcess):
-    """제조 공정을 정의하는 클래스입니다."""
+    """제조 공정을 정의하는 클래스입니다 (SimPy 기반)."""
 
-    def __init__(self, machines, workers, process_id: str = None, process_name: str = None):
+    def __init__(self, env: simpy.Environment, machines, workers, 
+                 input_resources: List[Resource], 
+                 output_resources: List[Resource],
+                 resource_requirements: List[ResourceRequirement],
+                 process_id: str = None, process_name: str = None,
+                 processing_time: float = 2.0):
         """
-        제조 공정의 초기화 메서드입니다.
+        제조 공정의 초기화 메서드입니다 (SimPy 환경 필수).
 
+        :param env: SimPy 환경 객체 (필수)
         :param machines: 사용될 기계 목록
         :param workers: 작업자 목록
+        :param input_resources: 입력 자원 목록 (필수)
+        :param output_resources: 출력 자원 목록 (필수)
+        :param resource_requirements: 자원 요구사항 목록 (필수)
         :param process_id: 공정 고유 ID (선택적)
         :param process_name: 공정 이름 (선택적)
+        :param processing_time: 제조 처리 시간 (시뮬레이션 시간 단위)
         """
-        super().__init__(process_id, process_name or "제조공정")
+        super().__init__(env, process_id, process_name or "제조공정")
         self.machines = machines  # 기계 목록
         self.workers = workers    # 작업자 목록
         self.production_line = []  # 생산 라인 초기화
+        self.processing_time = processing_time  # 제조 처리 시간
         
-        # 기본 자원 요구사항 설정
-        self._setup_default_resources()
+        # 필수 자원 정보 설정
+        self._setup_resources(input_resources, output_resources, resource_requirements)
+        
+    def _setup_resources(self, input_resources: List[Resource], 
+                        output_resources: List[Resource],
+                        resource_requirements: List[ResourceRequirement]):
+        """필수 자원 정보를 설정하는 메서드"""
+        # 입력 자원 설정
+        for resource in input_resources:
+            self.add_input_resource(resource)
+        
+        # 출력 자원 설정  
+        for resource in output_resources:
+            self.add_output_resource(resource)
+                
+        # 자원 요구사항 설정
+        for requirement in resource_requirements:
+            self.add_resource_requirement(requirement)
         
     def _setup_default_resources(self):
         """기본 자원 요구사항을 설정하는 메서드"""
@@ -127,23 +155,30 @@ class ManufacturingProcess(BaseProcess):
         # 부모 클래스의 execute 메서드 호출 (자원 관리 포함)
         return super().execute(input_data)
         
-    def process_logic(self, input_data: Any = None) -> Any:
+    def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
-        구체적인 제조 공정 로직을 실행하는 메서드입니다.
+        구체적인 제조 공정 로직을 실행하는 SimPy generator 메서드입니다.
 
         Args:
             input_data: 제조할 제품 데이터
 
+        Yields:
+            simpy.Event: SimPy 이벤트들
+
         Returns:
             Any: 제조 로직 실행 결과
         """
-        print(f"[{self.process_name}] 제조 로직 실행 중...")
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 제조 로직 실행 중...")
         
         # 제조 공정 시작
         self.start_process()
         
+        # SimPy timeout을 사용하여 제조 시간 시뮬레이션
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 제조 작업 진행 중... (예상 시간: {self.processing_time})")
+        yield self.env.timeout(self.processing_time)
+        
         # 실제 제조 로직 (예시)
         manufactured_product = f"제조완료_{input_data}" if input_data else "제조완료_기본제품"
         
-        print(f"[{self.process_name}] 제조 로직 실행 완료: {manufactured_product}")
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 제조 로직 실행 완료: {manufactured_product}")
         return manufactured_product

@@ -1,15 +1,68 @@
-from typing import List, Dict, Optional, Any
-from ..Resource.helper import Resource, ResourceRequirement, ResourceType
+import simpy
+from typing import List, Dict, Optional, Any, Generator
+import uuid
+from Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
-class ResourceManager:
-    """자원 관리 클래스입니다. 자원의 할당, 해제, 재고 관리를 담당합니다."""
+class SimpleResourceManager:
+    """SimPy 기반 간단한 자원 관리 클래스입니다. 자원의 할당, 해제, 재고 관리를 담당합니다."""
 
-    def __init__(self):
-        """초기화 메서드입니다. 자원 목록과 재고를 초기화합니다."""
-        self.resources: List[Resource] = []  # 전체 자원 목록
+    def __init__(self, env: simpy.Environment):
+        """
+        초기화 메서드입니다 (SimPy 환경 필수).
+        
+        Args:
+            env: SimPy 환경 객체
+        """
+        self.env = env  # SimPy 환경
+        self.resources: Dict[str, simpy.Resource] = {}  # SimPy 자원들
+        self.resource_metadata: Dict[str, Dict[str, Any]] = {}  # 자원 메타데이터
         self.resource_inventory: Dict[str, Resource] = {}  # 자원 재고 (resource_id를 키로 사용)
         self.allocated_resources: Dict[str, Resource] = {}  # 할당된 자원 목록
+        
+    def register_simpy_resource(self, resource_id: str, capacity: int, **metadata):
+        """
+        SimPy 자원을 등록합니다.
+        
+        Args:
+            resource_id: 자원 ID
+            capacity: 자원 용량
+            **metadata: 추가 메타데이터
+        """
+        self.resources[resource_id] = simpy.Resource(self.env, capacity=capacity)
+        self.resource_metadata[resource_id] = {
+            'capacity': capacity,
+            'type': metadata.get('type', 'generic'),
+            'description': metadata.get('description', ''),
+            **metadata
+        }
+        print(f"[시간 {self.env.now:.1f}] SimPy 자원 등록: {resource_id} (용량: {capacity})")
+        
+    def request_simpy_resource(self, resource_id: str, requester_id: str) -> Generator[simpy.Event, None, bool]:
+        """
+        SimPy 자원을 요청하는 generator 메서드
+        
+        Args:
+            resource_id: 자원 ID
+            requester_id: 요청자 ID
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
+        Returns:
+            bool: 할당 성공 여부
+        """
+        if resource_id not in self.resources:
+            print(f"[시간 {self.env.now:.1f}] 자원 요청 실패: {resource_id} (존재하지 않는 자원)")
+            return False
+            
+        print(f"[시간 {self.env.now:.1f}] 자원 요청: {resource_id} by {requester_id}")
+        
+        # 자원 요청
+        with self.resources[resource_id].request() as request:
+            yield request
+            print(f"[시간 {self.env.now:.1f}] 자원 할당 완료: {resource_id} to {requester_id}")
+            return True
         
     def add_resource(self, resource: Resource):
         """자원을 추가하는 메서드입니다.

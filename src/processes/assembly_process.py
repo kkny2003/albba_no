@@ -1,27 +1,55 @@
 from .base_process import BaseProcess
-from typing import Any, List
-from ..Resource.helper import Resource, ResourceRequirement, ResourceType
+from typing import Any, List, Generator
+import simpy
+from Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
 class AssemblyProcess(BaseProcess):
-    """조립 공정을 정의하는 클래스입니다."""
+    """조립 공정을 정의하는 클래스입니다 (SimPy 기반)."""
 
-    def __init__(self, machines, workers, process_id: str = None, process_name: str = None):
+    def __init__(self, env: simpy.Environment, machines, workers, 
+                 input_resources: List[Resource], 
+                 output_resources: List[Resource],
+                 resource_requirements: List[ResourceRequirement],
+                 process_id: str = None, process_name: str = None,
+                 assembly_time: float = 3.0):
         """
-        초기화 메서드입니다.
+        초기화 메서드입니다 (SimPy 환경 필수).
         
+        :param env: SimPy 환경 객체 (필수)
         :param machines: 조립에 사용될 기계 목록
         :param workers: 조립 작업을 수행할 작업자 목록
+        :param input_resources: 입력 자원 목록 (필수)
+        :param output_resources: 출력 자원 목록 (필수)
+        :param resource_requirements: 자원 요구사항 목록 (필수)
         :param process_id: 공정 고유 ID (선택적)
         :param process_name: 공정 이름 (선택적)
+        :param assembly_time: 조립 처리 시간 (시뮬레이션 시간 단위)
         """
-        super().__init__(process_id, process_name or "조립공정")
+        super().__init__(env, process_id, process_name or "조립공정")
         self.machines = machines  # 기계 목록
         self.workers = workers    # 작업자 목록
         self.assembly_line = []   # 조립 라인 초기화
+        self.assembly_time = assembly_time  # 조립 처리 시간
         
-        # 조립 공정용 자원 설정
-        self._setup_assembly_resources()
+        # 필수 자원 정보 설정
+        self._setup_resources(input_resources, output_resources, resource_requirements)
+        
+    def _setup_resources(self, input_resources: List[Resource], 
+                        output_resources: List[Resource],
+                        resource_requirements: List[ResourceRequirement]):
+        """필수 자원 정보를 설정하는 메서드"""
+        # 입력 자원 설정
+        for resource in input_resources:
+            self.add_input_resource(resource)
+        
+        # 출력 자원 설정  
+        for resource in output_resources:
+            self.add_output_resource(resource)
+                
+        # 자원 요구사항 설정
+        for requirement in resource_requirements:
+            self.add_resource_requirement(requirement)
         
     def _setup_assembly_resources(self):
         """조립 공정용 자원 요구사항을 설정하는 메서드"""
@@ -146,23 +174,30 @@ class AssemblyProcess(BaseProcess):
         # 부모 클래스의 execute 메서드 호출 (자원 관리 포함)
         return super().execute(input_data)
         
-    def process_logic(self, input_data: Any = None) -> Any:
+    def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
-        구체적인 조립 공정 로직을 실행하는 메서드입니다.
+        구체적인 조립 공정 로직을 실행하는 SimPy generator 메서드입니다.
         
         Args:
             input_data: 조립할 제품 데이터
             
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
         Returns:
             Any: 조립 로직 실행 결과
         """
-        print(f"[{self.process_name}] 조립 로직 실행 중...")
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 조립 로직 실행 중...")
         
         # 조립 작업 시작
         self.start_assembly()
         
+        # SimPy timeout을 사용하여 조립 시간 시뮬레이션
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 조립 작업 진행 중... (예상 시간: {self.assembly_time})")
+        yield self.env.timeout(self.assembly_time)
+        
         # 실제 조립 로직 (예시)
         assembled_product = f"조립완료_{input_data}" if input_data else "조립완료_기본제품"
         
-        print(f"[{self.process_name}] 조립 로직 실행 완료: {assembled_product}")
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 조립 로직 실행 완료: {assembled_product}")
         return assembled_product

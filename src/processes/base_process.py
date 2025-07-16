@@ -4,12 +4,13 @@
 고급 워크플로우 및 자원 관리 기능을 지원합니다.
 """
 
-from typing import List, Optional, Any, Union, Dict, Callable, Tuple
+from typing import List, Optional, Any, Union, Dict, Callable, Tuple, Generator
 from abc import ABC, abstractmethod
 import uuid
 import concurrent.futures
 import re
-from ..Resource.helper import Resource, ResourceRequirement, ResourceType
+import simpy
+from Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
 class PriorityValidationError(Exception):
@@ -292,9 +293,9 @@ class MultiProcessGroup:
                     print(f"  [{i}/{len(sorted_processes)}] {process.process_name} (우선순위: {priority}) 실행 중...")
                     result = process.execute(input_data)
                     results.append(result)
-                    print(f"  ✓ {process.process_name} 완료")
+                    print(f"  [OK] {process.process_name} 완료")
                 except Exception as e:
-                    print(f"  ✗ {process.process_name} 실행 중 오류: {e}")
+                    print(f"  [ERROR] {process.process_name} 실행 중 오류: {e}")
                     results.append(None)
                     
             print(f"우선순위 기반 실행 완료 (그룹 ID: {self.group_id})")
@@ -321,9 +322,9 @@ class MultiProcessGroup:
                         try:
                             result = future.result()
                             results.append(result)
-                            print(f"  ✓ {process.process_name} 완료")
+                            print(f"  [OK] {process.process_name} 완료")
                         except Exception as e:
-                            print(f"  ✗ {process.process_name} 실행 중 오류: {e}")
+                            print(f"  [ERROR] {process.process_name} 실행 중 오류: {e}")
                             results.append(None)
             else:
                 # 순차 실행 (병렬 안전하지 않은 공정이 있는 경우)
@@ -332,9 +333,9 @@ class MultiProcessGroup:
                     try:
                         result = process.execute(input_data)
                         results.append(result)
-                        print(f"  ✓ {process.process_name} 완료")
+                        print(f"  [OK] {process.process_name} 완료")
                     except Exception as e:
-                        print(f"  ✗ {process.process_name} 실행 중 오류: {e}")
+                        print(f"  [ERROR] {process.process_name} 실행 중 오류: {e}")
                         results.append(None)
             
             print(f"다중공정 그룹 실행 완료 (그룹 ID: {self.group_id})")
@@ -426,16 +427,18 @@ class MultiProcessGroup:
 
 
 class BaseProcess(ABC):
-    """모든 제조 공정의 기본이 되는 추상 클래스"""
+    """모든 제조 공정의 기본이 되는 추상 클래스 (SimPy 기반)"""
     
-    def __init__(self, process_id: str = None, process_name: str = None):
+    def __init__(self, env: simpy.Environment, process_id: str = None, process_name: str = None):
         """
-        기본 공정 초기화
+        기본 공정 초기화 (SimPy 환경 필수)
         
         Args:
+            env: SimPy 환경 객체 (필수)
             process_id: 공정 고유 ID (선택적, 자동 생성됨)
             process_name: 공정 이름 (선택적)
         """
+        self.env = env  # SimPy 환경 객체 (필수)
         self.process_id = process_id or str(uuid.uuid4())  # 고유 ID 생성
         self.process_name = process_name or self.__class__.__name__  # 기본 이름 설정
         self.next_processes = []  # 다음 공정들의 리스트
@@ -453,6 +456,9 @@ class BaseProcess(ABC):
         self.conditions: List[Callable[[Any], bool]] = []  # 실행 조건들
         self.parallel_safe: bool = True  # 병렬 실행 안전 여부
         self.resource_manager = None  # 고급 자원 관리자 (필요시 설정)
+        
+        # SimPy 관련 속성들
+        self.processing_time: float = 1.0  # 기본 처리 시간 (시뮬레이션 시간 단위)
         
     def set_execution_priority(self, priority: int) -> 'BaseProcess':
         """
@@ -518,9 +524,9 @@ class BaseProcess(ABC):
         
         return True
         
-    def execute(self, input_data: Any = None) -> Any:
+    def execute(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
-        공정을 실행하는 메서드 (기본 구현)
+        공정을 실행하는 SimPy generator 메서드 (기본 구현)
         
         기본적으로 다음 순서로 실행됩니다:
         1. 입력 자원 소비 (consume_resources)
@@ -530,23 +536,26 @@ class BaseProcess(ABC):
         Args:
             input_data: 공정에 전달되는 입력 데이터
             
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
         Returns:
             Any: 공정 실행 결과 (생산된 자원 포함)
         """
-        print(f"[{self.process_name}] 공정 실행 시작")
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 시작")
         
-        # 1. 자원 소비
+        # 1. 자원 소비 검증
         if not self.consume_resources(input_data):
-            print(f"[{self.process_name}] 공정 실행 실패: 자원 부족")
+            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 실패: 자원 부족")
             return None
             
-        # 2. 구체적인 공정 로직 실행 (하위 클래스에서 구현)
-        result = self.process_logic(input_data)
+        # 2. 구체적인 공정 로직 실행 (하위 클래스에서 구현하는 generator)
+        result = yield from self.process_logic(input_data)
         
         # 3. 자원 생산
         produced_resources = self.produce_resources(result)
         
-        print(f"[{self.process_name}] 공정 실행 완료")
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 완료")
         
         # 결과와 생산된 자원을 함께 반환
         return {
@@ -556,13 +565,16 @@ class BaseProcess(ABC):
         }
         
     @abstractmethod
-    def process_logic(self, input_data: Any = None) -> Any:
+    def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
-        구체적인 공정 로직을 실행하는 추상 메서드
+        구체적인 공정 로직을 실행하는 추상 SimPy generator 메서드
         각 구체적인 공정 클래스에서 구현해야 함
         
         Args:
             input_data: 공정에 전달되는 입력 데이터
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
             
         Returns:
             Any: 공정 로직 실행 결과
@@ -717,14 +729,14 @@ class BaseProcess(ABC):
             for resource in self.input_resources:
                 if requirement.is_satisfied_by(resource):
                     satisfied = True
-                    print(f"  ✓ 요구사항 만족: {requirement}")
+                    print(f"  [OK] 요구사항 만족: {requirement}")
                     break
                     
             if not satisfied and requirement.is_mandatory:
-                print(f"  ✗ 필수 요구사항 미충족: {requirement}")
+                print(f"  [ERROR] 필수 요구사항 미충족: {requirement}")
                 return False
             elif not satisfied:
-                print(f"  ! 선택적 요구사항 미충족: {requirement}")
+                print(f"  [WARNING] 선택적 요구사항 미충족: {requirement}")
                 
         print(f"[{self.process_name}] 자원 검증 완료")
         return True
@@ -807,6 +819,33 @@ class BaseProcess(ABC):
             'input_inventory': {k: str(v) for k, v in self.current_input_inventory.items()},
             'output_inventory': {k: str(v) for k, v in self.current_output_inventory.items()}
         }
+    
+    def get_input_resources(self) -> List[Resource]:
+        """
+        입력 자원 목록을 반환하는 메서드
+        
+        Returns:
+            List[Resource]: 입력 자원 목록
+        """
+        return self.input_resources.copy()
+    
+    def get_output_resources(self) -> List[Resource]:
+        """
+        출력 자원 목록을 반환하는 메서드
+        
+        Returns:
+            List[Resource]: 출력 자원 목록
+        """
+        return self.output_resources.copy()
+    
+    def get_resource_requirements(self) -> List[ResourceRequirement]:
+        """
+        자원 요구사항 목록을 반환하는 메서드
+        
+        Returns:
+            List[ResourceRequirement]: 자원 요구사항 목록
+        """
+        return self.resource_requirements.copy()
 
     def get_process_info(self) -> dict:
         """

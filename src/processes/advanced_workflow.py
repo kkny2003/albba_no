@@ -1,17 +1,13 @@
 """
-고급 워크플로우 관리 모듈
+SimPy 기반 고급 워크플로우 관리 모듈
 병렬 공정, 동기화, 조건부 분기 등을 지원하는 확장된 워크플로우 관리 기능을 제공합니다.
 """
 
-import asyncio
-import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Dict, Any, Callable, Optional, Set, Tuple
+import simpy
+from typing import List, Dict, Any, Callable, Optional, Set, Tuple, Generator
 from enum import Enum
 from dataclasses import dataclass
 import uuid
-import time
-from .base_process import BaseProcess, ProcessChain
 
 
 class ExecutionMode(Enum):
@@ -36,6 +32,8 @@ class ProcessResult:
     success: bool
     result_data: Any
     execution_time: float
+    start_time: float
+    end_time: float
     error_message: Optional[str] = None
 
 
@@ -48,469 +46,115 @@ class SynchronizationPoint:
     timeout: Optional[float] = None  # 타임아웃 (초)
 
 
-class ConditionalBranch:
-    """조건부 분기 클래스"""
+class AdvancedWorkflowManager:
+    """SimPy 기반 고급 워크플로우 관리자"""
     
-    def __init__(self, condition_func: Callable[[Any], str], branches: Dict[str, List[BaseProcess]]):
+    def __init__(self, env: simpy.Environment, max_workers: int = 4):
         """
-        조건부 분기 초기화
+        고급 워크플로우 관리자 초기화
         
         Args:
-            condition_func: 입력 데이터를 받아 분기 키를 반환하는 함수
-            branches: 분기 키별 프로세스 리스트
+            env: SimPy 환경 객체
+            max_workers: 최대 동시 실행 프로세스 수
         """
-        self.condition_func = condition_func
-        self.branches = branches
-        self.branch_id = str(uuid.uuid4())
-    
-    def evaluate(self, input_data: Any) -> List[BaseProcess]:
-        """
-        조건을 평가하여 실행할 프로세스들을 반환
-        
-        Args:
-            input_data: 조건 평가에 사용할 데이터
-            
-        Returns:
-            List[BaseProcess]: 실행할 프로세스 리스트
-        """
-        branch_key = self.condition_func(input_data)
-        return self.branches.get(branch_key, [])
-
-
-class ParallelProcessChain(ProcessChain):
-    """병렬 실행을 지원하는 고급 프로세스 체인"""
-    
-    def __init__(self, processes: List[BaseProcess] = None):
-        """
-        병렬 프로세스 체인 초기화
-        
-        Args:
-            processes: 초기 프로세스 리스트
-        """
-        super().__init__(processes)
-        self.execution_mode = ExecutionMode.SEQUENTIAL  # 기본은 순차 실행
-        self.max_workers = 4  # 기본 최대 워커 수
-        self.sync_points: Dict[str, SynchronizationPoint] = {}  # 동기화 포인트들
-        self.conditional_branches: List[ConditionalBranch] = []  # 조건부 분기들
-        
-    def set_parallel_execution(self, max_workers: int = 4) -> 'ParallelProcessChain':
-        """
-        병렬 실행 모드로 설정
-        
-        Args:
-            max_workers: 최대 워커 스레드 수
-            
-        Returns:
-            ParallelProcessChain: 체인 객체 (메서드 체이닝용)
-        """
-        self.execution_mode = ExecutionMode.PARALLEL
+        self.env = env
         self.max_workers = max_workers
-        print(f"병렬 실행 모드 설정 (최대 워커: {max_workers})")
-        return self
-    
-    def add_synchronization_point(self, sync_point: SynchronizationPoint) -> 'ParallelProcessChain':
+        
+        # 프로세스 관리 (BaseProcess 타입 체크를 위해 typing.TYPE_CHECKING 사용하지 않음)
+        self.processes: Dict[str, Any] = {}  # BaseProcess 객체들
+        self.process_chains: Dict[str, Any] = {}  # ProcessChain 객체들
+        self.execution_results: Dict[str, ProcessResult] = {}
+        
+        # 동기화 관리
+        self.sync_points: Dict[str, SynchronizationPoint] = {}
+        self.sync_events: Dict[str, simpy.Event] = {}
+        self.sync_results: Dict[str, List[ProcessResult]] = {}
+        
+        # 워크플로우 상태
+        self.active_workflows: Set[str] = set()
+        self.completed_workflows: Set[str] = set()
+        
+        # 리소스 제한
+        self.worker_pool = simpy.Resource(env, capacity=max_workers)
+        
+    def register_process(self, process):
         """
-        동기화 포인트 추가
+        프로세스를 등록합니다.
         
         Args:
-            sync_point: 동기화 포인트
-            
-        Returns:
-            ParallelProcessChain: 체인 객체
+            process: 등록할 프로세스 (BaseProcess 객체)
         """
-        self.sync_points[sync_point.sync_id] = sync_point
-        print(f"동기화 포인트 추가: {sync_point.sync_id} ({sync_point.sync_type.value})")
-        return self
-    
-    def add_conditional_branch(self, branch: ConditionalBranch) -> 'ParallelProcessChain':
+        self.processes[process.process_id] = process
+        print(f"[시간 {self.env.now:.1f}] 프로세스 등록: {process.process_id} ({process.process_name})")
+        
+    def register_process_chain(self, chain):
         """
-        조건부 분기 추가
+        프로세스 체인을 등록합니다.
         
         Args:
-            branch: 조건부 분기
-            
+            chain: 등록할 프로세스 체인 (ProcessChain 객체)
+        """
+        self.process_chains[chain.chain_id] = chain
+        print(f"[시간 {self.env.now:.1f}] 프로세스 체인 등록: {chain.chain_id}")
+        
+    def get_workflow_statistics(self) -> Dict[str, Any]:
+        """
+        워크플로우 통계 반환
+        
         Returns:
-            ParallelProcessChain: 체인 객체
+            Dict[str, Any]: 통계 정보
         """
-        self.conditional_branches.append(branch)
-        print(f"조건부 분기 추가: {branch.branch_id}")
-        return self
+        total_results = len(self.execution_results)
+        successful_results = sum(1 for result in self.execution_results.values() if result.success)
+        
+        return {
+            'simulation_time': self.env.now,
+            'total_workflows': len(self.completed_workflows) + len(self.active_workflows),
+            'active_workflows': len(self.active_workflows),
+            'completed_workflows': len(self.completed_workflows),
+            'total_process_executions': total_results,
+            'successful_executions': successful_results,
+            'success_rate': (successful_results / total_results * 100) if total_results > 0 else 0,
+            'worker_pool_capacity': self.worker_pool.capacity,
+            'worker_pool_usage': len(self.worker_pool.users),
+            'sync_points': len(self.sync_points)
+        }
     
-    def execute_parallel(self, input_data: Any = None) -> List[ProcessResult]:
+    def execute_workflow(self, product, workflow_steps):
         """
-        병렬로 프로세스들을 실행
+        워크플로우 실행
         
         Args:
-            input_data: 입력 데이터
-            
-        Returns:
-            List[ProcessResult]: 실행 결과들
+            product: 처리할 제품 객체
+            workflow_steps: 워크플로우 단계 리스트
         """
-        print(f"병렬 실행 시작 - 총 {len(self.processes)}개 프로세스")
-        results = []
+        workflow_id = f"workflow_{uuid.uuid4().hex[:8]}"
+        self.active_workflows.add(workflow_id)
         
-        def execute_single_process(process: BaseProcess, data: Any) -> ProcessResult:
-            """단일 프로세스 실행 함수"""
-            start_time = time.time()
+        def workflow_process():
             try:
-                print(f"[병렬] {process.process_name} 실행 시작")
-                result = process.execute(data)
-                execution_time = time.time() - start_time
-                print(f"[병렬] {process.process_name} 완료 ({execution_time:.2f}초)")
-                
-                return ProcessResult(
-                    process_id=process.process_id,
-                    process_name=process.process_name,
-                    success=True,
-                    result_data=result,
-                    execution_time=execution_time
-                )
-            except Exception as e:
-                execution_time = time.time() - start_time
-                print(f"[병렬] {process.process_name} 실행 실패: {str(e)}")
-                
-                return ProcessResult(
-                    process_id=process.process_id,
-                    process_name=process.process_name,
-                    success=False,
-                    result_data=None,
-                    execution_time=execution_time,
-                    error_message=str(e)
-                )
-        
-        # ThreadPoolExecutor를 사용한 병렬 실행
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            # 모든 프로세스를 동시에 제출
-            future_to_process = {
-                executor.submit(execute_single_process, process, input_data): process 
-                for process in self.processes
-            }
-            
-            # 완료되는 대로 결과 수집
-            for future in as_completed(future_to_process):
-                process = future_to_process[future]
-                try:
-                    result = future.result()
-                    results.append(result)
-                except Exception as e:
-                    print(f"프로세스 {process.process_name} 예외 발생: {e}")
-                    results.append(ProcessResult(
-                        process_id=process.process_id,
-                        process_name=process.process_name,
-                        success=False,
-                        result_data=None,
-                        execution_time=0.0,
-                        error_message=str(e)
-                    ))
-        
-        print(f"병렬 실행 완료 - 성공: {sum(1 for r in results if r.success)}개, "
-              f"실패: {sum(1 for r in results if not r.success)}개")
-        
-        return results
-    
-    def execute_with_synchronization(self, input_data: Any = None, 
-                                   sync_point: SynchronizationPoint = None) -> List[ProcessResult]:
-        """
-        동기화 포인트와 함께 실행
-        
-        Args:
-            input_data: 입력 데이터
-            sync_point: 동기화 포인트 (없으면 ALL_COMPLETE 기본 사용)
-            
-        Returns:
-            List[ProcessResult]: 실행 결과들
-        """
-        if sync_point is None:
-            sync_point = SynchronizationPoint(
-                sync_id="default_sync",
-                sync_type=SynchronizationType.ALL_COMPLETE
-            )
-        
-        print(f"동기화 실행 시작 - {sync_point.sync_type.value} 모드")
-        
-        results = []
-        completed_count = 0
-        
-        def execute_with_sync(process: BaseProcess, data: Any) -> ProcessResult:
-            nonlocal completed_count
-            
-            start_time = time.time()
-            try:
-                print(f"[동기화] {process.process_name} 실행 시작")
-                result = process.execute(data)
-                execution_time = time.time() - start_time
-                
-                completed_count += 1
-                print(f"[동기화] {process.process_name} 완료 ({completed_count}/{len(self.processes)})")
-                
-                return ProcessResult(
-                    process_id=process.process_id,
-                    process_name=process.process_name,
-                    success=True,
-                    result_data=result,
-                    execution_time=execution_time
-                )
-            except Exception as e:
-                execution_time = time.time() - start_time
-                print(f"[동기화] {process.process_name} 실행 실패: {str(e)}")
-                
-                return ProcessResult(
-                    process_id=process.process_id,
-                    process_name=process.process_name,
-                    success=False,
-                    result_data=None,
-                    execution_time=execution_time,
-                    error_message=str(e)
-                )
-        
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_process = {
-                executor.submit(execute_with_sync, process, input_data): process 
-                for process in self.processes
-            }
-            
-            # 동기화 타입에 따른 대기 조건
-            if sync_point.sync_type == SynchronizationType.ALL_COMPLETE:
-                # 모든 프로세스 완료 대기
-                for future in as_completed(future_to_process):
-                    result = future.result()
-                    results.append(result)
+                for step in workflow_steps:
+                    step_name = step['name']
+                    duration = step['duration']
                     
-            elif sync_point.sync_type == SynchronizationType.ANY_COMPLETE:
-                # 첫 번째 완료되는 프로세스만 대기
-                for future in as_completed(future_to_process):
-                    result = future.result()
-                    results.append(result)
-                    print(f"첫 번째 프로세스 완료 - 동기화 조건 만족")
-                    break
+                    print(f"[시간 {self.env.now:.1f}] {product.product_id} - {step_name} 시작")
                     
-            elif sync_point.sync_type == SynchronizationType.THRESHOLD:
-                # 임계값만큼 완료되면 진행
-                for future in as_completed(future_to_process):
-                    result = future.result()
-                    results.append(result)
-                    if len(results) >= sync_point.threshold:
-                        print(f"임계값 {sync_point.threshold}개 프로세스 완료 - 동기화 조건 만족")
-                        break
-        
-        print(f"동기화 실행 완료 - 처리된 프로세스: {len(results)}개")
-        return results
-    
-    def execute_chain(self, input_data: Any = None) -> Any:
-        """
-        설정된 실행 모드에 따라 체인 실행
-        
-        Args:
-            input_data: 입력 데이터
-            
-        Returns:
-            Any: 실행 결과
-        """
-        if self.execution_mode == ExecutionMode.PARALLEL:
-            return self.execute_parallel(input_data)
-        else:
-            # 기본 순차 실행은 부모 클래스 메서드 사용
-            return super().execute_chain(input_data)
-
-
-class WorkflowGraph:
-    """복잡한 워크플로우를 그래프로 표현하고 실행하는 클래스"""
-    
-    def __init__(self):
-        """워크플로우 그래프 초기화"""
-        self.nodes: Dict[str, BaseProcess] = {}  # 노드들 (프로세스들)
-        self.edges: Dict[str, List[str]] = {}  # 간선들 (의존성)
-        self.conditional_edges: Dict[str, ConditionalBranch] = {}  # 조건부 간선들
-        self.sync_points: Dict[str, SynchronizationPoint] = {}  # 동기화 포인트들
-        self.execution_results: Dict[str, ProcessResult] = {}  # 실행 결과들
-        
-    def add_process(self, process: BaseProcess) -> 'WorkflowGraph':
-        """
-        프로세스를 그래프에 추가
-        
-        Args:
-            process: 추가할 프로세스
-            
-        Returns:
-            WorkflowGraph: 그래프 객체
-        """
-        self.nodes[process.process_id] = process
-        if process.process_id not in self.edges:
-            self.edges[process.process_id] = []
-        print(f"프로세스 추가: {process.process_name} ({process.process_id})")
-        return self
-    
-    def add_dependency(self, from_process_id: str, to_process_id: str) -> 'WorkflowGraph':
-        """
-        프로세스 간 의존성 추가 (from_process 완료 후 to_process 실행)
-        
-        Args:
-            from_process_id: 선행 프로세스 ID
-            to_process_id: 후행 프로세스 ID
-            
-        Returns:
-            WorkflowGraph: 그래프 객체
-        """
-        if from_process_id not in self.edges:
-            self.edges[from_process_id] = []
-        self.edges[from_process_id].append(to_process_id)
-        
-        from_name = self.nodes[from_process_id].process_name
-        to_name = self.nodes[to_process_id].process_name
-        print(f"의존성 추가: {from_name} → {to_name}")
-        return self
-    
-    def add_parallel_group(self, process_ids: List[str], 
-                          sync_point: SynchronizationPoint = None) -> 'WorkflowGraph':
-        """
-        병렬 실행 그룹 추가
-        
-        Args:
-            process_ids: 병렬로 실행할 프로세스 ID들
-            sync_point: 동기화 포인트
-            
-        Returns:
-            WorkflowGraph: 그래프 객체
-        """
-        if sync_point is None:
-            sync_point = SynchronizationPoint(
-                sync_id=f"parallel_group_{len(self.sync_points)}",
-                sync_type=SynchronizationType.ALL_COMPLETE
-            )
-        
-        self.sync_points[sync_point.sync_id] = sync_point
-        
-        process_names = [self.nodes[pid].process_name for pid in process_ids]
-        print(f"병렬 그룹 추가: {', '.join(process_names)} (동기화: {sync_point.sync_type.value})")
-        return self
-    
-    def execute_workflow(self, input_data: Any = None) -> Dict[str, ProcessResult]:
-        """
-        전체 워크플로우 실행 (토폴로지 정렬 기반)
-        
-        Args:
-            input_data: 입력 데이터
-            
-        Returns:
-            Dict[str, ProcessResult]: 프로세스 ID별 실행 결과
-        """
-        print("워크플로우 실행 시작")
-        
-        # 진입 차수 계산 (토폴로지 정렬을 위해)
-        in_degree = {node_id: 0 for node_id in self.nodes}
-        for from_node, to_nodes in self.edges.items():
-            for to_node in to_nodes:
-                in_degree[to_node] += 1
-        
-        # 진입 차수가 0인 노드들부터 시작 (의존성이 없는 프로세스들)
-        ready_queue = [node_id for node_id, degree in in_degree.items() if degree == 0]
-        completed = set()
-        
-        print(f"시작 프로세스들: {[self.nodes[nid].process_name for nid in ready_queue]}")
-        
-        while ready_queue or len(completed) < len(self.nodes):
-            if not ready_queue:
-                # 순환 의존성 또는 오류 상황
-                remaining = [nid for nid in self.nodes if nid not in completed]
-                print(f"경고: 실행할 수 없는 프로세스들이 남았습니다: {remaining}")
-                break
-            
-            # 현재 실행 가능한 프로세스들을 병렬로 실행
-            current_batch = ready_queue[:]
-            ready_queue.clear()
-            
-            batch_names = [self.nodes[nid].process_name for nid in current_batch]
-            print(f"배치 실행: {', '.join(batch_names)}")
-            
-            # 배치를 병렬로 실행
-            batch_results = self._execute_batch(current_batch, input_data)
-            
-            # 결과 저장 및 완료 처리
-            for process_id, result in batch_results.items():
-                self.execution_results[process_id] = result
-                completed.add(process_id)
+                    # 워커 풀에서 리소스 요청
+                    with self.worker_pool.request() as request:
+                        yield request
+                        
+                        # 작업 시간만큼 대기
+                        yield self.env.timeout(duration)
+                        
+                        print(f"[시간 {self.env.now:.1f}] {product.product_id} - {step_name} 완료")
                 
-                # 이 프로세스에 의존하는 프로세스들의 진입 차수 감소
-                for dependent_id in self.edges.get(process_id, []):
-                    in_degree[dependent_id] -= 1
-                    if in_degree[dependent_id] == 0:
-                        ready_queue.append(dependent_id)
-        
-        print("워크플로우 실행 완료")
-        return self.execution_results
-    
-    def _execute_batch(self, process_ids: List[str], input_data: Any) -> Dict[str, ProcessResult]:
-        """
-        프로세스 배치를 병렬로 실행
-        
-        Args:
-            process_ids: 실행할 프로세스 ID들
-            input_data: 입력 데이터
-            
-        Returns:
-            Dict[str, ProcessResult]: 프로세스 ID별 실행 결과
-        """
-        batch_results = {}
-        
-        def execute_process(process_id: str) -> Tuple[str, ProcessResult]:
-            """단일 프로세스 실행"""
-            process = self.nodes[process_id]
-            start_time = time.time()
-            
-            try:
-                print(f"[배치] {process.process_name} 실행 시작")
-                result = process.execute(input_data)
-                execution_time = time.time() - start_time
-                print(f"[배치] {process.process_name} 완료 ({execution_time:.2f}초)")
+                # 워크플로우 완료
+                self.active_workflows.remove(workflow_id)
+                self.completed_workflows.add(workflow_id)
                 
-                return process_id, ProcessResult(
-                    process_id=process_id,
-                    process_name=process.process_name,
-                    success=True,
-                    result_data=result,
-                    execution_time=execution_time
-                )
             except Exception as e:
-                execution_time = time.time() - start_time
-                print(f"[배치] {process.process_name} 실행 실패: {str(e)}")
-                
-                return process_id, ProcessResult(
-                    process_id=process_id,
-                    process_name=process.process_name,
-                    success=False,
-                    result_data=None,
-                    execution_time=execution_time,
-                    error_message=str(e)
-                )
+                print(f"[오류] 워크플로우 실행 중 오류 발생: {e}")
+                if workflow_id in self.active_workflows:
+                    self.active_workflows.remove(workflow_id)
         
-        # 배치 내 프로세스들을 병렬로 실행
-        with ThreadPoolExecutor(max_workers=len(process_ids)) as executor:
-            future_to_id = {
-                executor.submit(execute_process, pid): pid 
-                for pid in process_ids
-            }
-            
-            for future in as_completed(future_to_id):
-                process_id, result = future.result()
-                batch_results[process_id] = result
-        
-        return batch_results
-    
-    def visualize_graph(self) -> str:
-        """
-        그래프 구조를 텍스트로 시각화
-        
-        Returns:
-            str: 그래프 구조 텍스트
-        """
-        lines = ["워크플로우 그래프 구조:", "=" * 40]
-        
-        for process_id, process in self.nodes.items():
-            dependencies = self.edges.get(process_id, [])
-            if dependencies:
-                dep_names = [self.nodes[dep_id].process_name for dep_id in dependencies]
-                lines.append(f"{process.process_name} → {', '.join(dep_names)}")
-            else:
-                lines.append(f"{process.process_name} (종료 노드)")
-        
-        return "\n".join(lines)
+        return self.env.process(workflow_process())

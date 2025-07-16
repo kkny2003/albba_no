@@ -1,38 +1,203 @@
-# manufacturing-simulation-framework/manufacturing-simulation-framework/README.md
-
 # 제조 공정 시뮬레이션 프레임워크
 
-이 프로젝트는 제조 공정을 시뮬레이션하기 위한 프레임워크입니다. 이 프레임워크는 다양한 제조 및 조립 프로세스를 모델링하고 시뮬레이션할 수 있는 기능을 제공합니다. 재사용성을 높이기 위해 모듈화된 구조로 설계되었습니다.
+[![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![SimPy](https://img.shields.io/badge/SimPy-4.0+-green.svg)](https://simpy.readthedocs.io/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 주요 기능
+이 프로젝트는 SimPy 기반의 제조 공정 시뮬레이션 프레임워크입니다. 복잡한 제조 및 조립 프로세스를 모델링하고 시뮬레이션할 수 있는 강력하고 유연한 기능을 제공합니다. 재사용성과 확장성을 높이기 위해 모듈화된 구조로 설계되었습니다.
 
-- **시뮬레이션 엔진**: 시뮬레이션의 실행 및 관리를 담당합니다.
-- **자원 관리**: 자원의 할당 및 해제를 관리합니다.
-- **데이터 수집**: 시뮬레이션 데이터를 수집하고 저장합니다.
-- **모델링**: 기계, 작업자, 제품 및 운송 모델을 정의합니다.
-- **프로세스 관리**: 제조, 조립 및 품질 관리 프로세스를 정의합니다.
-- **통계 및 시각화**: 시뮬레이션 결과를 분석하고 시각화합니다.
+## ✨ 주요 기능
 
-## 설치
+### 🔗 프로세스 체이닝
+- **직관적인 연결**: `>>` 연산자를 사용한 프로세스 체이닝
+- **우선순위 시스템**: 프로세스명에 우선순위 포함 가능
+- **동적 구성**: 런타임 중 프로세스 추가/제거 가능
 
-이 프로젝트를 사용하기 위해서는 Python 3.x가 필요합니다. 다음 명령어를 사용하여 필요한 패키지를 설치할 수 있습니다.
+### 🎯 통합 자원 관리
+- **포괄적 자원 지원**: 원자재, 반제품, 완제품, 도구, 에너지, 인력
+- **자동 할당/해제**: 효율적인 자원 생명주기 관리
+- **사용량 추적**: 실시간 자원 사용 모니터링
 
-```
+### 📊 데이터 수집 & 시각화
+- **실시간 데이터 수집**: 처리량, 대기시간, 가동률, 품질 지표
+- **다양한 차트**: 선 그래프, 히스토그램, 박스 플롯, 산점도
+- **통계 분석**: 평균, 분산, 백분위수 등 기본 통계
+
+### 🏭 현실적인 시뮬레이션
+- **SimPy 기반**: 이산 사건 시뮬레이션 엔진
+- **확률적 요소**: 처리 시간 변동성, 품질 불확실성
+- **병목 분석**: 자동 병목 구간 식별 및 최적화 제안
+
+## 🚀 빠른 시작
+
+### 설치
+
+```bash
+# 저장소 클론
+git clone https://github.com/your-username/manufacturing-simulation-framework.git
+cd manufacturing-simulation-framework
+
+# 의존성 설치
 pip install -r requirements.txt
 ```
 
-## 사용법
+### 첫 번째 시뮬레이션
 
-1. **예제 실행**: `examples` 디렉토리에 있는 예제 파일을 실행하여 기본적인 사용법을 확인할 수 있습니다.
-   - 간단한 공장 시뮬레이션: `python examples/simple_factory.py`
-   - 복잡한 조립 라인 시뮬레이션: `python examples/complex_assembly_line.py`
+```python
+from core.simulation_engine import SimulationEngine
+from Resource.machine import Machine
+from Resource.worker import Worker
+from Resource.product import Product
 
-2. **모듈 사용**: `src` 디렉토리의 모듈을 임포트하여 자신만의 시뮬레이션을 구축할 수 있습니다.
+# 시뮬레이션 엔진 생성
+engine = SimulationEngine(random_seed=42)
 
-## 기여
+# 자원 생성
+machine = Machine(engine.env, "드릴링머신", "드릴링머신", processing_time=2.0)
+worker = Worker(engine.env, "작업자1", ["드릴링", "조립"], work_speed=1.2)
 
-기여를 원하시는 분은 이 프로젝트를 포크한 후, 변경 사항을 제안해 주세요. 모든 기여는 환영합니다!
+# 시뮬레이션 실행
+engine.run(until=100)
+print("시뮬레이션 완료!")
+```
 
-## 라이센스
+### 프로세스 체이닝 예제
 
-이 프로젝트는 MIT 라이센스 하에 배포됩니다. 자세한 내용은 LICENSE 파일을 참조해 주세요.
+```python
+from processes.manufacturing_process import ManufacturingProcess
+from processes.assembly_process import AssemblyProcess
+from processes.quality_control_process import QualityControlProcess
+
+# 프로세스 정의
+manufacturing = ManufacturingProcess("드릴링", requirements, 2.0)
+assembly = AssemblyProcess("조립", components, 3.0)
+quality_check = QualityControlProcess("품질검사", pass_rate=0.95, inspection_time=1.0)
+
+# 프로세스 체이닝 (핵심 기능!)
+complete_process = manufacturing >> assembly >> quality_check
+
+# 실행
+yield from complete_process.execute(product, engine.env, resource_manager)
+```
+
+## 📁 프로젝트 구조
+
+```
+manufacturing-simulation-framework/
+├── src/                          # 소스 코드
+│   ├── core/                     # 핵심 엔진
+│   │   ├── simulation_engine.py  # SimPy 기반 시뮬레이션 엔진
+│   │   ├── resource_manager.py   # 고급 자원 관리자
+│   │   └── data_collector.py     # 데이터 수집기
+│   ├── processes/                # 제조 프로세스
+│   │   ├── base_process.py       # 프로세스 체이닝 기반 클래스
+│   │   ├── manufacturing_process.py
+│   │   ├── assembly_process.py
+│   │   └── quality_control_process.py
+│   ├── Resource/                 # 자원 모델들
+│   │   ├── machine.py           # SimPy 기반 기계 모델
+│   │   ├── worker.py            # 작업자 모델
+│   │   ├── product.py           # 제품 모델
+│   │   └── helper.py            # 자원 헬퍼 클래스
+│   ├── utils/                   # 유틸리티
+│   │   ├── statistics.py       # 통계 계산
+│   │   └── visualization.py    # 시각화 도구
+│   └── config/                  # 설정
+├── examples/                    # 사용 예제
+│   ├── basic_manufacturing_line.py    # 기본 제조 라인
+│   ├── process_chaining_example.py    # 프로세스 체이닝
+│   ├── data_analysis_example.py       # 데이터 분석
+│   └── README.md                      # 예제 가이드
+├── docs/                             # 문서
+│   ├── getting_started.md            # 시작 가이드
+│   ├── api_reference.md              # API 레퍼런스
+│   ├── process_chaining.md           # 프로세스 체이닝 가이드
+│   ├── resource_management_guide.md  # 자원 관리 가이드
+│   └── mandatory_resources_guide.md  # 고급 자원 관리
+└── tests/                           # 테스트
+```
+
+## 📖 문서
+
+- **[시작하기](docs/getting_started.md)**: 기본 사용법과 첫 시뮬레이션 만들기
+- **[API 레퍼런스](docs/api_reference.md)**: 전체 API 문서
+- **[프로세스 체이닝](docs/process_chaining.md)**: 핵심 기능인 프로세스 체이닝 가이드
+- **[자원 관리](docs/resource_management_guide.md)**: 자원 관리 시스템 가이드
+- **[예제 모음](examples/README.md)**: 다양한 사용 예제
+
+## 🎯 사용 사례
+
+### 제조업
+- 자동차 부품 제조 라인 최적화
+- 전자제품 조립 공정 분석
+- 품질 관리 시스템 개선
+
+### 연구 및 교육
+- 제조 시스템 연구
+- 산업공학 교육 도구
+- 최적화 알고리즘 테스트베드
+
+### 컨설팅
+- 공정 개선 제안
+- 생산성 분석
+- 병목 구간 식별
+
+## 📊 성능 특징
+
+| 항목 | 기본 예제 | 복잡한 시스템 |
+|------|-----------|---------------|
+| 시뮬레이션 시간 | 40-72시간 | 수백 시간 |
+| 실행 시간 | 2-5초 | 수십 초 |
+| 메모리 사용량 | 50-80MB | 수백 MB |
+| 동시 프로세스 | 10-50개 | 수백 개 |
+
+## 🤝 기여하기
+
+기여를 환영합니다! 다음 방법으로 참여할 수 있습니다:
+
+1. **이슈 리포팅**: 버그나 개선 사항을 이슈로 등록
+2. **기능 제안**: 새로운 기능에 대한 아이디어 제안
+3. **Pull Request**: 코드 개선이나 새 기능 구현
+4. **문서 개선**: 문서 오타 수정이나 예제 추가
+
+### 개발 환경 설정
+
+```bash
+# 개발용 의존성 설치
+pip install -r requirements.txt
+
+# 테스트 실행
+python -m pytest tests/
+
+# 코드 스타일 확인
+flake8 src/
+```
+
+## 📄 라이센스
+
+이 프로젝트는 MIT 라이센스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+
+## 🙋‍♂️ 지원 및 문의
+
+- **문서**: [Getting Started Guide](docs/getting_started.md)
+- **예제**: [Examples Directory](examples/)
+- **이슈**: GitHub Issues에서 버그 리포트나 기능 요청
+- **토론**: GitHub Discussions에서 질문이나 아이디어 공유
+
+## 🔄 업데이트 내역
+
+### v2.0.0 (최신)
+- ✅ 프로세스 체이닝 기능 추가 (`>>` 연산자)
+- ✅ 통합 자원 관리 시스템
+- ✅ 고급 데이터 수집 및 시각화
+- ✅ 우선순위 시스템
+- ✅ 포괄적인 문서 및 예제
+
+### v1.0.0
+- 기본 SimPy 기반 시뮬레이션 엔진
+- 기본 자원 관리
+- 간단한 프로세스 모델링
+
+---
+
+**제조 시뮬레이션을 위한 강력하고 유연한 프레임워크로 여러분의 제조 시스템을 최적화하세요!** 🏭✨

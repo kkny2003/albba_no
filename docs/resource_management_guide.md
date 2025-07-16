@@ -1,53 +1,445 @@
-# 통합 자원 관리 시스템 가이드
+# 자원 관리 시스템 가이드 (Resource Management Guide)
 
-## 개요
+## 🎯 개요
 
-모든 제조 시뮬레이션 요소(**Product, Worker, Machine, Transport 등**)를 **Resource**라는 하나의 통합된 개념으로 관리하는 시스템을 구축했습니다. 이를 통해 일관성 있고 확장 가능한 자원 관리가 가능해졌습니다.
+이 프레임워크의 자원 관리 시스템은 제조 시뮬레이션에서 필요한 모든 자원을 통합적으로 관리할 수 있도록 설계되었습니다. 원자재부터 완제품, 기계, 작업자, 도구에 이르기까지 모든 요소를 체계적으로 추적하고 할당할 수 있습니다.
 
-## 핵심 설계 철학
+## 🔧 핵심 구성 요소
 
-🎯 **"모든 것은 Resource다"**
-- **Product** (원자재, 반제품, 완제품) → Resource
-- **Worker** (작업자, 기술자, 검사원) → Resource  
-- **Machine** (제조기계, 조립기계, 검사장비) → Resource
-- **Transport** (지게차, 컨베이어벨트, 운반카트) → Resource
-- **Tool** (도구, 장비) → Resource
-- **Energy** (전력, 연료) → Resource
-- **Time** (작업시간, 대기시간) → Resource
+### 1. Resource 클래스
 
-## 주요 변경사항
-
-### 1. 새로운 Resource 클래스 추가 (`src/models/resource.py`)
+모든 자원의 기본이 되는 클래스입니다:
 
 ```python
-class Resource:
-    """제조 시뮬레이션에서 사용되는 자원을 정의하는 클래스"""
-    
-    def __init__(self, resource_id, name, resource_type, quantity, unit):
-        # 자원의 고유 식별자, 이름, 타입, 수량, 단위 관리
+from Resource.helper import Resource, ResourceType
+
+# 기본 자원 생성
+steel_sheet = Resource(
+    resource_id="STEEL_001", 
+    name="철판", 
+    resource_type=ResourceType.RAW_MATERIAL, 
+    quantity=100.0, 
+    unit="kg"
+)
 ```
 
-### 지원하는 자원 타입들:
-- **RAW_MATERIAL**: 원자재
-- **SEMI_FINISHED**: 반제품
-- **FINISHED_PRODUCT**: 완제품
-- **MACHINE**: 기계
-- **WORKER**: 작업자
-- **TOOL**: 도구
-- **TRANSPORT**: 운송/운반 (지게차, 컨베이어 벨트, 운반차 등)
-- **ENERGY**: 에너지
-- **TIME**: 시간
+### 2. ResourceType 열거형
 
-### 2. 통합 헬퍼 함수들
+지원되는 자원 타입들:
 
-각 기존 모델(Product, Worker, Machine, Transport)을 Resource로 쉽게 변환할 수 있는 헬퍼 함수들을 제공합니다:
+- **RAW_MATERIAL**: 원자재 (철강, 플라스틱, 화학물질 등)
+- **SEMI_FINISHED**: 반제품 (가공된 부품, 중간 조립품 등)
+- **FINISHED_PRODUCT**: 완제품 (최종 제품)
+- **TOOL**: 도구 (드릴 비트, 커터, 측정기구 등)
+- **ENERGY**: 에너지 (전력, 연료, 압축공기 등)
+- **LABOR**: 인력 (작업자, 기술자, 검사원 등)
 
-#### Product → Resource 변환
+### 3. ResourceRequirement 클래스
+
+프로세스에서 필요한 자원 요구사항을 정의합니다:
+
 ```python
-raw_material = create_product_resource(
-    product_id="raw_material_001",
-    product_name="원자재",
-    product_type=ResourceType.RAW_MATERIAL,
+from Resource.helper import ResourceRequirement
+
+# 자원 요구사항 정의
+material_req = ResourceRequirement(
+    resource_type=ResourceType.RAW_MATERIAL,
+    name="철판",
+    quantity=5.0,
+    unit="kg",
+    is_consumed=True  # 소모성 자원 여부
+)
+
+tool_req = ResourceRequirement(
+    resource_type=ResourceType.TOOL,
+    name="드릴비트",
+    quantity=1.0,
+    unit="개",
+    is_consumed=False  # 재사용 가능한 자원
+)
+```
+
+## 🚀 기본 사용법
+
+### 1. ResourceManager 초기화
+
+```python
+from core.resource_manager import ResourceManager
+
+# 자원 관리자 생성
+resource_manager = ResourceManager()
+```
+
+### 2. 자원 추가
+
+```python
+# 다양한 자원들을 풀에 추가
+resources = [
+    Resource("STEEL_001", "철판", ResourceType.RAW_MATERIAL, 100.0, "kg"),
+    Resource("DRILL_001", "드릴비트", ResourceType.TOOL, 5.0, "개"),
+    Resource("WORKER_001", "숙련작업자", ResourceType.LABOR, 1.0, "명"),
+    Resource("POWER_001", "전력", ResourceType.ENERGY, 1000.0, "kWh")
+]
+
+for resource in resources:
+    resource_manager.add_resource(resource)
+    print(f"추가됨: {resource.name} ({resource.quantity} {resource.unit})")
+```
+
+### 3. 자원 할당 및 해제
+
+```python
+# 프로세스에 필요한 자원 요구사항 정의
+requirements = [
+    ResourceRequirement(ResourceType.RAW_MATERIAL, "철판", 10.0, "kg", True),
+    ResourceRequirement(ResourceType.TOOL, "드릴비트", 1.0, "개", False),
+    ResourceRequirement(ResourceType.LABOR, "숙련작업자", 1.0, "명", False)
+]
+
+# 자원 할당 시도
+try:
+    allocated_resources = resource_manager.allocate_resources(requirements)
+    print("자원 할당 성공!")
+    
+    # 작업 수행...
+    
+    # 자원 해제
+    resource_manager.release_resources(allocated_resources)
+    print("자원 해제 완료!")
+    
+except Exception as e:
+    print(f"자원 할당 실패: {e}")
+```
+
+## 🔍 고급 자원 관리
+
+### 1. 자원 가용성 확인
+
+```python
+# 특정 타입의 사용 가능한 자원 조회
+available_materials = resource_manager.get_available_resources(ResourceType.RAW_MATERIAL)
+print(f"사용 가능한 원자재: {len(available_materials)}종")
+
+for material in available_materials:
+    print(f"  - {material.name}: {material.quantity} {material.unit}")
+
+# 특정 자원의 사용 가능 여부 확인
+def check_resource_availability(resource_manager, requirements):
+    """자원 요구사항이 충족 가능한지 확인"""
+    for req in requirements:
+        available = resource_manager.get_available_resources(req.resource_type)
+        available_quantity = sum(r.quantity for r in available if r.name == req.name)
+        
+        if available_quantity < req.quantity:
+            print(f"⚠️ 자원 부족: {req.name} (필요: {req.quantity}, 가용: {available_quantity})")
+            return False
+    
+    print("✅ 모든 자원 사용 가능")
+    return True
+
+# 사용 예제
+check_resource_availability(resource_manager, requirements)
+```
+
+### 2. 자원 사용 추적
+
+```python
+class ResourceTracker:
+    """자원 사용량을 추적하는 클래스"""
+    
+    def __init__(self):
+        self.usage_history = []
+        self.current_allocations = {}
+    
+    def track_allocation(self, resource, quantity, process_name):
+        """자원 할당 추적"""
+        allocation_record = {
+            'timestamp': time.time(),
+            'resource_id': resource.resource_id,
+            'resource_name': resource.name,
+            'quantity': quantity,
+            'process': process_name,
+            'action': 'allocate'
+        }
+        self.usage_history.append(allocation_record)
+        
+        # 현재 할당량 업데이트
+        if resource.resource_id not in self.current_allocations:
+            self.current_allocations[resource.resource_id] = 0
+        self.current_allocations[resource.resource_id] += quantity
+    
+    def track_release(self, resource, quantity, process_name):
+        """자원 해제 추적"""
+        release_record = {
+            'timestamp': time.time(),
+            'resource_id': resource.resource_id,
+            'resource_name': resource.name,
+            'quantity': quantity,
+            'process': process_name,
+            'action': 'release'
+        }
+        self.usage_history.append(release_record)
+        
+        # 현재 할당량 업데이트
+        if resource.resource_id in self.current_allocations:
+            self.current_allocations[resource.resource_id] -= quantity
+    
+    def get_usage_summary(self):
+        """자원 사용 요약 정보"""
+        summary = {}
+        for record in self.usage_history:
+            resource_name = record['resource_name']
+            if resource_name not in summary:
+                summary[resource_name] = {'total_allocated': 0, 'total_released': 0}
+            
+            if record['action'] == 'allocate':
+                summary[resource_name]['total_allocated'] += record['quantity']
+            else:
+                summary[resource_name]['total_released'] += record['quantity']
+        
+        return summary
+
+# 사용 예제
+tracker = ResourceTracker()
+# 할당/해제 시 추적 코드 추가...
+```
+
+### 3. 자원 우선순위 관리
+
+```python
+class PriorityResourceManager(ResourceManager):
+    """우선순위 기반 자원 관리자"""
+    
+    def __init__(self):
+        super().__init__()
+        self.allocation_queue = []  # (priority, request) 형태
+    
+    def request_resources_with_priority(self, requirements, priority, requester_id):
+        """우선순위를 가진 자원 요청"""
+        request = {
+            'requirements': requirements,
+            'requester_id': requester_id,
+            'timestamp': time.time()
+        }
+        
+        # 우선순위 큐에 추가 (낮은 숫자가 높은 우선순위)
+        heapq.heappush(self.allocation_queue, (priority, request))
+        
+        return self.process_priority_queue()
+    
+    def process_priority_queue(self):
+        """우선순위에 따라 자원 할당 처리"""
+        while self.allocation_queue:
+            priority, request = heapq.heappop(self.allocation_queue)
+            
+            try:
+                # 자원 할당 시도
+                allocated = self.allocate_resources(request['requirements'])
+                print(f"우선순위 {priority} 요청 처리 완료: {request['requester_id']}")
+                return allocated
+                
+            except Exception as e:
+                print(f"우선순위 {priority} 요청 대기: {request['requester_id']} - {e}")
+                # 다시 큐에 넣기 (또는 대기 큐로 이동)
+                heapq.heappush(self.allocation_queue, (priority, request))
+                break
+        
+        return None
+```
+
+## 📊 실제 활용 예제
+
+### 자동차 제조 라인
+
+```python
+def setup_automotive_resources():
+    """자동차 제조 라인 자원 설정"""
+    resource_manager = ResourceManager()
+    
+    # 원자재
+    steel_resources = [
+        Resource("STEEL_SHEET_001", "강판", ResourceType.RAW_MATERIAL, 1000.0, "kg"),
+        Resource("ALUMINUM_001", "알루미늄", ResourceType.RAW_MATERIAL, 500.0, "kg"),
+        Resource("PLASTIC_001", "플라스틱", ResourceType.RAW_MATERIAL, 300.0, "kg")
+    ]
+    
+    # 도구 및 장비
+    tools = [
+        Resource("PRESS_DIE_001", "프레스 금형", ResourceType.TOOL, 1.0, "세트"),
+        Resource("WELDING_TORCH_001", "용접 토치", ResourceType.TOOL, 3.0, "개"),
+        Resource("PAINTING_GUN_001", "도장 건", ResourceType.TOOL, 2.0, "개")
+    ]
+    
+    # 에너지
+    energy_resources = [
+        Resource("ELECTRICITY_001", "전력", ResourceType.ENERGY, 10000.0, "kWh"),
+        Resource("COMPRESSED_AIR_001", "압축공기", ResourceType.ENERGY, 5000.0, "L")
+    ]
+    
+    # 모든 자원 추가
+    all_resources = steel_resources + tools + energy_resources
+    for resource in all_resources:
+        resource_manager.add_resource(resource)
+    
+    return resource_manager
+
+# 자동차 부품 제조 요구사항
+door_manufacturing_requirements = [
+    ResourceRequirement(ResourceType.RAW_MATERIAL, "강판", 50.0, "kg", True),
+    ResourceRequirement(ResourceType.TOOL, "프레스 금형", 1.0, "세트", False),
+    ResourceRequirement(ResourceType.ENERGY, "전력", 100.0, "kWh", True)
+]
+
+# 자원 할당 및 제조 시뮬레이션
+auto_resource_manager = setup_automotive_resources()
+allocated = auto_resource_manager.allocate_resources(door_manufacturing_requirements)
+print("자동차 도어 제조를 위한 자원 할당 완료")
+```
+
+### 전자제품 조립 라인
+
+```python
+def setup_electronics_resources():
+    """전자제품 조립 라인 자원 설정"""
+    resource_manager = ResourceManager()
+    
+    # 전자 부품 (반제품)
+    components = [
+        Resource("PCB_001", "인쇄회로기판", ResourceType.SEMI_FINISHED, 100.0, "개"),
+        Resource("CPU_001", "프로세서", ResourceType.SEMI_FINISHED, 50.0, "개"),
+        Resource("MEMORY_001", "메모리", ResourceType.SEMI_FINISHED, 200.0, "개"),
+        Resource("RESISTOR_001", "저항", ResourceType.SEMI_FINISHED, 1000.0, "개")
+    ]
+    
+    # 조립 도구
+    assembly_tools = [
+        Resource("SOLDERING_IRON_001", "납땜인두", ResourceType.TOOL, 5.0, "개"),
+        Resource("MULTIMETER_001", "멀티미터", ResourceType.TOOL, 3.0, "개"),
+        Resource("PICK_PLACE_001", "픽앤플레이스", ResourceType.TOOL, 1.0, "대")
+    ]
+    
+    # 모든 자원 추가
+    all_resources = components + assembly_tools
+    for resource in all_resources:
+        resource_manager.add_resource(resource)
+    
+    return resource_manager
+
+# 스마트폰 조립 요구사항
+smartphone_assembly_requirements = [
+    ResourceRequirement(ResourceType.SEMI_FINISHED, "인쇄회로기판", 1.0, "개", True),
+    ResourceRequirement(ResourceType.SEMI_FINISHED, "프로세서", 1.0, "개", True),
+    ResourceRequirement(ResourceType.SEMI_FINISHED, "메모리", 2.0, "개", True),
+    ResourceRequirement(ResourceType.TOOL, "픽앤플레이스", 1.0, "대", False)
+]
+```
+
+## ⚠️ 주의사항 및 베스트 프랙티스
+
+### 1. 자원 관리 원칙
+
+- **명확한 분류**: 각 자원을 적절한 ResourceType으로 분류하세요
+- **정확한 수량**: 실제 사용량과 일치하는 수량을 설정하세요
+- **적절한 단위**: 표준화된 단위를 사용하세요 (kg, 개, 시간 등)
+- **소모성 구분**: 재사용 가능한 자원과 소모성 자원을 명확히 구분하세요
+
+### 2. 성능 최적화
+
+```python
+# 자원 풀 최적화
+def optimize_resource_pool(resource_manager):
+    """자원 풀 사용량 분석 및 최적화"""
+    resource_usage = {}
+    
+    # 각 자원 타입별 사용률 계산
+    for resource_type in ResourceType:
+        available = resource_manager.get_available_resources(resource_type)
+        if available:
+            total_capacity = sum(r.quantity for r in available)
+            # 실제 사용량 데이터를 기반으로 사용률 계산
+            usage_rate = calculate_usage_rate(resource_type)  # 구현 필요
+            
+            resource_usage[resource_type] = {
+                'total_capacity': total_capacity,
+                'usage_rate': usage_rate,
+                'recommendation': 'increase' if usage_rate > 0.8 else 'optimal'
+            }
+    
+    return resource_usage
+
+# 자원 부족 예측
+def predict_resource_shortage(resource_manager, production_plan):
+    """생산 계획을 기반으로 자원 부족 예측"""
+    shortage_predictions = []
+    
+    for plan_item in production_plan:
+        required_resources = plan_item['requirements']
+        production_quantity = plan_item['quantity']
+        
+        for req in required_resources:
+            total_needed = req.quantity * production_quantity
+            available = resource_manager.get_available_quantity(req.resource_type, req.name)
+            
+            if available < total_needed:
+                shortage_predictions.append({
+                    'resource': req.name,
+                    'shortage': total_needed - available,
+                    'plan_item': plan_item['name']
+                })
+    
+    return shortage_predictions
+```
+
+### 3. 오류 처리
+
+```python
+class ResourceAllocationError(Exception):
+    """자원 할당 관련 예외"""
+    pass
+
+class ResourceManager:
+    def allocate_resources(self, requirements):
+        """안전한 자원 할당"""
+        allocated_resources = []
+        
+        try:
+            # 모든 자원이 사용 가능한지 먼저 확인
+            for req in requirements:
+                if not self._check_availability(req):
+                    raise ResourceAllocationError(f"자원 부족: {req.name}")
+            
+            # 실제 할당 수행
+            for req in requirements:
+                resource = self._allocate_single_resource(req)
+                allocated_resources.append(resource)
+            
+            return allocated_resources
+            
+        except Exception as e:
+            # 할당 실패 시 이미 할당된 자원들 모두 해제
+            self._rollback_allocations(allocated_resources)
+            raise ResourceAllocationError(f"자원 할당 실패: {e}")
+    
+    def _rollback_allocations(self, allocated_resources):
+        """할당 롤백"""
+        for resource in allocated_resources:
+            try:
+                self.release_resource(resource)
+            except Exception as e:
+                # 로깅 등의 처리
+                print(f"롤백 중 오류: {e}")
+```
+
+## 🔗 관련 문서
+
+- [API Reference - ResourceManager](api_reference.md#12-resourcemanager)
+- [Process Chaining Guide](process_chaining.md)
+- [Getting Started Guide](getting_started.md)
+- [예제: Resource Management](../examples/resource_management_example.py)
+
+---
+
+효율적인 자원 관리는 성공적인 제조 시뮬레이션의 핵심입니다. 이 가이드의 원칙과 예제를 참조하여 여러분의 시뮬레이션에 최적화된 자원 관리 시스템을 구축하세요!
     quantity=10.0,
     sku="RM-001",
     unit="kg"

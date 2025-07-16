@@ -1,25 +1,53 @@
 from .base_process import BaseProcess
-from typing import Any, List
-from ..Resource.helper import Resource, ResourceRequirement, ResourceType
+from typing import Any, List, Generator
+import simpy
+from Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
 class QualityControlProcess(BaseProcess):
-    """품질 관리 공정을 정의하는 클래스입니다."""
+    """품질 관리 공정을 정의하는 클래스입니다 (SimPy 기반)."""
 
-    def __init__(self, inspection_criteria, process_id: str = None, process_name: str = None):
+    def __init__(self, env: simpy.Environment, inspection_criteria,
+                 input_resources: List[Resource], 
+                 output_resources: List[Resource],
+                 resource_requirements: List[ResourceRequirement],
+                 process_id: str = None, process_name: str = None,
+                 inspection_time: float = 1.5):
         """
-        품질 관리 공정의 초기화 메서드입니다.
+        품질 관리 공정의 초기화 메서드입니다 (SimPy 환경 필수).
         
+        :param env: SimPy 환경 객체 (필수)
         :param inspection_criteria: 품질 검사 기준
+        :param input_resources: 입력 자원 목록 (필수)
+        :param output_resources: 출력 자원 목록 (필수)
+        :param resource_requirements: 자원 요구사항 목록 (필수)
         :param process_id: 공정 고유 ID (선택적)
         :param process_name: 공정 이름 (선택적)
+        :param inspection_time: 검사 처리 시간 (시뮬레이션 시간 단위)
         """
-        super().__init__(process_id, process_name or "품질관리공정")
+        super().__init__(env, process_id, process_name or "품질관리공정")
         self.inspection_criteria = inspection_criteria  # 품질 검사 기준 저장
         self.inspected_items = []  # 검사된 항목 목록 초기화
+        self.inspection_time = inspection_time  # 검사 처리 시간
         
-        # 품질 관리 공정용 자원 설정
-        self._setup_quality_control_resources()
+        # 필수 자원 정보 설정
+        self._setup_resources(input_resources, output_resources, resource_requirements)
+        
+    def _setup_resources(self, input_resources: List[Resource], 
+                        output_resources: List[Resource],
+                        resource_requirements: List[ResourceRequirement]):
+        """필수 자원 정보를 설정하는 메서드"""
+        # 입력 자원 설정
+        for resource in input_resources:
+            self.add_input_resource(resource)
+        
+        # 출력 자원 설정  
+        for resource in output_resources:
+            self.add_output_resource(resource)
+                
+        # 자원 요구사항 설정
+        for requirement in resource_requirements:
+            self.add_resource_requirement(requirement)
         
     def _setup_quality_control_resources(self):
         """품질 관리 공정용 자원 요구사항을 설정하는 메서드"""
@@ -152,26 +180,33 @@ class QualityControlProcess(BaseProcess):
         # 부모 클래스의 execute 메서드 호출 (자원 관리 포함)
         return super().execute(input_data)
         
-    def process_logic(self, input_data: Any = None) -> Any:
+    def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
-        구체적인 품질 관리 공정 로직을 실행하는 메서드입니다.
+        구체적인 품질 관리 공정 로직을 실행하는 SimPy generator 메서드입니다.
         
         Args:
             input_data: 검사할 제품 데이터
             
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
         Returns:
             Any: 품질 검사 로직 실행 결과
         """
-        print(f"[{self.process_name}] 품질 검사 로직 실행 중...")
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 품질 검사 로직 실행 중...")
+        
+        # SimPy timeout을 사용하여 검사 시간 시뮬레이션
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 품질 검사 진행 중... (예상 시간: {self.inspection_time})")
+        yield self.env.timeout(self.inspection_time)
         
         quality_result = "합격"  # 기본값
         
         if input_data is not None:
             # 품질 검사 수행
             quality_result = self.inspect(input_data)
-            print(f"품질 검사 결과: {quality_result}")
+            print(f"[시간 {self.env.now:.1f}] 품질 검사 결과: {quality_result}")
         else:
-            print("검사할 데이터가 없어 기본 합격 처리")
+            print(f"[시간 {self.env.now:.1f}] 검사할 데이터가 없어 기본 합격 처리")
         
         # 검사 결과에 따른 출력 설정
         inspection_result = {
@@ -180,5 +215,5 @@ class QualityControlProcess(BaseProcess):
             'inspection_report': self.get_inspection_report()
         }
         
-        print(f"[{self.process_name}] 품질 검사 로직 실행 완료")
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 품질 검사 로직 실행 완료")
         return inspection_result
