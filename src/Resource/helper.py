@@ -11,6 +11,7 @@ class ResourceType(Enum):
     WORKER = "작업자"             # 작업자
     TOOL = "도구"                 # 도구
     TRANSPORT = "운송"            # 운송/운반 (지게차, 컨베이어 벨트, 운반차 등)
+    BUFFER = "버퍼"               # 버퍼/중간저장소
     ENERGY = "에너지"             # 에너지
     TIME = "시간"                 # 시간
 

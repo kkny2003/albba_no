@@ -7,4 +7,5 @@ from .machine import Machine, create_machine_resource  # 기계 모델 클래스
 from .worker import Worker, create_worker_resource     # 작업자 모델 클래스 및 생성 함수 임포트
 from .product import Product, create_product_resource     # 제품 모델 클래스 및 생성 함수 임포트
 from .transport import Transport, create_transport_resource  # 운송 모델 클래스 및 생성 함수 임포트
+from .buffer import Buffer, BufferPolicy, create_buffer_resource  # 버퍼 모델 클래스 및 생성 함수 임포트
 from src.Resource.helper import Resource, ResourceType, ResourceRequirement  # 헬퍼 클래스들 임포트
