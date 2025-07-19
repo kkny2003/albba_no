@@ -1,7 +1,7 @@
 import simpy
 from typing import List, Dict, Optional, Any, Generator
 import uuid
-from Resource.helper import Resource, ResourceRequirement, ResourceType
+from src.Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
 class SimpleResourceManager:

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import uuid
 
-from Resource.helper import Resource, ResourceType, ResourceRequirement
+from src.Resource.helper import Resource, ResourceType, ResourceRequirement
 
 
 class ResourceStatus(Enum):

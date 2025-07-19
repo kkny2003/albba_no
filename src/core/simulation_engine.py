@@ -1,6 +1,6 @@
 import simpy
 from typing import Optional, Callable, Dict, Any
-from core.data_collector import DataCollector
+from .data_collector import DataCollector
 
 
 class SimulationEngine:

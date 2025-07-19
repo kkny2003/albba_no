@@ -1,6 +1,6 @@
 import simpy
 from typing import Optional, Generator, List
-from .helper import ResourceType
+from src.Resource.helper import ResourceType, Resource
 
 
 class Worker:
@@ -140,3 +140,37 @@ class Worker:
         if new_skill not in self.skills:
             self.skills.append(new_skill)
             print(f"작업자 {self.worker_id}가 새로운 기술 '{new_skill}'을 습득했습니다.")
+
+
+def create_worker_resource(worker_id: str,
+                         worker_name: str,
+                         skill_level: str = "중급",
+                         department: str = "제조부") -> Resource:
+    """
+    작업자 자원을 생성하는 헬퍼 함수
+    
+    Args:
+        worker_id: 작업자의 고유 ID
+        worker_name: 작업자 이름
+        skill_level: 기술 수준 (초급, 중급, 고급)
+        department: 소속 부서
+        
+    Returns:
+        Resource: 작업자 자원 객체
+    """
+    worker_resource = Resource(
+        resource_id=worker_id,
+        name=worker_name,
+        resource_type=ResourceType.WORKER,
+        quantity=1.0,  # 작업자는 1명
+        unit="명"
+    )
+    
+    # 작업자 관련 속성들 설정
+    worker_resource.set_property("skill_level", skill_level)
+    worker_resource.set_property("department", department)
+    worker_resource.set_property("current_task", None)
+    worker_resource.set_property("is_working", False)
+    worker_resource.set_property("work_hours", 8.0)  # 일일 근무시간
+    
+    return worker_resource

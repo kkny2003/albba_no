@@ -10,7 +10,7 @@ import uuid
 import concurrent.futures
 import re
 import simpy
-from Resource.helper import Resource, ResourceRequirement, ResourceType
+from ..Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
 class PriorityValidationError(Exception):
@@ -427,9 +427,9 @@ class MultiProcessGroup:
 
 
 class BaseProcess(ABC):
-    """모든 제조 공정의 기본이 되는 추상 클래스 (SimPy 기반)"""
+    """모든 제조 공정의 기본이 되는 추상 클래스 (SimPy 기반, 배치 처리 지원)"""
     
-    def __init__(self, env: simpy.Environment, process_id: str = None, process_name: str = None):
+    def __init__(self, env: simpy.Environment, process_id: str = None, process_name: str = None, batch_size: int = 1):
         """
         기본 공정 초기화 (SimPy 환경 필수)
         
@@ -437,12 +437,18 @@ class BaseProcess(ABC):
             env: SimPy 환경 객체 (필수)
             process_id: 공정 고유 ID (선택적, 자동 생성됨)
             process_name: 공정 이름 (선택적)
+            batch_size: 배치 크기 (한번에 처리할 아이템 수, 기본값: 1)
         """
         self.env = env  # SimPy 환경 객체 (필수)
         self.process_id = process_id or str(uuid.uuid4())  # 고유 ID 생성
         self.process_name = process_name or self.__class__.__name__  # 기본 이름 설정
         self.next_processes = []  # 다음 공정들의 리스트
         self.previous_processes = []  # 이전 공정들의 리스트
+        
+        # 배치 처리 설정
+        self.batch_size = max(1, batch_size)  # 최소 1개 이상
+        self.enable_batch_processing = batch_size > 1  # 배치 처리 활성화 여부
+        self.current_batch = []  # 현재 배치에 축적된 아이템들
         
         # 자원 관리 관련 속성들
         self.input_resources: List[Resource] = []  # 입력 자원 리스트
@@ -580,6 +586,109 @@ class BaseProcess(ABC):
             Any: 공정 로직 실행 결과
         """
         pass
+    
+    def process_batch(self, batch_items: List[Any]) -> Generator[simpy.Event, None, List[Any]]:
+        """
+        부품이 다른  경우가 하나의 batch로 묶인 경우를 생각해, 오버라이드 구현
+        배치 처리를 위한 SimPy generator 메서드
+        여러 아이템을 한번에 처리합니다.
+        
+        Args:
+            batch_items: 한번에 처리할 아이템들의 리스트
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
+        Returns:
+            List[Any]: 처리된 결과들의 리스트
+        """
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 배치 처리 시작 (배치 크기: {len(batch_items)})")
+        
+        # 1. 자원 요청
+        allocated_resources = yield from self.request_resources()
+        if not allocated_resources:
+            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 배치 처리 실패: 자원 부족")
+            return []
+            
+        # 2. 배치 공정 로직 실행 (하위 클래스에서 구현)
+        results = yield from self.batch_process_logic(batch_items)
+        
+        # 3. 자원 해제
+        self.release_resources(allocated_resources)
+        
+        # 4. 자원 생산
+        produced_resources = []
+        for result in results:
+            produced_resources.extend(self.produce_resources(result))
+        
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 배치 처리 완료 (처리된 아이템 수: {len(results)})")
+        
+        return results
+    
+    def batch_process_logic(self, batch_items: List[Any]) -> Generator[simpy.Event, None, List[Any]]:
+        """
+        배치 공정 로직을 실행하는 기본 구현
+        하위 클래스에서 오버라이드하여 구체적인 배치 로직을 구현할 수 있습니다.
+        기본 구현은 각 아이템을 개별적으로 처리합니다.
+        
+        Args:
+            batch_items: 처리할 아이템들의 리스트
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
+        Returns:
+            List[Any]: 처리된 결과들의 리스트
+        """
+        results = []
+        
+        # 기본 구현: 각 아이템을 개별적으로 처리
+        for item in batch_items:
+            result = yield from self.process_logic(item)
+            results.append(result)
+            
+        return results
+    
+    def add_to_batch(self, item: Any) -> bool:
+        """
+        배치에 아이템을 추가합니다.
+        
+        Args:
+            item: 배치에 추가할 아이템
+            
+        Returns:
+            bool: 배치가 가득 찼는지 여부 (True면 처리 준비됨)
+        """
+        if not self.enable_batch_processing:
+            return True  # 배치 처리 비활성화시 즉시 처리
+            
+        self.current_batch.append(item)
+        
+        if len(self.current_batch) >= self.batch_size:
+            return True  # 배치가 가득 참
+        else:
+            return False  # 더 기다려야 함
+    
+    def get_current_batch(self) -> List[Any]:
+        """현재 배치를 반환하고 초기화합니다."""
+        batch = self.current_batch.copy()
+        self.current_batch.clear()
+        return batch
+    
+    def is_batch_ready(self) -> bool:
+        """배치가 처리 준비되었는지 확인합니다."""
+        if not self.enable_batch_processing:
+            return len(self.current_batch) > 0
+        return len(self.current_batch) >= self.batch_size
+    
+    def get_batch_status(self) -> Dict[str, Any]:
+        """배치 처리 상태 정보를 반환합니다."""
+        return {
+            'batch_size': self.batch_size,
+            'enable_batch_processing': self.enable_batch_processing,
+            'current_batch_count': len(self.current_batch),
+            'batch_utilization': len(self.current_batch) / self.batch_size if self.batch_size > 0 else 0
+        }
     
     def connect_to(self, next_process: 'BaseProcess') -> 'BaseProcess':
         """

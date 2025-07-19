@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 from datetime import datetime
+from src.Resource.helper import Resource, ResourceType
 
 
 class Product:
@@ -150,3 +151,40 @@ class Product:
         """제품의 상세 정보를 반환합니다."""
         return (f"Product(id='{self.product_id}', type='{self.product_type}', "
                 f"step='{self.current_process_step}', quality='{self.quality_status}')")
+
+
+def create_product_resource(product_id: str,
+                          product_name: str,
+                          product_type: ResourceType,
+                          quantity: float,
+                          sku: str = None,
+                          unit: str = "개") -> Resource:
+    """
+    제품 자원을 생성하는 헬퍼 함수
+    
+    Args:
+        product_id: 제품의 고유 ID
+        product_name: 제품 이름
+        product_type: 제품 타입 (RAW_MATERIAL, SEMI_FINISHED, FINISHED_PRODUCT)
+        quantity: 제품 수량
+        sku: 제품 SKU (재고 관리 단위)
+        unit: 제품 단위
+        
+    Returns:
+        Resource: 제품 자원 객체
+    """
+    product_resource = Resource(
+        resource_id=product_id,
+        name=product_name,
+        resource_type=product_type,
+        quantity=quantity,
+        unit=unit
+    )
+    
+    # 제품 관련 속성들 설정
+    if sku:
+        product_resource.set_property("sku", sku)
+    product_resource.set_property("product_type", product_type.value)
+    product_resource.set_property("creation_date", "2025-07-15")  # 생성일
+    
+    return product_resource

@@ -1,7 +1,7 @@
 from .base_process import BaseProcess
 from typing import Any, List, Generator
 import simpy
-from Resource.helper import Resource, ResourceRequirement, ResourceType
+from src.Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
 class ManufacturingProcess(BaseProcess):

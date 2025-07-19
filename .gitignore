@@ -1,5 +1,6 @@
 # Visual Studio Code 설정 폴더
 .vscode/
+visualization_prd.md
 
 # Python 캐시 파일들
 __pycache__/
@@ -119,3 +120,7 @@ cython_debug/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Gemini 관련 파일 및 폴더 무시
+.gemini/
+gemini.ink

@@ -1,6 +1,6 @@
 import simpy
 from typing import Optional, Generator, Any
-from .helper import ResourceType
+from src.Resource.helper import ResourceType, Resource
 
 
 class Machine:
@@ -104,3 +104,37 @@ class Machine:
             yield self.env.timeout(duration)
             
         print(f"[시간 {self.env.now:.1f}] {self.machine_id} 기계 유지보수가 완료되었습니다.")
+
+
+def create_machine_resource(machine_id: str,
+                          machine_name: str,
+                          machine_type: str = "제조기계",
+                          capacity: float = 1.0) -> Resource:
+    """
+    기계 자원을 생성하는 헬퍼 함수
+    
+    Args:
+        machine_id: 기계의 고유 ID
+        machine_name: 기계 이름
+        machine_type: 기계 유형 (제조기계, 조립기계, 검사장비 등)
+        capacity: 기계 처리 용량
+        
+    Returns:
+        Resource: 기계 자원 객체
+    """
+    machine_resource = Resource(
+        resource_id=machine_id,
+        name=machine_name,
+        resource_type=ResourceType.MACHINE,
+        quantity=1.0,  # 기계는 1대
+        unit="대"
+    )
+    
+    # 기계 관련 속성들 설정
+    machine_resource.set_property("machine_type", machine_type)
+    machine_resource.set_property("capacity", capacity)
+    machine_resource.set_property("status", "idle")  # 기계 상태 (idle, running, maintenance)
+    machine_resource.set_property("efficiency", 1.0)  # 효율성 (0.0 ~ 1.0)
+    machine_resource.set_property("maintenance_hours", 0)  # 유지보수 시간
+    
+    return machine_resource
