@@ -17,8 +17,8 @@ class AssemblyProcess(BaseProcess):
         초기화 메서드입니다 (SimPy 환경 필수).
         
         :param env: SimPy 환경 객체 (필수)
-        :param machines: 조립에 사용될 기계 목록
-        :param workers: 조립 작업을 수행할 작업자 목록
+        :param machines: 조립에 사용될 기계 목록 (machine 또는 worker 중 하나는 필수)
+        :param workers: 조립 작업을 수행할 작업자 목록 (machine 또는 worker 중 하나는 필수)
         :param input_resources: 입력 자원 목록 (필수)
         :param output_resources: 출력 자원 목록 (필수)
         :param resource_requirements: 자원 요구사항 목록 (필수)
@@ -26,9 +26,8 @@ class AssemblyProcess(BaseProcess):
         :param process_name: 공정 이름 (선택적)
         :param assembly_time: 조립 처리 시간 (시뮬레이션 시간 단위)
         """
-        super().__init__(env, process_id, process_name or "조립공정")
-        self.machines = machines  # 기계 목록
-        self.workers = workers    # 작업자 목록
+        # BaseProcess 초기화 (machines와 workers 전달)
+        super().__init__(env, machines, workers, process_id, process_name or "조립공정")
         self.assembly_line = []   # 조립 라인 초기화
         self.assembly_time = assembly_time  # 조립 처리 시간
         

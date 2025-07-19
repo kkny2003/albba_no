@@ -429,21 +429,46 @@ class MultiProcessGroup:
 class BaseProcess(ABC):
     """모든 제조 공정의 기본이 되는 추상 클래스 (SimPy 기반, 배치 처리 지원)"""
     
-    def __init__(self, env: simpy.Environment, process_id: str = None, process_name: str = None, batch_size: int = 1):
+    def __init__(self, env: simpy.Environment, machines=None, workers=None, 
+                 process_id: str = None, process_name: str = None, batch_size: int = 1):
         """
-        기본 공정 초기화 (SimPy 환경 필수)
+        기본 공정 초기화 (SimPy 환경 필수, machine 또는 worker 중 하나는 필수)
         
         Args:
             env: SimPy 환경 객체 (필수)
+            machines: 사용할 기계 리스트 (machine 또는 worker 중 하나는 필수)
+            workers: 사용할 작업자 리스트 (machine 또는 worker 중 하나는 필수)
             process_id: 공정 고유 ID (선택적, 자동 생성됨)
             process_name: 공정 이름 (선택적)
             batch_size: 배치 크기 (한번에 처리할 아이템 수, 기본값: 1)
+            
+        Raises:
+            ValueError: machine과 worker가 모두 None인 경우
         """
+        # machine 또는 worker 중 하나는 필수로 있어야 함
+        if machines is None and workers is None:
+            raise ValueError(f"공정 '{process_name or self.__class__.__name__}'에는 machine 또는 worker 중 하나 이상이 필요합니다.")
+        
         self.env = env  # SimPy 환경 객체 (필수)
         self.process_id = process_id or str(uuid.uuid4())  # 고유 ID 생성
         self.process_name = process_name or self.__class__.__name__  # 기본 이름 설정
         self.next_processes = []  # 다음 공정들의 리스트
         self.previous_processes = []  # 이전 공정들의 리스트
+        
+        # 기계와 작업자 설정 (필수 요소)
+        self.machines = machines or []  # 기계 리스트
+        self.workers = workers or []   # 작업자 리스트
+        
+        # 초기화 검증 메시지 출력
+        resource_info = []
+        if self.machines:
+            machine_ids = [getattr(m, 'machine_id', str(m)) for m in self.machines]
+            resource_info.append(f"기계: {', '.join(machine_ids)}")
+        if self.workers:
+            worker_ids = [getattr(w, 'worker_id', str(w)) for w in self.workers]
+            resource_info.append(f"작업자: {', '.join(worker_ids)}")
+        
+        print(f"[{self.process_name}] 공정 초기화 완료 - {' / '.join(resource_info)}")
         
         # 배치 처리 설정
         self.batch_size = max(1, batch_size)  # 최소 1개 이상
@@ -465,6 +490,93 @@ class BaseProcess(ABC):
         
         # SimPy 관련 속성들
         self.processing_time: float = 1.0  # 기본 처리 시간 (시뮬레이션 시간 단위)
+        
+    def validate_resources(self) -> bool:
+        """
+        공정에 필요한 자원(machine/worker)이 올바르게 설정되었는지 검증
+        
+        Returns:
+            bool: 자원 설정이 유효한 경우 True
+            
+        Raises:
+            ValueError: 필수 자원이 누락된 경우
+        """
+        if not self.machines and not self.workers:
+            raise ValueError(f"공정 '{self.process_name}'에는 machine 또는 worker 중 하나 이상이 필요합니다.")
+        
+        # 기계 검증
+        for i, machine in enumerate(self.machines):
+            if not hasattr(machine, 'machine_id'):
+                print(f"[경고] 기계 {i+1}에 machine_id 속성이 없습니다.")
+            if not hasattr(machine, 'operate'):
+                print(f"[경고] 기계 {i+1}에 operate 메서드가 없습니다.")
+        
+        # 작업자 검증        
+        for i, worker in enumerate(self.workers):
+            if not hasattr(worker, 'worker_id'):
+                print(f"[경고] 작업자 {i+1}에 worker_id 속성이 없습니다.")
+            if not hasattr(worker, 'work'):
+                print(f"[경고] 작업자 {i+1}에 work 메서드가 없습니다.")
+        
+        return True
+    
+    def add_machine(self, machine) -> 'BaseProcess':
+        """
+        공정에 기계를 추가
+        
+        Args:
+            machine: 추가할 기계 객체
+            
+        Returns:
+            BaseProcess: 자기 자신 (메서드 체이닝용)
+        """
+        if machine not in self.machines:
+            self.machines.append(machine)
+            machine_id = getattr(machine, 'machine_id', f'Machine-{len(self.machines)}')
+            print(f"[{self.process_name}] 기계 추가: {machine_id}")
+        return self
+    
+    def add_worker(self, worker) -> 'BaseProcess':
+        """
+        공정에 작업자를 추가
+        
+        Args:
+            worker: 추가할 작업자 객체
+            
+        Returns:
+            BaseProcess: 자기 자신 (메서드 체이닝용)
+        """
+        if worker not in self.workers:
+            self.workers.append(worker)
+            worker_id = getattr(worker, 'worker_id', f'Worker-{len(self.workers)}')
+            print(f"[{self.process_name}] 작업자 추가: {worker_id}")
+        return self
+    
+    def get_available_machines(self):
+        """
+        현재 사용 가능한 기계 목록을 반환
+        
+        Returns:
+            List: 사용 가능한 기계 리스트
+        """
+        available = []
+        for machine in self.machines:
+            if hasattr(machine, 'resource') and machine.resource.count < machine.resource.capacity:
+                available.append(machine)
+        return available
+    
+    def get_available_workers(self):
+        """
+        현재 사용 가능한 작업자 목록을 반환
+        
+        Returns:
+            List: 사용 가능한 작업자 리스트
+        """
+        available = []
+        for worker in self.workers:
+            if hasattr(worker, 'resource') and worker.resource.count < worker.resource.capacity:
+                available.append(worker)
+        return available
         
     def set_execution_priority(self, priority: int) -> 'BaseProcess':
         """
@@ -535,9 +647,10 @@ class BaseProcess(ABC):
         공정을 실행하는 SimPy generator 메서드 (기본 구현)
         
         기본적으로 다음 순서로 실행됩니다:
-        1. 입력 자원 소비 (consume_resources)
-        2. 구체적인 공정 로직 실행 (process_logic - 하위 클래스에서 구현)
-        3. 출력 자원 생산 (produce_resources)
+        1. 필수 자원(machine/worker) 검증
+        2. 입력 자원 소비 (consume_resources)
+        3. 구체적인 공정 로직 실행 (process_logic - 하위 클래스에서 구현)
+        4. 출력 자원 생산 (produce_resources)
         
         Args:
             input_data: 공정에 전달되는 입력 데이터
@@ -550,15 +663,22 @@ class BaseProcess(ABC):
         """
         print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 시작")
         
-        # 1. 자원 소비 검증
+        # 1. 필수 자원(machine/worker) 검증
+        try:
+            self.validate_resources()
+        except ValueError as e:
+            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 실패: {e}")
+            return None
+        
+        # 2. 자원 소비 검증
         if not self.consume_resources(input_data):
             print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 실패: 자원 부족")
             return None
             
-        # 2. 구체적인 공정 로직 실행 (하위 클래스에서 구현하는 generator)
+        # 3. 구체적인 공정 로직 실행 (하위 클래스에서 구현하는 generator)
         result = yield from self.process_logic(input_data)
         
-        # 3. 자원 생산
+        # 4. 자원 생산
         produced_resources = self.produce_resources(result)
         
         print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 완료")
@@ -821,34 +941,6 @@ class BaseProcess(ABC):
         """
         self.resource_requirements.append(requirement)
         print(f"[{self.process_name}] 자원 요구사항 추가: {requirement}")
-        
-    def validate_resources(self) -> bool:
-        """
-        현재 사용 가능한 자원이 요구사항을 만족하는지 검증
-        
-        Returns:
-            bool: 자원 요구사항 만족 여부
-        """
-        print(f"[{self.process_name}] 자원 요구사항 검증 시작")
-        
-        for requirement in self.resource_requirements:
-            satisfied = False
-            
-            # 입력 자원에서 요구사항을 만족하는 자원 찾기
-            for resource in self.input_resources:
-                if requirement.is_satisfied_by(resource):
-                    satisfied = True
-                    print(f"  [OK] 요구사항 만족: {requirement}")
-                    break
-                    
-            if not satisfied and requirement.is_mandatory:
-                print(f"  [ERROR] 필수 요구사항 미충족: {requirement}")
-                return False
-            elif not satisfied:
-                print(f"  [WARNING] 선택적 요구사항 미충족: {requirement}")
-                
-        print(f"[{self.process_name}] 자원 검증 완료")
-        return True
         
     def consume_resources(self, input_data: Any = None) -> bool:
         """

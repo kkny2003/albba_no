@@ -11,13 +11,13 @@ import simpy
 import numpy as np
 
 # 프로젝트 루트의 src 디렉토리를 Python 경로에 추가
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from core.simple_resource_manager import SimpleResourceManager
-from processes.assembly_process import AssemblyProcess
-from processes.base_process import BaseProcess, parse_process_priority, PriorityValidationError
-from Resource.helper import Resource, ResourceType, ResourceRequirement
-from config.settings import Settings
+from src.core.simple_resource_manager import SimpleResourceManager
+from src.processes.assembly_process import AssemblyProcess
+from src.processes.base_process import BaseProcess, parse_process_priority, PriorityValidationError
+from src.Resource.helper import Resource, ResourceType, ResourceRequirement
+from src.config.settings import Settings
 
 class TestSimpleResourceManager(unittest.TestCase):
     """SimpleResourceManager 클래스 테스트"""

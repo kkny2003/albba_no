@@ -11,6 +11,7 @@ class QualityControlProcess(BaseProcess):
                  input_resources: List[Resource], 
                  output_resources: List[Resource],
                  resource_requirements: List[ResourceRequirement],
+                 workers=None, machines=None,
                  process_id: str = None, process_name: str = None,
                  inspection_time: float = 1.5):
         """
@@ -18,6 +19,8 @@ class QualityControlProcess(BaseProcess):
         
         :param env: SimPy 환경 객체 (필수)
         :param inspection_criteria: 품질 검사 기준
+        :param workers: 품질 검사를 수행할 작업자 목록 (machine 또는 worker 중 하나는 필수)
+        :param machines: 검사 장비 목록 (선택적, machine 또는 worker 중 하나는 필수)
         :param input_resources: 입력 자원 목록 (필수)
         :param output_resources: 출력 자원 목록 (필수)
         :param resource_requirements: 자원 요구사항 목록 (필수)
@@ -25,7 +28,8 @@ class QualityControlProcess(BaseProcess):
         :param process_name: 공정 이름 (선택적)
         :param inspection_time: 검사 처리 시간 (시뮬레이션 시간 단위)
         """
-        super().__init__(env, process_id, process_name or "품질관리공정")
+        # BaseProcess 초기화 (machines와 workers 전달)
+        super().__init__(env, machines, workers, process_id, process_name or "품질관리공정")
         self.inspection_criteria = inspection_criteria  # 품질 검사 기준 저장
         self.inspected_items = []  # 검사된 항목 목록 초기화
         self.inspection_time = inspection_time  # 검사 처리 시간
