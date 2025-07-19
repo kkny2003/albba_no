@@ -23,7 +23,9 @@ class TransportationProcess(BaseProcess):
                  resource_requirements: List[ResourceRequirement],
                  process_id: str, 
                  process_name: str,
-                 max_batch_size: int = None):
+                 max_batch_size: int = None,
+                 failure_weight_machine: float = 1.0, 
+                 failure_weight_worker: float = 1.0):
         """
         운송 공정의 초기화 메서드입니다 (SimPy 환경 필수).
 
@@ -38,9 +40,13 @@ class TransportationProcess(BaseProcess):
         :param process_id: 공정 고유 ID (필수)
         :param process_name: 공정 이름 (필수)
         :param max_batch_size: 최대 배치 크기 (None이면 운송 수단 용량 사용)
+        :param failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0)
+        :param failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0)
         """
         # BaseProcess 초기화 (기계나 작업자 대신 운송 수단 사용)
-        super().__init__(env, [], [], process_id, process_name)
+        super().__init__(env, [], [], process_id, process_name,
+                        failure_weight_machine=failure_weight_machine,
+                        failure_weight_worker=failure_weight_worker)
         
         # 운송 관련 속성 설정
         self.transports = transports if isinstance(transports, list) else [transports]

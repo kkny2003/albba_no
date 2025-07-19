@@ -47,6 +47,7 @@
 - **병목 분석**: 자동 병목 구간 식별 및 최적화 제안
 - **Machine/Worker 모델**: 현실적인 제조 자원 시뮬레이션
 - **⚠️ 고장확률 지원**: 기계 고장, 작업자 실수 등 현실적인 장애 상황 모델링
+- **🔧 고장률 가중치 (NEW!)**: 공정별로 기계/작업자 고장률에 가중치 적용 가능
 
 ## 🚀 빠른 시작
 
@@ -226,6 +227,7 @@ manufacturing-simulation-framework/
 | [`resource_management_example.py`](examples/resource_management_example.py) | ⭐⭐ | 자원 관리 | ResourceManager, 자원 추적 |
 | [`parallel_to_assembly_example.py`](examples/parallel_to_assembly_example.py) | ⭐⭐⭐ | 병렬 처리 | MultiProcessGroup, 병렬 실행 |
 | [`failure_probability_example.py`](examples/failure_probability_example.py) | ⭐⭐ | **고장확률** | 기계 고장, 작업자 실수 시뮬레이션 (NEW!) |
+| [`failure_weight_example.py`](examples/failure_weight_example.py) | ⭐⭐⭐ | **고장률 가중치** | 공정별 고장률 가중치 적용 (NEW!) |
 | [`none_values_example.py`](examples/none_values_example.py) | ⭐ | **None 값 제어** | 고장/실수 기능 선택적 활성화 (NEW!) |
 | [`simple_factory.py`](examples/simple_factory.py) | ⭐ | 간단한 공장 | 기본 공장 시뮬레이션 |
 | [`correct_simpy_example.py`](examples/correct_simpy_example.py) | ⭐⭐ | SimPy 기본 | 순수 SimPy 사용 예제 |
@@ -342,7 +344,8 @@ python examples/basic_manufacturing_line.py
 - ✅ **배치 운송 시스템**: 여러 제품을 한번에 운송하여 운송 효율성 66.7% 향상
 - ✅ **성능 모니터링**: 배치 효율성 및 활용률 실시간 추적
 - ✅ **완전 호환성**: 기존 단일 처리 방식과 100% 호환
-- ✅ **시연 예제**: [배치 처리 가이드](docs/batch_processing_guide.md) 및 실행 가능한 예제 제공
+- ✅ **🔧 고장률 가중치 기능**: 공정별로 기계/작업자 고장률에 가중치 적용 가능 (NEW!)
+- ✅ **시연 예제**: [배치 처리 가이드](docs/batch_processing_guide.md) 및 [고장률 가중치 가이드](docs/failure_weight_guide.md) 제공
 
 ### v2.0.0
 - ✅ 프로세스 체이닝 기능 추가 (`>>` 연산자)

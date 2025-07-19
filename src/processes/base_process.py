@@ -430,7 +430,8 @@ class BaseProcess(ABC):
     """모든 제조 공정의 기본이 되는 추상 클래스 (SimPy 기반, 배치 처리 지원)"""
     
     def __init__(self, env: simpy.Environment, machines=None, workers=None, 
-                 process_id: str = None, process_name: str = None, batch_size: int = 1):
+                 process_id: str = None, process_name: str = None, batch_size: int = 1,
+                 failure_weight_machine: float = 1.0, failure_weight_worker: float = 1.0):
         """
         기본 공정 초기화 (SimPy 환경 필수, machine 또는 worker 중 하나는 필수)
         
@@ -441,6 +442,8 @@ class BaseProcess(ABC):
             process_id: 공정 고유 ID (선택적, 자동 생성됨)
             process_name: 공정 이름 (선택적)
             batch_size: 배치 크기 (한번에 처리할 아이템 수, 기본값: 1)
+            failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0, 1.5 = 1.5배 고장률)
+            failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0, 1.5 = 1.5배 실수율)
             
         Raises:
             ValueError: machine과 worker가 모두 None인 경우
@@ -469,6 +472,10 @@ class BaseProcess(ABC):
             resource_info.append(f"작업자: {', '.join(worker_ids)}")
         
         print(f"[{self.process_name}] 공정 초기화 완료 - {' / '.join(resource_info)}")
+        
+        # 고장률 가중치 설정
+        self.failure_weight_machine = failure_weight_machine  # 기계 고장률 가중치
+        self.failure_weight_worker = failure_weight_worker    # 작업자 실수율 가중치
         
         # 배치 처리 설정
         self.batch_size = max(1, batch_size)  # 최소 1개 이상
@@ -648,9 +655,11 @@ class BaseProcess(ABC):
         
         기본적으로 다음 순서로 실행됩니다:
         1. 필수 자원(machine/worker) 검증
-        2. 입력 자원 소비 (consume_resources)
-        3. 구체적인 공정 로직 실행 (process_logic - 하위 클래스에서 구현)
-        4. 출력 자원 생산 (produce_resources)
+        2. 고장률/실수율 가중치 적용
+        3. 입력 자원 소비 (consume_resources)
+        4. 구체적인 공정 로직 실행 (process_logic - 하위 클래스에서 구현)
+        5. 출력 자원 생산 (produce_resources)
+        6. 고장률/실수율 복원
         
         Args:
             input_data: 공정에 전달되는 입력 데이터
@@ -670,25 +679,34 @@ class BaseProcess(ABC):
             print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 실패: {e}")
             return None
         
-        # 2. 자원 소비 검증
-        if not self.consume_resources(input_data):
-            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 실패: 자원 부족")
-            return None
+        # 2. 고장률/실수율 가중치 적용
+        self.apply_failure_weight_to_machines()
+        self.apply_failure_weight_to_workers()
+        
+        try:
+            # 3. 자원 소비 검증
+            if not self.consume_resources(input_data):
+                print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 실패: 자원 부족")
+                return None
+                
+            # 4. 구체적인 공정 로직 실행 (하위 클래스에서 구현하는 generator)
+            result = yield from self.process_logic(input_data)
             
-        # 3. 구체적인 공정 로직 실행 (하위 클래스에서 구현하는 generator)
-        result = yield from self.process_logic(input_data)
+            # 5. 자원 생산
+            produced_resources = self.produce_resources(result)
+            
+            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 완료")
+            
+            # 결과와 생산된 자원을 함께 반환
+            return {
+                'result': result,
+                'produced_resources': produced_resources,
+                'process_info': self.get_resource_status()
+            }
         
-        # 4. 자원 생산
-        produced_resources = self.produce_resources(result)
-        
-        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 완료")
-        
-        # 결과와 생산된 자원을 함께 반환
-        return {
-            'result': result,
-            'produced_resources': produced_resources,
-            'process_info': self.get_resource_status()
-        }
+        finally:
+            # 6. 고장률/실수율 복원 (예외 발생해도 반드시 실행)
+            self.restore_original_failure_rates()
         
     @abstractmethod
     def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
@@ -1062,6 +1080,60 @@ class BaseProcess(ABC):
             'next_processes': [p.process_name for p in self.next_processes],
             'previous_processes': [p.process_name for p in self.previous_processes]
         }
+    
+    def apply_failure_weight_to_machines(self):
+        """
+        이 공정에서 사용하는 모든 기계에 고장률 가중치를 적용합니다.
+        """
+        if self.failure_weight_machine == 1.0:
+            return  # 가중치가 1.0이면 적용할 필요 없음
+            
+        for machine in self.machines:
+            if hasattr(machine, 'failure_probability') and machine.failure_probability is not None:
+                # 원래 고장률에 가중치 적용 (최대 1.0을 넘지 않음)
+                original_probability = machine.failure_probability
+                weighted_probability = min(1.0, original_probability * self.failure_weight_machine)
+                machine._original_failure_probability = original_probability  # 원래값 백업
+                machine.failure_probability = weighted_probability
+                
+                print(f"[{self.process_name}] 기계 {machine.machine_id} 고장률 적용: "
+                      f"{original_probability:.3f} → {weighted_probability:.3f} (가중치: {self.failure_weight_machine})")
+
+    def apply_failure_weight_to_workers(self):
+        """
+        이 공정에서 사용하는 모든 작업자에 실수율 가중치를 적용합니다.
+        """
+        if self.failure_weight_worker == 1.0:
+            return  # 가중치가 1.0이면 적용할 필요 없음
+            
+        for worker in self.workers:
+            if hasattr(worker, 'error_probability') and worker.error_probability is not None:
+                # 원래 실수율에 가중치 적용 (최대 1.0을 넘지 않음)
+                original_probability = worker.error_probability
+                weighted_probability = min(1.0, original_probability * self.failure_weight_worker)
+                worker._original_error_probability = original_probability  # 원래값 백업
+                worker.error_probability = weighted_probability
+                
+                print(f"[{self.process_name}] 작업자 {worker.worker_id} 실수율 적용: "
+                      f"{original_probability:.3f} → {weighted_probability:.3f} (가중치: {self.failure_weight_worker})")
+
+    def restore_original_failure_rates(self):
+        """
+        기계와 작업자의 고장률/실수율을 원래값으로 복원합니다.
+        """
+        # 기계 고장률 복원
+        for machine in self.machines:
+            if hasattr(machine, '_original_failure_probability'):
+                machine.failure_probability = machine._original_failure_probability
+                delattr(machine, '_original_failure_probability')
+                print(f"[{self.process_name}] 기계 {machine.machine_id} 고장률 복원")
+        
+        # 작업자 실수율 복원
+        for worker in self.workers:
+            if hasattr(worker, '_original_error_probability'):
+                worker.error_probability = worker._original_error_probability
+                delattr(worker, '_original_error_probability')
+                print(f"[{self.process_name}] 작업자 {worker.worker_id} 실수율 복원")
     
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(id='{self.process_id}', name='{self.process_name}')"

@@ -12,7 +12,9 @@ class ManufacturingProcess(BaseProcess):
                  output_resources: List[Resource],
                  resource_requirements: List[ResourceRequirement],
                  process_id: str = None, process_name: str = None,
-                 processing_time: float = 2.0):
+                 processing_time: float = 2.0,
+                 failure_weight_machine: float = 1.0, 
+                 failure_weight_worker: float = 1.0):
         """
         제조 공정의 초기화 메서드입니다 (SimPy 환경 필수).
 
@@ -25,9 +27,13 @@ class ManufacturingProcess(BaseProcess):
         :param process_id: 공정 고유 ID (선택적)
         :param process_name: 공정 이름 (선택적)
         :param processing_time: 제조 처리 시간 (시뮬레이션 시간 단위)
+        :param failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0)
+        :param failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0)
         """
         # BaseProcess 초기화 (machines와 workers 전달)
-        super().__init__(env, machines, workers, process_id, process_name or "제조공정")
+        super().__init__(env, machines, workers, process_id, process_name or "제조공정",
+                        failure_weight_machine=failure_weight_machine,
+                        failure_weight_worker=failure_weight_worker)
         self.production_line = []  # 생산 라인 초기화
         self.processing_time = processing_time  # 제조 처리 시간
         

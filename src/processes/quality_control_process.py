@@ -13,7 +13,9 @@ class QualityControlProcess(BaseProcess):
                  resource_requirements: List[ResourceRequirement],
                  workers=None, machines=None,
                  process_id: str = None, process_name: str = None,
-                 inspection_time: float = 1.5):
+                 inspection_time: float = 1.5,
+                 failure_weight_machine: float = 1.0, 
+                 failure_weight_worker: float = 1.0):
         """
         품질 관리 공정의 초기화 메서드입니다 (SimPy 환경 필수).
         
@@ -27,9 +29,13 @@ class QualityControlProcess(BaseProcess):
         :param process_id: 공정 고유 ID (선택적)
         :param process_name: 공정 이름 (선택적)
         :param inspection_time: 검사 처리 시간 (시뮬레이션 시간 단위)
+        :param failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0)
+        :param failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0)
         """
         # BaseProcess 초기화 (machines와 workers 전달)
-        super().__init__(env, machines, workers, process_id, process_name or "품질관리공정")
+        super().__init__(env, machines, workers, process_id, process_name or "품질관리공정",
+                        failure_weight_machine=failure_weight_machine,
+                        failure_weight_worker=failure_weight_worker)
         self.inspection_criteria = inspection_criteria  # 품질 검사 기준 저장
         self.inspected_items = []  # 검사된 항목 목록 초기화
         self.inspection_time = inspection_time  # 검사 처리 시간
