@@ -46,6 +46,7 @@
 - **확률적 요소**: 처리 시간 변동성, 품질 불확실성
 - **병목 분석**: 자동 병목 구간 식별 및 최적화 제안
 - **Machine/Worker 모델**: 현실적인 제조 자원 시뮬레이션
+- **⚠️ 고장확률 지원**: 기계 고장, 작업자 실수 등 현실적인 장애 상황 모델링
 
 ## 🚀 빠른 시작
 
@@ -213,6 +214,7 @@ manufacturing-simulation-framework/
 - **[프로세스 체이닝](docs/process_chaining.md)**: 핵심 기능인 프로세스 체이닝 가이드
 - **[자원 관리](docs/resource_management_guide.md)**: 자원 관리 시스템 가이드
 - **[고급 자원 관리](docs/mandatory_resources_guide.md)**: 필수 자원 및 고급 관리 기능
+- **[고장확률 가이드](docs/failure_probability_guide.md)**: 리소스 고장확률 정의 및 활용 방법 (NEW!)
 
 ### 🎯 예제 모음
 | 예제 파일 | 난이도 | 주요 기능 | 설명 |
@@ -223,6 +225,8 @@ manufacturing-simulation-framework/
 | [`complex_assembly_line.py`](examples/complex_assembly_line.py) | ⭐⭐⭐⭐ | 복잡한 조립 | 다중 프로세스, 고급 자원 관리 |
 | [`resource_management_example.py`](examples/resource_management_example.py) | ⭐⭐ | 자원 관리 | ResourceManager, 자원 추적 |
 | [`parallel_to_assembly_example.py`](examples/parallel_to_assembly_example.py) | ⭐⭐⭐ | 병렬 처리 | MultiProcessGroup, 병렬 실행 |
+| [`failure_probability_example.py`](examples/failure_probability_example.py) | ⭐⭐ | **고장확률** | 기계 고장, 작업자 실수 시뮬레이션 (NEW!) |
+| [`none_values_example.py`](examples/none_values_example.py) | ⭐ | **None 값 제어** | 고장/실수 기능 선택적 활성화 (NEW!) |
 | [`simple_factory.py`](examples/simple_factory.py) | ⭐ | 간단한 공장 | 기본 공장 시뮬레이션 |
 | [`correct_simpy_example.py`](examples/correct_simpy_example.py) | ⭐⭐ | SimPy 기본 | 순수 SimPy 사용 예제 |
 
