@@ -1,10 +1,36 @@
-class DataCollector:
-    """시뮬레이션 데이터를 수집하고 저장하는 클래스입니다."""
+from src.core.centralized_statistics import CentralizedStatisticsManager, StatisticsInterface
+import simpy
+from typing import Optional
 
-    def __init__(self):
-        """초기화 메서드로, 데이터 저장소를 초기화합니다."""
-        self.data = []  # 수집된 데이터를 저장할 리스트
-        self.production_data = []  # 생산 데이터 전용 저장소
+class DataCollector:
+    """시뮬레이션 데이터를 수집하고 저장하는 클래스입니다.
+    
+    중앙 집중식 통계 관리자와 연동하여 표준화된 통계 수집을 제공합니다.
+    """
+
+    def __init__(self, env: Optional[simpy.Environment] = None, 
+                 stats_manager: Optional[CentralizedStatisticsManager] = None):
+        """초기화 메서드로, 데이터 저장소를 초기화합니다.
+        
+        Args:
+            env: SimPy Environment (선택적)
+            stats_manager: 중앙 통계 관리자 (선택적)
+        """
+        self.data = []  # 수집된 데이터를 저장할 리스트 (하위 호환성)
+        self.production_data = []  # 생산 데이터 전용 저장소 (하위 호환성)
+        
+        # 중앙 집중식 통계 관리
+        self.env = env
+        self.stats_manager = stats_manager
+        self.stats_interface = None
+        
+        # 조건을 완화하여 하위 호환성 향상
+        if stats_manager:
+            self.stats_interface = StatisticsInterface(
+                component_id="data_collector",
+                component_type="data_collector",
+                stats_manager=stats_manager
+            )
 
     def collect_data(self, simulation_step, data_point):
         """주어진 시뮬레이션 단계에서 데이터를 수집합니다.
@@ -36,6 +62,12 @@ class DataCollector:
             'quality_score': quality_score
         }
         self.production_data.append(production_entry)
+        
+        # 중앙 통계 관리자에 메트릭 기록
+        if self.stats_interface:
+            self.stats_interface.record_counter("total_products")
+            self.stats_interface.record_histogram("processing_time", process_time)
+            self.stats_interface.record_histogram("quality_score", quality_score)
 
     def get_data(self):
         """수집된 데이터를 반환합니다.
@@ -64,6 +96,22 @@ class DataCollector:
         Returns:
             dict: 통계 정보
         """
+        # 중앙 통계 관리자 사용 시 표준화된 통계 반환
+        if self.stats_interface:
+            centralized_stats = self.stats_interface.get_statistics()
+            # 하위 호환성을 위한 기존 형식 포함
+            legacy_stats = self._get_legacy_statistics()
+            
+            return {
+                **legacy_stats,  # 기존 형식 유지
+                'centralized_statistics': centralized_stats  # 새로운 표준화된 통계
+            }
+        
+        # 하위 호환성: 기존 방식으로 통계 계산
+        return self._get_legacy_statistics()
+    
+    def _get_legacy_statistics(self):
+        """기존 방식의 통계 계산 (하위 호환성)"""
         if not self.production_data:
             return {'total_products': 0}
             

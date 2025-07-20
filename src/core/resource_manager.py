@@ -10,6 +10,7 @@ from enum import Enum
 import uuid
 
 from src.Resource.helper import Resource, ResourceType, ResourceRequirement
+from src.core.centralized_statistics import CentralizedStatisticsManager, StatisticsInterface
 
 
 class ResourceStatus(Enum):
@@ -68,13 +69,15 @@ class ResourceMetrics:
 class AdvancedResourceManager:
     """SimPy 기반 고급 자원 관리자 클래스"""
     
-    def __init__(self, env: simpy.Environment, strategy: AllocationStrategy = AllocationStrategy.FIFO):
+    def __init__(self, env: simpy.Environment, strategy: AllocationStrategy = AllocationStrategy.FIFO,
+                 stats_manager: Optional[CentralizedStatisticsManager] = None):
         """
         고급 자원 관리자 초기화
         
         Args:
             env: SimPy 환경 객체
             strategy: 자원 할당 전략
+            stats_manager: 중앙 통계 관리자 (선택적)
         """
         self.env = env
         self.strategy = strategy
@@ -90,10 +93,21 @@ class AdvancedResourceManager:
         self.allocations: Dict[str, ResourceAllocation] = {}
         # wait_queues 제거: SimPy PriorityResource가 내장 큐로 자동 관리
         
-        # 통계
+        # 통계 (하위 호환성)
         self.allocation_history: List[ResourceAllocation] = []
         self.total_requests = 0
         self.successful_allocations = 0
+        
+        # 중앙 집중식 통계 관리
+        self.stats_manager = stats_manager
+        self.stats_interface = None
+        
+        if stats_manager:
+            self.stats_interface = StatisticsInterface(
+                component_id="advanced_resource_manager",
+                component_type="resource_manager", 
+                stats_manager=stats_manager
+            )
         
         # 스케줄링 관련
         self._monitoring_process = None
@@ -145,10 +159,17 @@ class AdvancedResourceManager:
         
         if resource_id not in self.resources:
             print(f"[시간 {self.env.now:.1f}] 자원 요청 실패: {resource_id} (존재하지 않는 자원)")
+            # 중앙 통계 관리자에 기록
+            if self.stats_interface:
+                self.stats_interface.record_counter("failed_requests")
             return None
             
         # 메트릭 업데이트
         self.resource_metrics[resource_id].total_requests += 1
+        
+        # 중앙 통계 관리자에 기록
+        if self.stats_interface:
+            self.stats_interface.record_counter("total_requests")
             
         print(f"[시간 {self.env.now:.1f}] 우선순위 자원 요청: {resource_id} by {requester_id} (우선순위: {priority})")
         
@@ -183,6 +204,12 @@ class AdvancedResourceManager:
             metrics = self.resource_metrics[resource_id]
             metrics.successful_allocations += 1
             metrics.average_wait_time = ((metrics.average_wait_time * (metrics.successful_allocations - 1)) + wait_time) / metrics.successful_allocations
+            
+            # 중앙 통계 관리자에 기록
+            if self.stats_interface:
+                self.stats_interface.record_counter("successful_allocations")
+                self.stats_interface.record_histogram("waiting_time", wait_time)
+                self.stats_interface.record_gauge("utilization", self.get_resource_utilization(resource_id) * 100)
             
             # wait_queues 제거: SimPy PriorityResource가 자동으로 큐 관리
             
@@ -268,6 +295,22 @@ class AdvancedResourceManager:
         Returns:
             Dict[str, Any]: 통계 정보
         """
+        # 중앙 통계 관리자 사용 시 표준화된 통계 반환
+        if self.stats_interface:
+            centralized_stats = self.stats_interface.get_statistics()
+            # 하위 호환성을 위한 기존 형식 포함
+            legacy_stats = self._get_legacy_statistics()
+            
+            return {
+                **legacy_stats,  # 기존 형식 유지
+                'centralized_statistics': centralized_stats  # 새로운 표준화된 통계
+            }
+        
+        # 하위 호환성: 기존 방식으로 통계 계산
+        return self._get_legacy_statistics()
+    
+    def _get_legacy_statistics(self) -> Dict[str, Any]:
+        """기존 방식의 통계 계산 (하위 호환성)"""
         success_rate = (self.successful_allocations / self.total_requests * 100) if self.total_requests > 0 else 0
         
         # 전체 가동률 계산
