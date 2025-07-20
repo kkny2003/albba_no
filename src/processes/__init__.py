@@ -7,7 +7,6 @@ from .base_process import BaseProcess, ProcessChain, MultiProcessGroup, GroupWra
 from .manufacturing_process import ManufacturingProcess  # 제조 공정 클래스 임포트
 from .assembly_process import AssemblyProcess            # 조립 공정 클래스 임포트
 from .quality_control_process import QualityControlProcess  # 품질 관리 공정 클래스 임포트
-from .transportation_process import TransportationProcess  # 운송 공정 클래스 임포트
 
 __all__ = [
     'BaseProcess', 'ProcessChain', 'MultiProcessGroup', 'GroupWrapperProcess',
