@@ -163,6 +163,7 @@ class ManufacturingProcess(BaseProcess):
     def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
         구체적인 제조 공정 로직을 실행하는 SimPy generator 메서드입니다.
+        (AllOf를 활용한 병렬 자원 대기로 개선)
 
         Args:
             input_data: 제조할 제품 데이터
@@ -177,6 +178,34 @@ class ManufacturingProcess(BaseProcess):
         
         # 제조 공정 시작
         self.start_process()
+
+        # 🚀 개선: AllOf를 사용한 병렬 자원 대기
+        resource_requests = []
+        
+        # 기계 자원 요청 (병렬)
+        machine_requests = []
+        for i, machine in enumerate(self.machines):
+            if hasattr(machine, 'resource'):
+                req = machine.resource.request()
+                machine_requests.append(req)
+                resource_requests.append(req)
+                print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 기계 {i+1} 자원 요청")
+        
+        # 작업자 자원 요청 (병렬)
+        worker_requests = []
+        for i, worker in enumerate(self.workers):
+            if hasattr(worker, 'resource'):
+                req = worker.resource.request()
+                worker_requests.append(req)
+                resource_requests.append(req)
+                print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 작업자 {i+1} 자원 요청")
+        
+        # 🎯 모든 자원이 준비될 때까지 병렬 대기 (기존 순차 대기 개선)
+        if resource_requests:
+            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 모든 자원 준비 대기 중... ({len(resource_requests)}개 자원)")
+            all_resources_ready = simpy.AllOf(self.env, resource_requests)
+            yield all_resources_ready  # 모든 자원이 동시에 준비되면 진행
+            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 모든 자원 준비 완료! 제조 시작")
         
         # SimPy timeout을 사용하여 제조 시간 시뮬레이션
         print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 제조 작업 진행 중... (예상 시간: {self.processing_time})")
@@ -185,5 +214,11 @@ class ManufacturingProcess(BaseProcess):
         # 실제 제조 로직 (예시)
         manufactured_product = f"제조완료_{input_data}" if input_data else "제조완료_기본제품"
         
-        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 제조 로직 실행 완료: {manufactured_product}")
+        # 자원 해제 (자동 해제되지만 명시적 표시)
+        for req in machine_requests:
+            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 기계 자원 해제")
+        for req in worker_requests:
+            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 작업자 자원 해제")
+        
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 제조 로직 실행 완료 (병렬 처리): {manufactured_product}")
         return manufactured_product

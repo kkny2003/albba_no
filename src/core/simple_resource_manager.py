@@ -4,47 +4,57 @@ import uuid
 from src.Resource.helper import Resource, ResourceRequirement, ResourceType
 
 
-class SimpleResourceManager:
-    """SimPy 기반 간단한 자원 관리 클래스입니다. 자원의 할당, 해제, 재고 관리를 담당합니다."""
+class UnifiedResourceManager:
+    """SimPy Store/Container 기반 통합 자원 관리 클래스 (이중 시스템 제거)"""
 
     def __init__(self, env: simpy.Environment):
         """
-        초기화 메서드입니다 (SimPy 환경 필수).
+        통합 자원 관리자 초기화 (SimPy Store/Container 기반으로 통합)
         
         Args:
             env: SimPy 환경 객체
         """
         self.env = env  # SimPy 환경
-        self.resources: Dict[str, simpy.Resource] = {}  # SimPy 자원들
-        self.resource_metadata: Dict[str, Dict[str, Any]] = {}  # 자원 메타데이터
-        self.resource_inventory: Dict[str, Resource] = {}  # 자원 재고 (resource_id를 키로 사용)
-        self.allocated_resources: Dict[str, Resource] = {}  # 할당된 자원 목록
         
-    def register_simpy_resource(self, resource_id: str, capacity: int, **metadata):
+        # 통합 자원 관리: Store/Container 기반
+        self.resource_stores: Dict[str, simpy.Store] = {}  # 개별 아이템 관리용
+        self.resource_containers: Dict[str, simpy.Container] = {}  # 수량 기반 관리용
+        self.resource_metadata: Dict[str, Dict[str, Any]] = {}  # 자원 메타데이터
+        
+        # 이중 관리 시스템 제거: resource_inventory, allocated_resources 통합
+        
+    def register_resource(self, resource_id: str, capacity: int, resource_type: ResourceType = None, **metadata):
         """
-        SimPy 자원을 등록합니다.
+        자원을 Store/Container 기반으로 통합 등록
         
         Args:
             resource_id: 자원 ID
             capacity: 자원 용량
+            resource_type: 자원 타입  
             **metadata: 추가 메타데이터
         """
-        self.resources[resource_id] = simpy.Resource(self.env, capacity=capacity)
+        # 개별 아이템 관리용 Store
+        self.resource_stores[resource_id] = simpy.Store(self.env, capacity=capacity)
+        
+        # 수량 기반 관리용 Container
+        self.resource_containers[resource_id] = simpy.Container(self.env, capacity=capacity, init=capacity)
+        
         self.resource_metadata[resource_id] = {
             'capacity': capacity,
-            'type': metadata.get('type', 'generic'),
+            'type': resource_type,
             'description': metadata.get('description', ''),
             **metadata
         }
-        print(f"[시간 {self.env.now:.1f}] SimPy 자원 등록: {resource_id} (용량: {capacity})")
+        print(f"[시간 {self.env.now:.1f}] 통합 자원 등록: {resource_id} (용량: {capacity}, 타입: {resource_type})")
         
-    def request_simpy_resource(self, resource_id: str, requester_id: str) -> Generator[simpy.Event, None, bool]:
+    def request_resource(self, resource_id: str, requester_id: str, quantity: float = 1.0) -> Generator[simpy.Event, None, bool]:
         """
-        SimPy 자원을 요청하는 generator 메서드
+        통합된 자원 요청 (Store/Container 기반)
         
         Args:
             resource_id: 자원 ID
             requester_id: 요청자 ID
+            quantity: 요청 수량
             
         Yields:
             simpy.Event: SimPy 이벤트들
@@ -52,123 +62,92 @@ class SimpleResourceManager:
         Returns:
             bool: 할당 성공 여부
         """
-        if resource_id not in self.resources:
+        if resource_id not in self.resource_containers:
             print(f"[시간 {self.env.now:.1f}] 자원 요청 실패: {resource_id} (존재하지 않는 자원)")
             return False
             
-        print(f"[시간 {self.env.now:.1f}] 자원 요청: {resource_id} by {requester_id}")
+        print(f"[시간 {self.env.now:.1f}] 통합 자원 요청: {resource_id} by {requester_id} (수량: {quantity})")
         
-        # 자원 요청
-        with self.resources[resource_id].request() as request:
-            yield request
-            print(f"[시간 {self.env.now:.1f}] 자원 할당 완료: {resource_id} to {requester_id}")
-            return True
+        # Container를 사용한 수량 기반 자원 할당
+        yield self.resource_containers[resource_id].get(quantity)
         
-    def add_resource(self, resource: Resource):
-        """자원을 추가하는 메서드입니다.
+        print(f"[시간 {self.env.now:.1f}] 자원 할당 완료: {resource_id} to {requester_id} (수량: {quantity})")
+        return True
         
-        Args:
-            resource: 추가할 자원 객체입니다.
+    def release_resource(self, resource_id: str, requester_id: str, quantity: float = 1.0) -> Generator[simpy.Event, None, None]:
         """
-        self.resources.append(resource)
-        
-        # 재고에 추가 (이미 있으면 수량 증가)
-        if resource.resource_id in self.resource_inventory:
-            self.resource_inventory[resource.resource_id].produce(resource.quantity)
-        else:
-            self.resource_inventory[resource.resource_id] = resource.clone()
-            
-        print(f"자원 추가: {resource}")
-
-    def allocate_resource(self, resource_id: str, required_quantity: float = 1.0) -> Optional[Resource]:
-        """특정 자원을 할당하는 메서드입니다.
+        자원 해제 (Container 기반)
         
         Args:
-            resource_id: 할당할 자원의 ID
-            required_quantity: 필요한 수량
+            resource_id: 자원 ID
+            requester_id: 요청자 ID  
+            quantity: 해제 수량
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+        """
+        if resource_id in self.resource_containers:
+            yield self.resource_containers[resource_id].put(quantity)
+            print(f"[시간 {self.env.now:.1f}] 자원 해제: {resource_id} by {requester_id} (수량: {quantity})")
+        
+    def add_resource_item(self, resource_id: str, item: Any) -> Generator[simpy.Event, None, None]:
+        """
+        Store를 사용한 개별 아이템 추가
+        
+        Args:
+            resource_id: 자원 ID
+            item: 추가할 아이템
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+        """
+        if resource_id in self.resource_stores:
+            yield self.resource_stores[resource_id].put(item)
+            print(f"[시간 {self.env.now:.1f}] 아이템 추가: {resource_id}")
+            
+    def get_resource_item(self, resource_id: str) -> Generator[simpy.Event, None, Any]:
+        """
+        Store에서 개별 아이템 회수
+        
+        Args:
+            resource_id: 자원 ID
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
             
         Returns:
-            할당된 자원 객체입니다. 자원이 부족하면 None을 반환합니다.
+            Any: 회수된 아이템
         """
-        if resource_id in self.resource_inventory:
-            available_resource = self.resource_inventory[resource_id]
-            
-            if available_resource.is_sufficient(required_quantity):
-                # 자원 소비
-                if available_resource.consume(required_quantity):
-                    # 할당된 자원 생성
-                    allocated_resource = available_resource.clone(required_quantity)
-                    self.allocated_resources[f"{resource_id}_{len(self.allocated_resources)}"] = allocated_resource
-                    
-                    print(f"자원 할당: {allocated_resource}")
-                    return allocated_resource
-                    
-        print(f"자원 할당 실패: {resource_id} (필요량: {required_quantity})")
+        if resource_id in self.resource_stores:
+            item = yield self.resource_stores[resource_id].get()
+            print(f"[시간 {self.env.now:.1f}] 아이템 회수: {resource_id}")
+            return item
         return None
-
-    def allocate_by_requirement(self, requirement: ResourceRequirement) -> Optional[Resource]:
-        """자원 요구사항에 따라 자원을 할당하는 메서드입니다.
-        
-        Args:
-            requirement: 자원 요구사항
-            
-        Returns:
-            할당된 자원 객체입니다. 요구사항을 만족하는 자원이 없으면 None을 반환합니다.
-        """
-        # 요구사항을 만족하는 자원 찾기
-        for resource_id, resource in self.resource_inventory.items():
-            if requirement.is_satisfied_by(resource):
-                return self.allocate_resource(resource_id, requirement.required_quantity)
-                
-        print(f"요구사항을 만족하는 자원 없음: {requirement}")
-        return None
-
-    def release_resource(self, allocated_resource: Resource):
-        """할당된 자원을 해제하고 재고로 되돌리는 메서드입니다.
-        
-        Args:
-            allocated_resource: 해제할 자원 객체입니다.
-        """
-        # 재고로 되돌리기
-        if allocated_resource.resource_id in self.resource_inventory:
-            self.resource_inventory[allocated_resource.resource_id].produce(allocated_resource.quantity)
-        else:
-            self.resource_inventory[allocated_resource.resource_id] = allocated_resource.clone()
-            
-        # 할당 목록에서 제거
-        keys_to_remove = []
-        for key, resource in self.allocated_resources.items():
-            if (resource.resource_id == allocated_resource.resource_id and 
-                resource.quantity == allocated_resource.quantity):
-                keys_to_remove.append(key)
-                
-        for key in keys_to_remove:
-            del self.allocated_resources[key]
-            
-        print(f"자원 해제: {allocated_resource}")
-
-    def get_resources(self) -> List[Resource]:
-        """현재 자원 목록을 반환하는 메서드입니다.
+    def get_resource_status(self) -> Dict[str, Any]:
+        """현재 자원 상태를 반환하는 메서드 (Store/Container 기반)
         
         Returns:
-            현재 자원 목록입니다.
+            자원 상태 정보
         """
-        return self.resources
-
-    def get_inventory_status(self) -> Dict[str, Any]:
-        """현재 자원 재고 상태를 반환하는 메서드입니다.
+        status = {}
+        for resource_id in self.resource_containers.keys():
+            container = self.resource_containers[resource_id]
+            store = self.resource_stores[resource_id]
+            metadata = self.resource_metadata[resource_id]
+            
+            status[resource_id] = {
+                'capacity': metadata['capacity'],
+                'type': metadata.get('type', 'generic'),
+                'current_level': container.level,  # Container의 현재 수준
+                'available_space': container.capacity - container.level,
+                'store_items': len(store.items),  # Store의 아이템 수
+                'utilization': container.level / metadata['capacity'] if metadata['capacity'] > 0 else 0.0
+            }
         
-        Returns:
-            자원 재고 상태 정보입니다.
-        """
-        return {
-            'total_resources': len(self.resources),
-            'inventory': {k: str(v) for k, v in self.resource_inventory.items()},
-            'allocated': {k: str(v) for k, v in self.allocated_resources.items()}
-        }
+        return status
         
     def get_available_quantity(self, resource_id: str) -> float:
-        """특정 자원의 사용 가능한 수량을 반환하는 메서드입니다.
+        """특정 자원의 사용 가능한 수량을 반환하는 메서드 (Container 기반)
         
         Args:
             resource_id: 확인할 자원의 ID
@@ -176,32 +155,20 @@ class SimpleResourceManager:
         Returns:
             사용 가능한 수량
         """
-        if resource_id in self.resource_inventory:
-            return self.resource_inventory[resource_id].quantity
+        if resource_id in self.resource_containers:
+            return self.resource_containers[resource_id].level
         return 0.0
         
-    def is_requirement_satisfied(self, requirement: ResourceRequirement) -> bool:
-        """자원 요구사항이 현재 재고로 만족 가능한지 확인하는 메서드입니다.
+    def is_resource_available(self, resource_id: str, required_quantity: float) -> bool:
+        """자원이 요청 수량만큼 사용 가능한지 확인
         
         Args:
-            requirement: 확인할 자원 요구사항
+            resource_id: 자원 ID
+            required_quantity: 필요한 수량
             
         Returns:
-            요구사항 만족 가능 여부
+            자원 사용 가능 여부
         """
-        for resource in self.resource_inventory.values():
-            if requirement.is_satisfied_by(resource):
-                return True
+        if resource_id in self.resource_containers:
+            return self.resource_containers[resource_id].level >= required_quantity
         return False
-        
-    def get_resources_by_type(self, resource_type: ResourceType) -> List[Resource]:
-        """특정 타입의 자원들을 반환하는 메서드입니다.
-        
-        Args:
-            resource_type: 찾을 자원 타입
-            
-        Returns:
-            해당 타입의 자원 리스트
-        """
-        return [resource for resource in self.resource_inventory.values() 
-                if resource.resource_type == resource_type]

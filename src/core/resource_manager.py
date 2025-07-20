@@ -58,14 +58,11 @@ class ResourceAllocation:
 
 @dataclass
 class ResourceMetrics:
-    """자원 사용 메트릭"""
+    """자원 사용 메트릭 (단순화됨)"""
     resource_id: str
-    total_allocation_time: float = 0.0
     total_requests: int = 0
     successful_allocations: int = 0
-    average_wait_time: float = 0.0
-    utilization_rate: float = 0.0
-    last_updated: float = field(default=0.0)
+    average_wait_time: float = 0.0  # 핵심 메트릭만 유지
 
 
 class AdvancedResourceManager:
@@ -91,7 +88,7 @@ class AdvancedResourceManager:
         # 예약 및 할당 관리
         self.reservations: Dict[str, ResourceReservation] = {}
         self.allocations: Dict[str, ResourceAllocation] = {}
-        self.wait_queues: Dict[str, List[Tuple[str, int, float]]] = {}  # (requester_id, priority, request_time)
+        # wait_queues 제거: SimPy PriorityResource가 내장 큐로 자동 관리
         
         # 통계
         self.allocation_history: List[ResourceAllocation] = []
@@ -111,7 +108,8 @@ class AdvancedResourceManager:
             resource_type: 자원 타입
             **metadata: 추가 메타데이터
         """
-        self.resources[resource_id] = simpy.Resource(self.env, capacity=capacity)
+        # PriorityResource 사용으로 개선 (우선순위 기반 자원 할당 지원)
+        self.resources[resource_id] = simpy.PriorityResource(self.env, capacity=capacity)
         self.resource_status[resource_id] = ResourceStatus.AVAILABLE
         self.resource_metadata[resource_id] = {
             'capacity': capacity,
@@ -121,19 +119,19 @@ class AdvancedResourceManager:
             **metadata
         }
         self.resource_metrics[resource_id] = ResourceMetrics(resource_id=resource_id)
-        self.wait_queues[resource_id] = []
+        # wait_queues 제거: SimPy PriorityResource 내장 큐 사용
         
-        print(f"[시간 {self.env.now:.1f}] 고급 자원 등록: {resource_id} (용량: {capacity}, 타입: {resource_type})")
+        print(f"[시간 {self.env.now:.1f}] 고급 자원 등록 (우선순위 지원): {resource_id} (용량: {capacity}, 타입: {resource_type})")
         
     def request_resource_with_priority(self, resource_id: str, requester_id: str, 
                                      priority: int = 5, duration: float = None) -> Generator[simpy.Event, None, Optional[str]]:
         """
-        우선순위를 가진 자원 요청
+        우선순위를 가진 자원 요청 (SimPy PriorityResource 활용으로 개선)
         
         Args:
             resource_id: 자원 ID
             requester_id: 요청자 ID
-            priority: 우선순위 (1-10, 높을수록 우선)
+            priority: 우선순위 (1-10, 높을수록 우선) - SimPy는 낮은 값이 높은 우선순위이므로 변환
             duration: 예상 사용 시간
             
         Yields:
@@ -154,12 +152,13 @@ class AdvancedResourceManager:
             
         print(f"[시간 {self.env.now:.1f}] 우선순위 자원 요청: {resource_id} by {requester_id} (우선순위: {priority})")
         
-        # 우선순위 기반 대기열에 추가
-        self.wait_queues[resource_id].append((requester_id, priority, request_time))
-        self.wait_queues[resource_id].sort(key=lambda x: (-x[1], x[2]))  # 우선순위 높은 순, 요청 시간 빠른 순
+        # SimPy PriorityResource 우선순위 변환 (높은 값 → 낮은 값)
+        simpy_priority = 10 - priority  # 사용자 우선순위 10 → SimPy 우선순위 0 (최고 우선순위)
         
-        # 자원 요청
-        with self.resources[resource_id].request() as request:
+        # wait_queues 제거: SimPy PriorityResource가 자동으로 우선순위 기반 큐 관리
+        
+        # SimPy PriorityResource를 사용한 우선순위 기반 자원 요청
+        with self.resources[resource_id].request(priority=simpy_priority) as request:
             yield request
             
             # 대기 시간 계산
@@ -180,19 +179,14 @@ class AdvancedResourceManager:
             self.allocation_history.append(allocation)
             self.successful_allocations += 1
             
-            # 메트릭 업데이트
+            # 메트릭 업데이트 (단순화)
             metrics = self.resource_metrics[resource_id]
             metrics.successful_allocations += 1
             metrics.average_wait_time = ((metrics.average_wait_time * (metrics.successful_allocations - 1)) + wait_time) / metrics.successful_allocations
-            metrics.last_updated = self.env.now
             
-            # 대기열에서 제거
-            self.wait_queues[resource_id] = [
-                item for item in self.wait_queues[resource_id] 
-                if item[0] != requester_id
-            ]
+            # wait_queues 제거: SimPy PriorityResource가 자동으로 큐 관리
             
-            print(f"[시간 {self.env.now:.1f}] 자원 할당 완료: {resource_id} to {requester_id} (할당 ID: {allocation_id}, 대기시간: {wait_time:.1f})")
+            print(f"[시간 {self.env.now:.1f}] 자원 할당 완료 (우선순위 처리): {resource_id} to {requester_id} (할당 ID: {allocation_id}, 대기시간: {wait_time:.1f})")
             return allocation_id
             
     def make_reservation(self, resource_id: str, requester_id: str, start_time: float, 
@@ -247,7 +241,7 @@ class AdvancedResourceManager:
         
     def get_resource_utilization(self, resource_id: str) -> float:
         """
-        자원 가동률 계산
+        자원 가동률 계산 (필요시에만 계산하는 방식으로 개선)
         
         Args:
             resource_id: 자원 ID
@@ -264,12 +258,8 @@ class AdvancedResourceManager:
         if capacity == 0:
             return 0.0
             
-        utilization = len(resource.users) / capacity
-        
-        # 메트릭 업데이트
-        self.resource_metrics[resource_id].utilization_rate = utilization
-        
-        return utilization
+        # 실시간 계산 (메트릭 저장 제거로 단순화)
+        return len(resource.users) / capacity
         
     def get_statistics(self) -> Dict[str, Any]:
         """
@@ -317,7 +307,7 @@ class AdvancedResourceManager:
                 'current_users': len(resource.users),
                 'queue_length': len(resource.queue),
                 'utilization': self.get_resource_utilization(resource_id),
-                'wait_queue_length': len(self.wait_queues[resource_id]),
+                # wait_queue_length 제거: SimPy queue 사용
                 'total_requests': metrics.total_requests,
                 'successful_allocations': metrics.successful_allocations,
                 'average_wait_time': metrics.average_wait_time,
@@ -388,20 +378,12 @@ class AdvancedResourceManager:
             return {}
             
         resource = self.resources[resource_id]
-        wait_queue = self.wait_queues[resource_id]
+        # wait_queue 제거: SimPy 내장 큐 정보만 제공
         
         return {
             'resource_id': resource_id,
             'simpy_queue_length': len(resource.queue),
-            'priority_queue_length': len(wait_queue),
-            'priority_queue': [
-                {
-                    'requester_id': item[0],
-                    'priority': item[1],
-                    'request_time': item[2],
-                    'wait_time': self.env.now - item[2]
-                } for item in wait_queue
-            ]
+            # priority_queue 관련 정보는 SimPy 내장 큐에서 관리되므로 제거
         }
     
     def get_resource_status(self, resource_id: str = None):

@@ -39,11 +39,12 @@ class ProcessResult:
 
 @dataclass
 class SynchronizationPoint:
-    """동기화 포인트 정의"""
+    """동기화 포인트 정의 (SimPy Event 기반으로 단순화)"""
     sync_id: str
     sync_type: SynchronizationType
     threshold: int = 1  # THRESHOLD 타입일 때 필요한 완료 개수
     timeout: Optional[float] = None  # 타임아웃 (초)
+    events: List[simpy.Event] = None  # SimPy Event 리스트로 직접 관리
 
 
 class AdvancedWorkflowManager:
@@ -65,10 +66,9 @@ class AdvancedWorkflowManager:
         self.process_chains: Dict[str, Any] = {}  # ProcessChain 객체들
         self.execution_results: Dict[str, ProcessResult] = {}
         
-        # 동기화 관리
+        # 동기화 관리 (SimPy Event 기반으로 단순화)
         self.sync_points: Dict[str, SynchronizationPoint] = {}
-        self.sync_events: Dict[str, simpy.Event] = {}
-        self.sync_results: Dict[str, List[ProcessResult]] = {}
+        # sync_events, sync_results 제거: SimPy Event 직접 사용
         
         # 워크플로우 상태
         self.active_workflows: Set[str] = set()
@@ -96,6 +96,48 @@ class AdvancedWorkflowManager:
         """
         self.process_chains[chain.chain_id] = chain
         print(f"[시간 {self.env.now:.1f}] 프로세스 체인 등록: {chain.chain_id}")
+        
+    def simple_sync(self, events: List[simpy.Event], sync_type: SynchronizationType = SynchronizationType.ALL_COMPLETE) -> Generator[simpy.Event, None, None]:
+        """
+        SimPy 내장 기능을 활용한 간단한 동기화 (복잡한 동기화 시스템 대체)
+        
+        Args:
+            events: 동기화할 이벤트 리스트
+            sync_type: 동기화 타입
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+        """
+        if sync_type == SynchronizationType.ALL_COMPLETE:
+            # SimPy AllOf 사용: 모든 이벤트 완료 대기
+            yield simpy.AllOf(self.env, events)
+        elif sync_type == SynchronizationType.ANY_COMPLETE:
+            # SimPy AnyOf 사용: 하나의 이벤트만 완료되면 진행
+            yield simpy.AnyOf(self.env, events)
+        else:  # THRESHOLD
+            # 임계값 만큼의 이벤트 완료 대기 (SimPy Condition 활용)
+            completed_count = 0
+            threshold = len(events) // 2  # 예시: 절반 완료
+            
+            def check_completion():
+                return completed_count >= threshold
+                
+            condition = simpy.Condition(self.env)
+            
+            # 각 이벤트 완료 시 카운터 증가
+            def monitor_event(event):
+                nonlocal completed_count
+                yield event
+                completed_count += 1
+                if check_completion():
+                    condition.succeed()
+                    
+            for event in events:
+                self.env.process(monitor_event(event))
+                
+            yield condition
+            
+        print(f"[시간 {self.env.now:.1f}] 동기화 완료: {sync_type.value}")
         
     def get_workflow_statistics(self) -> Dict[str, Any]:
         """
