@@ -27,6 +27,7 @@ class Machine:
         self.machine_id = machine_id  # 기계 ID
         self.machine_type = machine_type  # 기계 유형
         self.processing_time = processing_time  # 처리 시간
+        self.capacity = capacity  # 기계 용량
         self.resource = simpy.Resource(env, capacity=capacity)  # SimPy 리소스
         self.total_processed = 0  # 총 처리된 작업 수
         self.total_busy_time = 0  # 총 작업 시간
