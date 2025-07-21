@@ -136,6 +136,7 @@ class ResourceRequirement:
     
     def __init__(self,
                  resource_type: ResourceType,
+                 resource_id: str,
                  name: str,
                  required_quantity: float,
                  unit: str = "개",
@@ -145,12 +146,14 @@ class ResourceRequirement:
         
         Args:
             resource_type: 필요한 자원 타입
+            resource_id: 자원의 고유 ID (필수)
             name: 자원 이름
             required_quantity: 필요한 수량
             unit: 단위
             is_mandatory: 필수 여부 (기본값: True)
         """
         self.resource_type = resource_type
+        self.resource_id = resource_id
         self.name = name
         self.required_quantity = required_quantity
         self.unit = unit
@@ -175,4 +178,4 @@ class ResourceRequirement:
         return f"[{mandatory_str}] {self.name}: {self.required_quantity}{self.unit}"
         
     def __repr__(self) -> str:
-        return f"ResourceRequirement(type={self.resource_type.value}, name='{self.name}', qty={self.required_quantity}, mandatory={self.is_mandatory})"
+        return f"ResourceRequirement(id='{self.resource_id}', type={self.resource_type.value}, name='{self.name}', qty={self.required_quantity}, mandatory={self.is_mandatory})"
