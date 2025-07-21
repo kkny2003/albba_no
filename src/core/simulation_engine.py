@@ -1,7 +1,7 @@
 import simpy
 from typing import Optional, Callable, Dict, Any
-from .data_collector import DataCollector
-from .centralized_statistics import CentralizedStatisticsManager, StatisticsInterface
+from src.core.data_collector import DataCollector
+from src.core.centralized_statistics import CentralizedStatisticsManager, StatisticsInterface
 
 
 class SimulationEngine:

@@ -1,4 +1,4 @@
-from .base_process import BaseProcess
+from src.processes.base_process import BaseProcess
 from typing import Any, List, Generator
 import simpy
 from src.Resource.helper import Resource, ResourceRequirement, ResourceType
