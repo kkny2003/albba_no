@@ -1152,19 +1152,27 @@ class GroupWrapperProcess(BaseProcess):
         Args:
             group: 래핑할 다중공정 그룹
         """
-        # 그룹 내 첫 번째 공정의 env를 가져와서 BaseProcess에 전달
         if not group.processes:
             raise ValueError("그룹에 최소 하나의 공정이 있어야 합니다")
-        
-        env = group.processes[0].env  # 첫 번째 공정의 SimPy 환경 가져오기
-        
+        env = group.processes[0].env
+
+        # 그룹 내 모든 공정의 machine/worker를 합쳐서 전달
+        all_machines = []
+        all_workers = []
+        for proc in group.processes:
+            if hasattr(proc, 'machines') and proc.machines:
+                all_machines.extend(proc.machines)
+            if hasattr(proc, 'workers') and proc.workers:
+                all_workers.extend(proc.workers)
+
         super().__init__(
-            env=env,  # env 파라미터 추가
+            env=env,
+            machines=all_machines if all_machines else None,
+            workers=all_workers if all_workers else None,
             process_id=f"wrapper_{group.group_id}",
             process_name=f"그룹({group.get_group_summary()})"
         )
         self.group = group
-        # 그룹 내 모든 공정이 병렬 안전해야 래퍼도 병렬 안전
         self.parallel_safe = all(p.parallel_safe for p in group.processes)
     
     def process_logic(self, input_data: Any = None) -> Any:
