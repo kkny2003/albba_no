@@ -2,6 +2,7 @@
 .github/
 visualization_prd.md
 프레임워크 구현 상태 분석 리포트.md
+.vscode/
 
 # Python 캐시 파일들
 __pycache__/
