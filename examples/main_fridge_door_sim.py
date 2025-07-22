@@ -73,8 +73,17 @@ complete_process = pre_assembly_group >> assembly
 
 # 7. 시뮬레이션 실행
 
-# 체이닝된 complete_process를 시뮬레이션에 등록
-engine.add_process(complete_process.execute_chain)
+# 체이닝된 complete_process를 시뮬레이션에 등록 (올바른 방식)
+def main_manufacturing_process(env):
+    """메인 제조공정 실행"""
+    # 시뮬레이션에 투입할 제품 생성
+    fridge_door = Product('DOOR001', '냉장고도어')
+    
+    # ProcessChain의 execute() 메서드로 실제 시뮬레이션 실행
+    result = yield from complete_process.execute(fridge_door)
+    print(f'도어 제조 완료: {result}')
+
+engine.add_process(main_manufacturing_process)
 
 engine.run(until=50)
 print('냉장고 도어 제조공정 시뮬레이션 완료!')

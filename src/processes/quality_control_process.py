@@ -175,12 +175,15 @@ class QualityControlProcess(BaseProcess):
             report[item_key] = result  # 항목 ID와 검사 결과 저장
         return report  # 검사 보고서 반환
 
-    def execute(self, input_data: Any = None) -> Any:
+    def execute(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
         품질 관리 공정을 실행하는 메서드입니다.
         
         Args:
             input_data: 검사할 제품 데이터 (선택적)
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
             
         Returns:
             Any: 품질 검사 완료된 제품 데이터와 생산된 자원
@@ -188,7 +191,8 @@ class QualityControlProcess(BaseProcess):
         print(f"[{self.process_name}] 품질 관리 공정 실행 시작")
         
         # 부모 클래스의 execute 메서드 호출 (자원 관리 포함)
-        return super().execute(input_data)
+        result = yield from super().execute(input_data)
+        return result
         
     def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """

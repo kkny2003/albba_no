@@ -160,12 +160,15 @@ class AssemblyProcess(BaseProcess):
         self.assembly_line.clear()  # 조립 라인 초기화
         print("조립 라인이 비워졌습니다.")
 
-    def execute(self, input_data: Any = None) -> Any:
+    def execute(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
         조립 공정을 실행하는 메서드입니다.
         
         Args:
             input_data: 조립할 제품 데이터 (선택적)
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
             
         Returns:
             Any: 조립 완료된 제품 데이터와 생산된 자원
@@ -177,7 +180,8 @@ class AssemblyProcess(BaseProcess):
             self.add_to_assembly_line(input_data)
         
         # 부모 클래스의 execute 메서드 호출 (자원 관리 포함)
-        return super().execute(input_data)
+        result = yield from super().execute(input_data)
+        return result
         
     def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """

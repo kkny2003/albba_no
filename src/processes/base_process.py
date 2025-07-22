@@ -117,6 +117,26 @@ class ProcessChain:
         """
         self.processes = processes or []  # 공정 리스트 초기화
         self.chain_id = str(uuid.uuid4())  # 체인 고유 ID 생성
+        # process_name 속성 추가 (MultiProcessGroup 등에서 일관성 있게 사용)
+        self.process_name = self.get_process_summary()  # 대표 요약명 반환
+        
+        # BaseProcess와의 호환성을 위한 추가 속성들
+        self.process_id = self.chain_id  # BaseProcess와 동일한 인터페이스
+        self.env = self._get_environment_from_processes()  # SimPy 환경 추출
+        self.parallel_safe = True  # 기본적으로 병렬 안전으로 설정
+    
+    
+    def _get_environment_from_processes(self) -> Optional[simpy.Environment]:
+        """
+        체인 내 공정들로부터 SimPy 환경을 추출
+        
+        Returns:
+            simpy.Environment: 첫 번째 공정의 환경 또는 None
+        """
+        for process in self.processes:
+            if hasattr(process, 'env') and process.env is not None:
+                return process.env
+        return None
     
     def add_process(self, process: 'BaseProcess') -> 'ProcessChain':
         """
@@ -129,29 +149,51 @@ class ProcessChain:
             ProcessChain: 현재 체인 (메서드 체이닝을 위해)
         """
         self.processes.append(process)
+        # 환경이 없으면 새로 추가된 공정에서 추출
+        if self.env is None:
+            self.env = self._get_environment_from_processes()
+        # process_name 업데이트
+        self.process_name = self.get_process_summary()
         return self
     
-    def execute_chain(self, input_data: Any = None) -> Any:
+    def execute(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
-        전체 공정 체인을 순차적으로 실행
+        BaseProcess와 호환되는 SimPy generator 방식의 실행 메서드
         
         Args:
             input_data: 첫 번째 공정에 전달할 입력 데이터
             
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
         Returns:
             Any: 마지막 공정의 출력 결과
         """
+        if not self.env:
+            raise RuntimeError(f"ProcessChain '{self.process_name}'에 SimPy 환경이 설정되지 않았습니다. 체인에 유효한 공정을 추가하세요.")
+        
         current_data = input_data
         
-        print(f"공정 체인 실행 시작 (체인 ID: {self.chain_id})")
+        print(f"[시간 {self.env.now:.1f}] 공정 체인 실행 시작 (체인 ID: {self.chain_id})")
         print(f"총 {len(self.processes)}개의 공정을 순차 실행합니다.")
         
         for i, process in enumerate(self.processes, 1):
-            print(f"\n[{i}/{len(self.processes)}] {process.process_name} 실행 중...")
-            current_data = process.execute(current_data)
-            print(f"[{i}/{len(self.processes)}] {process.process_name} 완료")
+            print(f"\n[시간 {self.env.now:.1f}] [{i}/{len(self.processes)}] {process.process_name} 실행 중...")
+            
+            # 각 공정을 SimPy generator 방식으로 실행
+            if hasattr(process, 'execute') and callable(process.execute):
+                # BaseProcess 인스턴스인 경우 yield from으로 호출
+                try:
+                    current_data = yield from process.execute(current_data)
+                    print(f"[시간 {self.env.now:.1f}] [{i}/{len(self.processes)}] {process.process_name} 완료")
+                except Exception as e:
+                    print(f"[시간 {self.env.now:.1f}] [{i}/{len(self.processes)}] {process.process_name} 실행 중 오류: {e}")
+                    raise
+            else:
+                print(f"[경고] {process.process_name}에 execute 메서드가 없습니다. 건너뜀.")
+                continue
         
-        print(f"\n공정 체인 실행 완료 (체인 ID: {self.chain_id})")
+        print(f"\n[시간 {self.env.now:.1f}] 공정 체인 실행 완료 (체인 ID: {self.chain_id})")
         return current_data
     
     def get_process_summary(self) -> str:
@@ -212,8 +254,26 @@ class MultiProcessGroup:
         self.priority_based_execution = False  # 우선순위 기반 실행 여부
         self.priority_mapping: Dict[str, int] = {}  # 공정 ID -> 연결 시점 우선순위 매핑
         
+        # BaseProcess와의 호환성을 위한 추가 속성들
+        self.process_id = self.group_id  # BaseProcess와 동일한 인터페이스
+        self.process_name = self.get_group_summary()  # 그룹 요약명
+        self.env = self._get_environment_from_processes()  # SimPy 환경 추출
+        self.parallel_safe = True  # 기본적으로 병렬 안전으로 설정
+        
         # 공정들에 우선순위가 설정되어 있는지 확인
         self._check_priority_setup()
+        
+    def _get_environment_from_processes(self) -> Optional[simpy.Environment]:
+        """
+        그룹 내 공정들로부터 SimPy 환경을 추출
+        
+        Returns:
+            simpy.Environment: 첫 번째 공정의 환경 또는 None
+        """
+        for process in self.processes:
+            if hasattr(process, 'env') and process.env is not None:
+                return process.env
+        return None
         
     def _check_priority_setup(self) -> None:
         """공정들의 우선순위 설정 상태를 확인하고 실행 모드를 결정합니다."""
@@ -261,6 +321,11 @@ class MultiProcessGroup:
             MultiProcessGroup: 현재 그룹 (메서드 체이닝용)
         """
         self.processes.append(process)
+        # 환경이 없으면 새로 추가된 공정에서 추출
+        if self.env is None:
+            self.env = self._get_environment_from_processes()
+        # process_name 업데이트
+        self.process_name = self.get_group_summary()
         # 우선순위 설정 재확인
         self._check_priority_setup()
         return self
@@ -339,6 +404,80 @@ class MultiProcessGroup:
                         results.append(None)
             
             print(f"다중공정 그룹 실행 완료 (그룹 ID: {self.group_id})")
+            return results
+        
+    def execute(self, input_data: Any = None) -> Generator[simpy.Event, None, List[Any]]:
+        """
+        BaseProcess와 호환되는 SimPy generator 방식의 실행 메서드
+        
+        Args:
+            input_data: 각 공정에 전달할 입력 데이터
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
+        Returns:
+            List[Any]: 각 공정의 실행 결과 리스트
+        """
+        if not self.env:
+            raise RuntimeError(f"MultiProcessGroup '{self.process_name}'에 SimPy 환경이 설정되지 않았습니다. 그룹에 유효한 공정을 추가하세요.")
+        
+        if not self.processes:
+            print(f"[시간 {self.env.now:.1f}] 다중공정 그룹 {self.group_id}: 실행할 공정이 없습니다")
+            return []
+            
+        print(f"[시간 {self.env.now:.1f}] 다중공정 그룹 실행 시작 (그룹 ID: {self.group_id})")
+        
+        # 우선순위 기반 실행이면 정렬된 순서로 실행
+        if self.priority_based_execution:
+            sorted_processes = self.sort_by_priority()
+            print(f"우선순위 기반 순차 실행: {', '.join([p.process_name for p in sorted_processes])}")
+            
+            results = []
+            for i, process in enumerate(sorted_processes, 1):
+                try:
+                    priority = self.priority_mapping.get(process.process_id, "없음")
+                    print(f"  [시간 {self.env.now:.1f}] [{i}/{len(sorted_processes)}] {process.process_name} (우선순위: {priority}) 실행 중...")
+                    
+                    # SimPy generator 방식으로 실행
+                    if hasattr(process, 'execute') and callable(process.execute):
+                        result = yield from process.execute(input_data)
+                        results.append(result)
+                        print(f"  [시간 {self.env.now:.1f}] [OK] {process.process_name} 완료")
+                    else:
+                        print(f"  [경고] {process.process_name}에 execute 메서드가 없습니다. 건너뜀.")
+                        results.append(None)
+                        
+                except Exception as e:
+                    print(f"  [시간 {self.env.now:.1f}] [ERROR] {process.process_name} 실행 중 오류: {e}")
+                    results.append(None)
+                    
+            print(f"[시간 {self.env.now:.1f}] 우선순위 기반 실행 완료 (그룹 ID: {self.group_id})")
+            return results
+        
+        else:
+            # 순차 실행 (SimPy에서는 진정한 병렬 실행이 어려우므로 순차로 처리)
+            print(f"순차 실행할 공정: {', '.join([p.process_name for p in self.processes])}")
+            
+            results = []
+            for i, process in enumerate(self.processes, 1):
+                try:
+                    print(f"  [시간 {self.env.now:.1f}] [{i}/{len(self.processes)}] {process.process_name} 실행 중...")
+                    
+                    # SimPy generator 방식으로 실행
+                    if hasattr(process, 'execute') and callable(process.execute):
+                        result = yield from process.execute(input_data)
+                        results.append(result)
+                        print(f"  [시간 {self.env.now:.1f}] [OK] {process.process_name} 완료")
+                    else:
+                        print(f"  [경고] {process.process_name}에 execute 메서드가 없습니다. 건너뜀.")
+                        results.append(None)
+                        
+                except Exception as e:
+                    print(f"  [시간 {self.env.now:.1f}] [ERROR] {process.process_name} 실행 중 오류: {e}")
+                    results.append(None)
+            
+            print(f"[시간 {self.env.now:.1f}] 다중공정 그룹 실행 완료 (그룹 ID: {self.group_id})")
             return results
         
     def __and__(self, other: 'BaseProcess') -> 'MultiProcessGroup':
@@ -1175,14 +1314,23 @@ class GroupWrapperProcess(BaseProcess):
         self.group = group
         self.parallel_safe = all(p.parallel_safe for p in group.processes)
     
-    def process_logic(self, input_data: Any = None) -> Any:
+    def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
-        그룹 내 모든 공정을 실행하는 로직
+        그룹 내 모든 공정을 실행하는 SimPy generator 로직
         
         Args:
             input_data: 입력 데이터
             
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
         Returns:
             Any: 그룹 실행 결과
         """
-        return self.group.execute_group(input_data)
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 그룹 래퍼 실행 중...")
+        
+        # 래핑된 그룹의 execute 메서드 호출 (새로 추가된 SimPy generator 버전)
+        results = yield from self.group.execute(input_data)
+        
+        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 그룹 래퍼 실행 완료")
+        return results
