@@ -59,22 +59,42 @@ qc = QualityControlProcess(
 )
 assembly = AssemblyProcess(env, [machines[5]], workers, [resources[1], resources[3], resources[4], resources[5]], [], [], process_name='최종조립', assembly_time=3.0)
 
-# 운송/버퍼/동적 이벤트
-
 def transport_proc(env, transport, src, dst, resource):
+
+    """
+    src(출발지)에서 dst(도착지)로 resource를 운송하는 실제 로직 예시
+    - 운송 시작, 적재, 하역, 완료 로그 출력
+    - Transport 클래스의 transport 메서드 활용
+    """
     while True:
-        yield env.timeout(1.0)
-        print(f"[시간 {env.now:.1f}] {transport.transport_id}가 {src}에서 {dst}로 {resource.name} 운반 시도")
+        print(f"[시간 {env.now:.1f}] {transport.transport_id} 운송 시작: {src} → {dst} (거리: 5.0)")
+        yield env.timeout(0.2)
+        print(f"[시간 {env.now:.1f}] {transport.transport_id} 제품 적재: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
+        # 실제 적재 로직 (예시)
+        transport.current_load += resource.quantity
+        yield env.timeout(0.3)
+        print(f"[시간 {env.now:.1f}] {transport.transport_id} 제품 하역: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
+        # 실제 하역 로직 (예시)
+        transport.current_load -= resource.quantity
+        yield env.timeout(0.5)
+        print(f"[시간 {env.now:.1f}] {transport.transport_id} 운송 완료: {src} → {dst}")
+        # Transport 클래스의 실제 운송 메서드 호출 (거리 5.0)
+        yield from transport.transport(resource, distance=5.0)
+        yield env.timeout(2.0)  # 다음 운송까지 대기
 
 def buffer_compete_proc(env, buffer, resource):
+    # Buffer 클래스의 put 메서드 활용 예시
     for _ in range(3):
         yield env.timeout(0.5)
-        print(f"[시간 {env.now:.1f}] {buffer.buffer_id}에 {resource.name} 투입 시도")
+        yield from buffer.put(resource)
+
+# 동적 이벤트(신규 자원 투입)는 utils로 분리하여 재사용 가능하게 처리
+
+# 동적 이벤트 유틸리티 함수 import
+from src.utils.dynamic_event import inject_dynamic_resource_event
 
 def dynamic_event(env):
-    yield env.timeout(10)
-    print(f"[시간 {env.now:.1f}] [동적이벤트] 신규 자원 투입!")
-    resources.append(Resource(resource_id='R999', name='긴급부품', resource_type=ResourceType.SEMI_FINISHED, quantity=1, unit='개'))
+    yield from inject_dynamic_resource_event(env, resources)
 
 # 공정 체이닝(>>) 및 병렬(MultiProcessGroup) 활용
 # A라인: A1 >> A2 >> 품질검사 >> 조립
