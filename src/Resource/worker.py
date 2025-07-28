@@ -7,14 +7,14 @@ from src.Resource.resource_base import ResourceType, Resource
 class Worker(Resource):
     """SimPy 기반 작업자 모델을 정의하는 클래스입니다."""
     
-    def __init__(self, env: simpy.Environment, worker_id: str, name: str, skills: List[str] = None, 
+    def __init__(self, env: simpy.Environment, resource_id: str, name: str, skills: List[str] = None, 
                  work_speed: float = 1.0, error_probability: Optional[float] = None,
                  mean_time_to_rest: Optional[float] = None, mean_rest_time: Optional[float] = None):
         """작업자의 정보를 초기화합니다.
         
         Args:
             env (simpy.Environment): SimPy 시뮬레이션 환경
-            worker_id (str): 작업자의 고유 ID
+            resource_id (str): 작업자의 고유 ID
             name (str): 작업자의 이름
             skills (List[str]): 작업자가 가진 기술 목록
             work_speed (float): 작업 속도 배수 (1.0이 기본 속도)
@@ -24,10 +24,9 @@ class Worker(Resource):
         """
         # Resource 기본 클래스 초기화
         super().__init__(
-            resource_id=worker_id,
+            resource_id=resource_id,
             name=name,
-            resource_type=ResourceType.WORKER,
-            quantity=1
+            resource_type=ResourceType.WORKER
         )
         
         # 작업자별 특성을 직접 어트리뷰트로 설정
@@ -74,7 +73,7 @@ class Worker(Resource):
             self.current_task = task_name
             start_time = self.env.now
             
-            print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 제품 {getattr(product, 'product_id', 'Unknown')}에 대한 '{task_name}' 작업을 시작합니다.")
+            print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 제품 {getattr(product, 'resource_id', 'Unknown')}에 대한 '{task_name}' 작업을 시작합니다.")
             
             # 작업 중 실수 발생 체크 (실수 확률이 설정된 경우에만)
             if self.error_probability is not None and self._check_error():
@@ -138,7 +137,7 @@ class Worker(Resource):
             dict: 작업자의 현재 상태 정보
         """
         return {
-            'worker_id': self.resource_id,
+            'resource_id': self.resource_id,
             'skills': self.skills,
             'work_speed': self.work_speed,
             'is_busy': len(self.simpy_resource.users) > 0,

@@ -6,23 +6,22 @@ from src.Resource.resource_base import Resource, ResourceType
 class Transport(Resource):
     """SimPy 기반 운송 모델 클래스입니다. 제품의 이동을 시뮬레이션합니다."""
 
-    def __init__(self, env: simpy.Environment, transport_id: str, name: str, capacity: int = 10, 
+    def __init__(self, env: simpy.Environment, resource_id: str, name: str, capacity: int = 10, 
                  transport_speed: float = 1.0):
         """
         초기화 메서드입니다 (SimPy 환경 필수).
         
         :param env: SimPy 환경 객체 (필수)
-        :param transport_id: 운송 수단의 ID
+        :param resource_id: 운송 수단의 ID
         :param name: 운송 수단의 이름
         :param capacity: 운송 수단의 수용 능력
         :param transport_speed: 운송 속도 (단위: 거리/시간)
         """
         # Resource 기본 클래스 초기화
         super().__init__(
-            resource_id=transport_id,
+            resource_id=resource_id,
             name=name,
-            resource_type=ResourceType.TRANSPORT,
-            quantity=1
+            resource_type=ResourceType.TRANSPORT
         )
         
         # 운송수단별 특성을 직접 어트리뷰트로 설정
@@ -51,14 +50,14 @@ class Transport(Resource):
             bool: 운송 성공 여부
         """
         # 운송 수단 리소스 요청
-        with self.resource.request() as request:
+        with self.simpy_resource.request() as request:
             yield request  # 운송 수단이 사용 가능할 때까지 대기
             
-            print(f"[시간 {self.env.now:.1f}] {self.transport_id} 운송 시작: {getattr(product, 'product_id', 'Unknown')} (거리: {distance})")
+            print(f"[시간 {self.env.now:.1f}] {self.resource_id} 운송 시작: {getattr(product, 'resource_id', 'Unknown')} (거리: {distance})")
             
             # 적재
             if not self.load_product(product):
-                print(f"[시간 {self.env.now:.1f}] {self.transport_id} 적재 실패: 용량 초과")
+                print(f"[시간 {self.env.now:.1f}] {self.resource_id} 적재 실패: 용량 초과")
                 return False
             
             # 운송 시간 계산 (거리 / 속도)
@@ -74,7 +73,7 @@ class Transport(Resource):
             self.total_distance_traveled += distance
             self.total_transport_time += transport_time
             
-            print(f"[시간 {self.env.now:.1f}] {self.transport_id} 운송 완료: {getattr(product, 'product_id', 'Unknown')}")
+            print(f"[시간 {self.env.now:.1f}] {self.resource_id} 운송 완료: {getattr(product, 'resource_id', 'Unknown')}")
             return True
 
     def load_product(self, product) -> bool:
@@ -87,7 +86,7 @@ class Transport(Resource):
         if self.current_load < self.capacity:
             self.current_load += 1  # 적재량 증가
             self.cargo.append(product)  # 화물 목록에 추가
-            print(f"[시간 {self.env.now:.1f}] {self.transport_id} 제품 적재: {getattr(product, 'product_id', 'Unknown')} (현재 적재량: {self.current_load}/{self.capacity})")
+            print(f"[시간 {self.env.now:.1f}] {self.resource_id} 제품 적재: {getattr(product, 'resource_id', 'Unknown')} (현재 적재량: {self.current_load}/{self.capacity})")
             return True  # 적재 성공
         else:
             return False  # 적재 실패
@@ -101,10 +100,10 @@ class Transport(Resource):
         if self.current_load > 0:
             product = self.cargo.pop()  # 마지막 제품 제거
             self.current_load -= 1  # 적재량 감소
-            print(f"[시간 {self.env.now:.1f}] {self.transport_id} 제품 하역: {getattr(product, 'product_id', 'Unknown')} (현재 적재량: {self.current_load}/{self.capacity})")
+            print(f"[시간 {self.env.now:.1f}] {self.resource_id} 제품 하역: {getattr(product, 'resource_id', 'Unknown')} (현재 적재량: {self.current_load}/{self.capacity})")
             return product  # 하역된 제품 반환
         else:
-            print(f"[시간 {self.env.now:.1f}] {self.transport_id} 하역할 제품이 없습니다")
+            print(f"[시간 {self.env.now:.1f}] {self.resource_id} 하역할 제품이 없습니다")
             return None  # 하역할 제품이 없음
 
     def get_current_load(self) -> int:
@@ -140,18 +139,18 @@ class Transport(Resource):
         :return: 상태 정보 딕셔너리
         """
         return {
-            'transport_id': self.transport_id,
+            'resource_id': self.resource_id,
             'current_load': self.current_load,
             'capacity': self.capacity,
             'is_full': self.is_full(),
             'total_distance_traveled': self.total_distance_traveled,
             'total_transport_time': self.total_transport_time,
             'utilization': self.get_utilization(),
-            'cargo_list': [getattr(item, 'product_id', 'Unknown') for item in self.cargo]
+            'cargo_list': [getattr(item, 'resource_id', 'Unknown') for item in self.cargo]
         }
 
     def __str__(self):
         """운송 수단의 정보를 문자열로 반환합니다."""
-        return f"{self.transport_id} (적재량: {self.current_load}/{self.capacity}, 속도: {self.transport_speed})"
+        return f"{self.resource_id} (적재량: {self.current_load}/{self.capacity}, 속도: {self.transport_speed})"
 
 

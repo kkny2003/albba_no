@@ -64,8 +64,7 @@ class AssemblyProcess(BaseProcess):
                 resource_id=f"assembly_machine_{i}",
                 name=f"조립기계_{i+1}",
                 resource_type=ResourceType.MACHINE,
-                quantity=1.0,
-                unit="대"
+                properties={"unit": "대"}
             )
             self.add_input_resource(machine_resource)
             
@@ -75,8 +74,7 @@ class AssemblyProcess(BaseProcess):
                 resource_id=f"assembly_worker_{i}",
                 name=f"조립작업자_{i+1}",
                 resource_type=ResourceType.WORKER,
-                quantity=1.0,
-                unit="명"
+                properties={"unit": "명"}
             )
             self.add_input_resource(worker_resource)
             
@@ -115,8 +113,7 @@ class AssemblyProcess(BaseProcess):
             resource_id="assembly_tool_001",
             name="조립도구",
             resource_type=ResourceType.TOOL,
-            quantity=1.0,
-            unit="세트"
+            properties={"unit": "세트"}
         )
         self.add_input_resource(assembly_tool)
         
@@ -125,8 +122,7 @@ class AssemblyProcess(BaseProcess):
             resource_id="finished_product_001",
             name="완제품",
             resource_type=ResourceType.FINISHED_PRODUCT,
-            quantity=1.0,
-            unit="개"
+            properties={"unit": "개"}
         )
         self.add_output_resource(finished_product)
 

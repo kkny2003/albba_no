@@ -1235,7 +1235,7 @@ class BaseProcess(ABC):
                 machine._original_failure_probability = original_probability  # 원래값 백업
                 machine.failure_probability = weighted_probability
                 
-                print(f"[{self.process_name}] 기계 {machine.machine_id} 고장률 적용: "
+                print(f"[{self.process_name}] 기계 {machine.resource_id} 고장률 적용: "
                       f"{original_probability:.3f} → {weighted_probability:.3f} (가중치: {self.failure_weight_machine})")
 
     def apply_failure_weight_to_workers(self):
@@ -1253,7 +1253,7 @@ class BaseProcess(ABC):
                 worker._original_error_probability = original_probability  # 원래값 백업
                 worker.error_probability = weighted_probability
                 
-                print(f"[{self.process_name}] 작업자 {worker.worker_id} 실수율 적용: "
+                print(f"[{self.process_name}] 작업자 {worker.resource_id} 실수율 적용: "
                       f"{original_probability:.3f} → {weighted_probability:.3f} (가중치: {self.failure_weight_worker})")
 
     def restore_original_failure_rates(self):
@@ -1265,14 +1265,14 @@ class BaseProcess(ABC):
             if hasattr(machine, '_original_failure_probability'):
                 machine.failure_probability = machine._original_failure_probability
                 delattr(machine, '_original_failure_probability')
-                print(f"[{self.process_name}] 기계 {machine.machine_id} 고장률 복원")
+                print(f"[{self.process_name}] 기계 {machine.resource_id} 고장률 복원")
         
         # 작업자 실수율 복원
         for worker in self.workers:
             if hasattr(worker, '_original_error_probability'):
                 worker.error_probability = worker._original_error_probability
                 delattr(worker, '_original_error_probability')
-                print(f"[{self.process_name}] 작업자 {worker.worker_id} 실수율 복원")
+                print(f"[{self.process_name}] 작업자 {worker.resource_id} 실수율 복원")
     
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(id='{self.process_id}', name='{self.process_name}')"

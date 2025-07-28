@@ -13,13 +13,13 @@ class BufferPolicy(Enum):
 class Buffer(Resource):
     """SimPy 기반 버퍼 모델을 정의하는 클래스입니다."""
     
-    def __init__(self, env: simpy.Environment, buffer_id: str, name: str, buffer_type: str, 
+    def __init__(self, env: simpy.Environment, resource_id: str, name: str, buffer_type: str, 
                  capacity: int = 100, policy: BufferPolicy = BufferPolicy.FIFO):
         """버퍼의 ID, 유형, 용량, 정책을 초기화합니다.
         
         Args:
             env (simpy.Environment): SimPy 시뮬레이션 환경
-            buffer_id (str): 버퍼의 고유 ID
+            resource_id (str): 버퍼의 고유 ID
             name (str): 버퍼의 이름
             buffer_type (str): 버퍼의 유형
             capacity (int): 버퍼의 최대 저장 용량 (기본값: 100)
@@ -27,10 +27,9 @@ class Buffer(Resource):
         """
         # Resource 기본 클래스 초기화
         super().__init__(
-            resource_id=buffer_id,
+            resource_id=resource_id,
             name=name,
-            resource_type=ResourceType.BUFFER,
-            quantity=capacity
+            resource_type=ResourceType.BUFFER
         )
         
         # 버퍼별 특성을 직접 어트리뷰트로 설정
@@ -76,7 +75,7 @@ class Buffer(Resource):
         self.total_put_operations += 1
         self.total_items_stored += quantity
         
-        print(f"[시간 {self.env.now:.1f}] {self.buffer_id} 버퍼에 {getattr(item, 'product_id', str(item))} {quantity}개 저장됨 (Store 기반). "
+        print(f"[시간 {self.env.now:.1f}] {self.resource_id} 버퍼에 {getattr(item, 'product_id', str(item))} {quantity}개 저장됨 (Store 기반). "
               f"현재 저장량: {len(self.store.items)}/{self.capacity}")
         
     def get(self, quantity: int = 1) -> Generator[simpy.Event, None, Any]:
@@ -102,7 +101,7 @@ class Buffer(Resource):
         self.total_items_retrieved += quantity
         
         item_ids = [getattr(item, 'product_id', str(item)) for item in retrieved_items]
-        print(f"[시간 {self.env.now:.1f}] {self.buffer_id} 버퍼에서 {item_ids} {quantity}개 회수됨 (Store 기반). "
+        print(f"[시간 {self.env.now:.1f}] {self.resource_id} 버퍼에서 {item_ids} {quantity}개 회수됨 (Store 기반). "
               f"현재 저장량: {len(self.store.items)}/{self.capacity}")
         
         return retrieved_items[0] if quantity == 1 else retrieved_items
@@ -174,7 +173,7 @@ class Buffer(Resource):
             dict: 버퍼의 현재 상태 정보
         """
         return {
-            'buffer_id': self.buffer_id,
+            'buffer_id': self.resource_id,
             'buffer_type': self.buffer_type,
             'capacity': self.capacity,
             'current_level': self.get_current_level(),
@@ -192,7 +191,7 @@ class Buffer(Resource):
     def __str__(self):
         """버퍼의 정보를 문자열로 반환합니다."""
         status = self.get_status()
-        return (f"버퍼 ID: {self.buffer_id}, 유형: {self.buffer_type}, "
+        return (f"버퍼 ID: {self.resource_id}, 유형: {self.buffer_type}, "
                 f"용량: {status['capacity']}, 현재 저장량: {status['current_level']}, "
                 f"사용률: {status['utilization']:.2%}, 정책: {status['policy']}")
                 
@@ -208,7 +207,7 @@ class Buffer(Resource):
             for _ in range(current_level):
                 yield self.store.get()
             
-            print(f"[시간 {self.env.now:.1f}] {self.buffer_id} 버퍼가 비워졌습니다. "
+            print(f"[시간 {self.env.now:.1f}] {self.resource_id} 버퍼가 비워졌습니다. "
                   f"제거된 아이템 수: {current_level}")
 
 

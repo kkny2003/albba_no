@@ -7,7 +7,7 @@ from src.Resource.resource_base import ResourceType, Resource
 class Machine(Resource):
     """SimPy 기반 기계 모델을 정의하는 클래스입니다."""
     
-    def __init__(self, env: simpy.Environment, machine_id: str, name: str, 
+    def __init__(self, env: simpy.Environment, resource_id: str, name: str, 
                  capacity: int = 1, processing_time: float = 1.0,
                  failure_probability: Optional[float] = None, mean_time_to_failure: Optional[float] = None,
                  mean_time_to_repair: Optional[float] = None):
@@ -15,9 +15,9 @@ class Machine(Resource):
         
         Args:
             env (simpy.Environment): SimPy 시뮬레이션 환경
-            machine_id (str): 기계의 고유 ID
+            resource_id (str): 기계의 고유 ID
             name (str): 기계의 이름
-            capacity (int): 기계가 동시에 처리할 수 있는 작업 수 (기본값: 1)
+            capacity (int): 기계가 동시에 처리할 수 있는 작업 수 있는 작업 수 (기본값: 1)
             processing_time (float): 기본 작업 처리 시간 (기본값: 1.0)
             failure_probability (Optional[float]): 작업당 고장 확률 (0.0~1.0, None=비활성화, 기본값: None)
             mean_time_to_failure (Optional[float]): 평균 고장 간격 시간 (None=비활성화, 기본값: None)
@@ -25,10 +25,9 @@ class Machine(Resource):
         """
         # Resource 기본 클래스 초기화
         super().__init__(
-            resource_id=machine_id,
+            resource_id=resource_id,
             name=name,
-            resource_type=ResourceType.MACHINE,
-            quantity=1
+            resource_type=ResourceType.MACHINE
         )
         
         # 기계별 특성을 직접 어트리뷰트로 설정
@@ -70,7 +69,7 @@ class Machine(Resource):
             yield request  # 기계 사용 가능할 때까지 대기
             
             start_time = self.env.now
-            print(f"[시간 {self.env.now:.1f}] {self.resource_id} 기계가 제품 {getattr(product, 'product_id', 'Unknown')} 처리를 시작합니다.")
+            print(f"[시간 {self.env.now:.1f}] {self.resource_id} 기계가 제품 {getattr(product, 'resource_id', 'Unknown')} 처리를 시작합니다.")
             
             # 작업 중 고장 발생 체크 (고장 확률이 설정된 경우에만)
             if self.failure_probability is not None and self._check_failure():
@@ -86,7 +85,7 @@ class Machine(Resource):
             self.total_processed += 1
             self.total_busy_time += process_time
             
-            print(f"[시간 {self.env.now:.1f}] {self.resource_id} 기계가 제품 {getattr(product, 'product_id', 'Unknown')} 처리를 완료했습니다.")
+            print(f"[시간 {self.env.now:.1f}] {self.resource_id} 기계가 제품 {getattr(product, 'resource_id', 'Unknown')} 처리를 완료했습니다.")
     
     def get_utilization(self) -> float:
         """기계의 가동률을 계산합니다.

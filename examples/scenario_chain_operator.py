@@ -27,19 +27,19 @@ env = simpy.Environment()
 # engine = SimulationEngine(env)  # 이 부분을 주석 처리
 
 # 제품/부품 정의 (다품종)
-products = [Product(f'P{i:03d}', f'제품{i}') for i in range(1, 11)]
-resources = [Resource(resource_id=f'R{i:03d}', name=f'부품{i}', resource_type=ResourceType.SEMI_FINISHED, quantity=3, unit='개') for i in range(1, 11)]
+products = [Product(resource_id=f'P{i:03d}', name=f'제품{i}') for i in range(1, 11)]
+resources = [Resource(resource_id=f'R{i:03d}', name=f'부품{i}', resource_type=ResourceType.SEMI_FINISHED) for i in range(1, 11)]
 
 # 기계/작업자/운송/버퍼 (휴식, 고장, 경합, 다양한 속도)
-machines = [Machine(env, f'M{i:03d}', f'기계{i}') for i in range(1, 8)]
+machines = [Machine(env, resource_id=f'M{i:03d}', name=f'기계{i}') for i in range(1, 8)]
 workers = [
-    Worker(env, f'W{i:03d}', skills=[f'공정{i}', f'공정{i+1}'], work_speed=1.0 + 0.1*i, error_probability=0.1*i, mean_time_to_rest=5+i, mean_rest_time=1+i%2)
+    Worker(env, resource_id=f'W{i:03d}', name=f'작업자{i}', skills=[f'공정{i}', f'공정{i+1}'], work_speed=1.0 + 0.1*i, error_probability=0.1*i, mean_time_to_rest=5+i, mean_rest_time=1+i%2)
     for i in range(1, 6)
 ]
-transports = [Transport(env, f'T{i:03d}', capacity=2+i, transport_speed=1.0+0.3*i) for i in range(1, 4)]
+transports = [Transport(env, resource_id=f'T{i:03d}', name=f'운송{i}', capacity=2+i, transport_speed=1.0+0.3*i) for i in range(1, 4)]
 
 from src.Resource.buffer import Buffer
-buffers = [Buffer(env, f'B{i:03d}', capacity=5+i, buffer_type=ResourceType.SEMI_FINISHED) for i in range(1, 4)]
+buffers = [Buffer(env, resource_id=f'B{i:03d}', name=f'버퍼{i}', capacity=5+i, buffer_type=ResourceType.SEMI_FINISHED) for i in range(1, 4)]
 
 # 공정 정의
 proc_a1 = ManufacturingProcess(env, [machines[0]], [workers[0]], [], [resources[0]], [], process_name='A1', processing_time=2.0)
@@ -67,17 +67,17 @@ def transport_proc(env, transport, src, dst, resource):
     - Transport 클래스의 transport 메서드 활용
     """
     while True:
-        print(f"[시간 {env.now:.1f}] {transport.transport_id} 운송 시작: {src} → {dst} (거리: 5.0)")
+        print(f"[시간 {env.now:.1f}] {transport.resource_id} 운송 시작: {src} → {dst} (거리: 5.0)")
         yield env.timeout(0.2)
-        print(f"[시간 {env.now:.1f}] {transport.transport_id} 제품 적재: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
+        print(f"[시간 {env.now:.1f}] {transport.resource_id} 제품 적재: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
         # 실제 적재 로직 (예시)
-        transport.current_load += resource.quantity
+        transport.current_load += 1
         yield env.timeout(0.3)
-        print(f"[시간 {env.now:.1f}] {transport.transport_id} 제품 하역: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
+        print(f"[시간 {env.now:.1f}] {transport.resource_id} 제품 하역: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
         # 실제 하역 로직 (예시)
-        transport.current_load -= resource.quantity
+        transport.current_load -= 1
         yield env.timeout(0.5)
-        print(f"[시간 {env.now:.1f}] {transport.transport_id} 운송 완료: {src} → {dst}")
+        print(f"[시간 {env.now:.1f}] {transport.resource_id} 운송 완료: {src} → {dst}")
         # Transport 클래스의 실제 운송 메서드 호출 (거리 5.0)
         yield from transport.transport(resource, distance=5.0)
         yield env.timeout(2.0)  # 다음 운송까지 대기

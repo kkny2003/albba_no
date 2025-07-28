@@ -66,8 +66,7 @@ class QualityControlProcess(BaseProcess):
             resource_id="inspection_equipment_001",
             name="검사장비",
             resource_type=ResourceType.MACHINE,
-            quantity=1.0,
-            unit="대"
+            properties={"unit": "대"}
         )
         self.add_input_resource(inspection_equipment)
         
@@ -76,8 +75,7 @@ class QualityControlProcess(BaseProcess):
             resource_id="quality_inspector_001",
             name="품질검사원",
             resource_type=ResourceType.WORKER,
-            quantity=1.0,
-            unit="명"
+            properties={"unit": "명"}
         )
         self.add_input_resource(quality_inspector)
         
@@ -116,8 +114,7 @@ class QualityControlProcess(BaseProcess):
             resource_id="inspection_tool_001",
             name="검사도구",
             resource_type=ResourceType.TOOL,
-            quantity=1.0,
-            unit="세트"
+            properties={"unit": "세트"}
         )
         self.add_input_resource(inspection_tool)
         
@@ -126,8 +123,7 @@ class QualityControlProcess(BaseProcess):
             resource_id="verified_product_001",
             name="검증완제품",
             resource_type=ResourceType.FINISHED_PRODUCT,
-            quantity=1.0,
-            unit="개"
+            properties={"unit": "개"}
         )
         self.add_output_resource(verified_product)
 

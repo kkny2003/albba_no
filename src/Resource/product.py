@@ -6,13 +6,13 @@ from src.Resource.resource_base import Resource, ResourceType
 class Product(Resource):
     """SimPy 시뮬레이션을 위한 제품 모델을 정의하는 클래스입니다."""
 
-    def __init__(self, product_id: str, name: str, product_type: str = "기본제품", 
+    def __init__(self, resource_id: str, name: str, product_type: str = "기본제품", 
                  specifications: Optional[Dict[str, Any]] = None,
                  resource_type: ResourceType = ResourceType.SEMI_FINISHED):
         """제품을 초기화합니다.
         
         Args:
-            product_id (str): 제품의 고유 ID
+            resource_id (str): 제품의 고유 ID
             name (str): 제품의 이름
             product_type (str): 제품 유형 (기본값: "기본제품")
             specifications (Optional[Dict[str, Any]]): 제품 사양 정보
@@ -20,10 +20,9 @@ class Product(Resource):
         """
         # Resource 기본 클래스 초기화
         super().__init__(
-            resource_id=product_id,
+            resource_id=resource_id,
             name=name,
-            resource_type=resource_type,
-            quantity=1
+            resource_type=resource_type
         )
         
         # 제품별 특성을 직접 어트리뷰트로 설정
@@ -135,7 +134,7 @@ class Product(Resource):
             Dict[str, Any]: 상태 요약 정보
         """
         return {
-            'product_id': self.resource_id,
+            'resource_id': self.resource_id,
             'product_type': self.product_type,
             'current_step': self.current_process_step,
             'quality_status': self.quality_status,
