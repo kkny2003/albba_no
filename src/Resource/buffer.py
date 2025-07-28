@@ -10,39 +10,49 @@ class BufferPolicy(Enum):
     LIFO = "후입선출"  # Last In First Out
 
 
-class Buffer:
+class Buffer(Resource):
     """SimPy 기반 버퍼 모델을 정의하는 클래스입니다."""
     
-    def __init__(self, env: simpy.Environment, buffer_id: str, buffer_type: str, 
+    def __init__(self, env: simpy.Environment, buffer_id: str, name: str, buffer_type: str, 
                  capacity: int = 100, policy: BufferPolicy = BufferPolicy.FIFO):
         """버퍼의 ID, 유형, 용량, 정책을 초기화합니다.
         
         Args:
             env (simpy.Environment): SimPy 시뮬레이션 환경
             buffer_id (str): 버퍼의 고유 ID
+            name (str): 버퍼의 이름
             buffer_type (str): 버퍼의 유형
             capacity (int): 버퍼의 최대 저장 용량 (기본값: 100)
             policy (BufferPolicy): 버퍼 정책 (기본값: FIFO)
         """
+        # 버퍼별 특성을 properties에 저장
+        properties = {
+            'buffer_type': buffer_type,
+            'capacity': capacity,
+            'policy': policy,
+            'total_put_operations': 0,
+            'total_get_operations': 0,
+            'total_items_stored': 0,
+            'total_items_retrieved': 0
+        }
+        
+        # Resource 기본 클래스 초기화
+        super().__init__(
+            resource_id=buffer_id,
+            name=name,
+            resource_type=ResourceType.BUFFER,
+            quantity=capacity,
+            properties=properties
+        )
+        
+        # SimPy 관련 속성
         self.env = env  # 시뮬레이션 환경
-        self.buffer_id = buffer_id  # 버퍼 ID
-        self.buffer_type = buffer_type  # 버퍼 유형
-        self.capacity = capacity  # 최대 저장 용량
-        self.policy = policy  # 버퍼 정책
         
         # SimPy Store를 사용하여 버퍼 구현 (개선된 방식)
         if policy == BufferPolicy.FIFO:
             self.store = simpy.Store(env, capacity=capacity)
         else:  # LIFO
             self.store = simpy.Store(env, capacity=capacity)
-        
-        # self.items 제거: SimPy Store가 직접 아이템 관리하므로 중복 제거
-        
-        # 통계 정보
-        self.total_put_operations = 0  # 총 입고 횟수
-        self.total_get_operations = 0  # 총 출고 횟수
-        self.total_items_stored = 0   # 총 저장된 아이템 수
-        self.total_items_retrieved = 0  # 총 회수된 아이템 수
         
     def put(self, item: Any, quantity: int = 1) -> Generator[simpy.Event, None, None]:
         """버퍼에 아이템을 저장하는 프로세스입니다. (Store 기반으로 개선)
@@ -205,31 +215,3 @@ class Buffer:
                   f"제거된 아이템 수: {current_level}")
 
 
-def create_buffer_resource(buffer_id: str, buffer_type: str, capacity: int = 100, 
-                          policy: BufferPolicy = BufferPolicy.FIFO) -> Resource:
-    """버퍼 리소스를 생성하는 함수입니다.
-    
-    Args:
-        buffer_id (str): 버퍼의 고유 ID
-        buffer_type (str): 버퍼의 유형
-        capacity (int): 버퍼의 최대 저장 용량 (기본값: 100)
-        policy (BufferPolicy): 버퍼 정책 (기본값: FIFO)
-        
-    Returns:
-        Resource: 생성된 버퍼 리소스 객체
-    """
-    properties = {
-        "buffer_type": buffer_type,
-        "capacity": capacity,
-        "policy": policy.value,
-        "description": f"{buffer_type} 타입의 버퍼, 용량: {capacity}, 정책: {policy.value}"
-    }
-    
-    return Resource(
-        resource_id=buffer_id,
-        name=f"{buffer_type} 버퍼",
-        resource_type=ResourceType.BUFFER,
-        quantity=1.0,
-        unit="개",
-        properties=properties
-    )

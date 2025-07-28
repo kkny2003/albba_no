@@ -17,7 +17,7 @@ from src.Resource.machine import Machine
 from src.Resource.worker import Worker
 from src.Resource.product import Product
 from src.Resource.transport import Transport
-from src.Resource.helper import Resource, ResourceType
+from src.Resource.resource_base import Resource, ResourceType
 from src.processes.manufacturing_process import ManufacturingProcess
 from src.processes.assembly_process import AssemblyProcess
 from src.processes.quality_control_process import QualityControlProcess

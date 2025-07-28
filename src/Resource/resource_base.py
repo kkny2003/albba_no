@@ -23,8 +23,7 @@ class Resource:
                  resource_id: str,
                  name: str,
                  resource_type: ResourceType,
-                 quantity: float = 1.0,
-                 unit: str = "개",
+                 quantity: int = 1,
                  properties: Optional[Dict[str, Any]] = None):
         """
         자원 초기화
@@ -33,19 +32,17 @@ class Resource:
             resource_id: 자원의 고유 ID
             name: 자원 이름
             resource_type: 자원 타입 (ResourceType 열거형)
-            quantity: 자원 수량 (기본값: 1.0)
-            unit: 자원 단위 (기본값: "개")
+            quantity: 자원 수량 (기본값: 1)
             properties: 추가 속성들 (선택적)
         """
         self.resource_id = resource_id
         self.name = name
         self.resource_type = resource_type
         self.quantity = quantity
-        self.unit = unit
         self.properties = properties or {}
         self.is_available = True  # 자원 사용 가능 여부
         
-    def clone(self, new_quantity: Optional[float] = None) -> 'Resource':
+    def clone(self, new_quantity: Optional[int] = None) -> 'Resource':
         """
         자원을 복제하는 메서드 (수량 변경 가능)
         
@@ -61,11 +58,10 @@ class Resource:
             name=self.name,
             resource_type=self.resource_type,
             quantity=quantity,
-            unit=self.unit,
             properties=self.properties.copy()
         )
         
-    def consume(self, amount: float) -> bool:
+    def consume(self, amount: int) -> bool:
         """
         자원을 소비하는 메서드
         
@@ -80,7 +76,7 @@ class Resource:
             return True
         return False
         
-    def produce(self, amount: float):
+    def produce(self, amount: int):
         """
         자원을 생산(추가)하는 메서드
         
@@ -89,7 +85,7 @@ class Resource:
         """
         self.quantity += amount
         
-    def is_sufficient(self, required_amount: float) -> bool:
+    def is_sufficient(self, required_amount: int) -> bool:
         """
         필요한 양만큼 자원이 충분한지 확인
         
@@ -125,7 +121,7 @@ class Resource:
         self.properties[key] = value
         
     def __str__(self) -> str:
-        return f"{self.name}({self.quantity}{self.unit})"
+        return f"{self.name}({self.quantity}개)"
         
     def __repr__(self) -> str:
         return f"Resource(id='{self.resource_id}', name='{self.name}', type={self.resource_type.value}, quantity={self.quantity})"
@@ -136,28 +132,19 @@ class ResourceRequirement:
     
     def __init__(self,
                  resource_type: ResourceType,
-                 resource_id: str,
                  name: str,
-                 required_quantity: float,
-                 unit: str = "개",
-                 is_mandatory: bool = True):
+                 required_quantity: int):
         """
         자원 요구사항 초기화
         
         Args:
             resource_type: 필요한 자원 타입
-            resource_id: 자원의 고유 ID (필수)
             name: 자원 이름
             required_quantity: 필요한 수량
-            unit: 단위
-            is_mandatory: 필수 여부 (기본값: True)
         """
         self.resource_type = resource_type
-        self.resource_id = resource_id
         self.name = name
         self.required_quantity = required_quantity
-        self.unit = unit
-        self.is_mandatory = is_mandatory
         
     def is_satisfied_by(self, resource: Resource) -> bool:
         """
@@ -174,8 +161,7 @@ class ResourceRequirement:
                 resource.is_sufficient(self.required_quantity))
                 
     def __str__(self) -> str:
-        mandatory_str = "필수" if self.is_mandatory else "선택"
-        return f"[{mandatory_str}] {self.name}: {self.required_quantity}{self.unit}"
+        return f"{self.name}: {self.required_quantity}개"
         
     def __repr__(self) -> str:
-        return f"ResourceRequirement(id='{self.resource_id}', type={self.resource_type.value}, name='{self.name}', qty={self.required_quantity}, mandatory={self.is_mandatory})"
+        return f"ResourceRequirement(type={self.resource_type.value}, name='{self.name}', qty={self.required_quantity})"

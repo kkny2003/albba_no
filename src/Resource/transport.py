@@ -3,28 +3,42 @@ from typing import Optional, Generator, List, Dict, Any
 from src.Resource.resource_base import Resource, ResourceType
 
 
-class Transport:
+class Transport(Resource):
     """SimPy 기반 운송 모델 클래스입니다. 제품의 이동을 시뮬레이션합니다."""
 
-    def __init__(self, env: simpy.Environment, transport_id: str, capacity: int = 10, 
+    def __init__(self, env: simpy.Environment, transport_id: str, name: str, capacity: int = 10, 
                  transport_speed: float = 1.0):
         """
         초기화 메서드입니다 (SimPy 환경 필수).
         
         :param env: SimPy 환경 객체 (필수)
         :param transport_id: 운송 수단의 ID
+        :param name: 운송 수단의 이름
         :param capacity: 운송 수단의 수용 능력
         :param transport_speed: 운송 속도 (단위: 거리/시간)
         """
+        # 운송수단별 특성을 properties에 저장
+        properties = {
+            'capacity': capacity,
+            'transport_speed': transport_speed,
+            'current_load': 0,
+            'cargo': [],
+            'total_distance_traveled': 0.0,
+            'total_transport_time': 0.0
+        }
+        
+        # Resource 기본 클래스 초기화
+        super().__init__(
+            resource_id=transport_id,
+            name=name,
+            resource_type=ResourceType.TRANSPORT,
+            quantity=1,
+            properties=properties
+        )
+        
+        # SimPy 관련 속성
         self.env = env  # SimPy 환경
-        self.transport_id = transport_id  # 운송 수단의 ID
-        self.capacity = capacity            # 운송 수단의 수용 능력
-        self.transport_speed = transport_speed  # 운송 속도
-        self.current_load = 0               # 현재 적재량 초기화
-        self.resource = simpy.Resource(env, capacity=1)  # 운송 수단은 한 번에 하나의 작업만 수행
-        self.cargo = []                     # 적재된 화물 목록
-        self.total_distance_traveled = 0.0  # 총 이동 거리
-        self.total_transport_time = 0.0     # 총 운송 시간
+        self.simpy_resource = simpy.Resource(env, capacity=1)  # 운송 수단은 한 번에 하나의 작업만 수행
 
     def transport(self, product, distance: float) -> Generator[simpy.Event, None, bool]:
         """
@@ -144,35 +158,3 @@ class Transport:
         return f"{self.transport_id} (적재량: {self.current_load}/{self.capacity}, 속도: {self.transport_speed})"
 
 
-def create_transport_resource(transport_id: str, 
-                            transport_name: str,
-                            capacity: float,
-                            transport_type: str = "지게차") -> Resource:
-    """
-    운송 자원을 생성하는 헬퍼 함수
-    
-    Args:
-        transport_id: 운송 수단의 고유 ID
-        transport_name: 운송 수단 이름
-        capacity: 운송 용량
-        transport_type: 운송 수단 타입 (지게차, 컨베이어벨트, 운반차 등)
-        
-    Returns:
-        Resource: 운송 자원 객체
-    """
-    transport_resource = Resource(
-        resource_id=transport_id,
-        name=transport_name,
-        resource_type=ResourceType.TRANSPORT,
-        quantity=1.0,  # 운송 수단 자체는 1개
-        unit="대"
-    )
-    
-    # 운송 관련 속성들 설정
-    transport_resource.set_property("capacity", capacity)
-    transport_resource.set_property("current_load", 0.0)
-    transport_resource.set_property("transport_type", transport_type)
-    transport_resource.set_property("is_moving", False)
-    transport_resource.set_property("speed", 1.0)  # 이동 속도 (단위: m/s 또는 적절한 단위)
-    
-    return transport_resource

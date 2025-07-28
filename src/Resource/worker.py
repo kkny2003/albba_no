@@ -4,10 +4,10 @@ from typing import Optional, Generator, List
 from src.Resource.resource_base import ResourceType, Resource
 
 
-class Worker:
+class Worker(Resource):
     """SimPy 기반 작업자 모델을 정의하는 클래스입니다."""
     
-    def __init__(self, env: simpy.Environment, worker_id: str, skills: List[str] = None, 
+    def __init__(self, env: simpy.Environment, worker_id: str, name: str, skills: List[str] = None, 
                  work_speed: float = 1.0, error_probability: Optional[float] = None,
                  mean_time_to_rest: Optional[float] = None, mean_rest_time: Optional[float] = None):
         """작업자의 정보를 초기화합니다.
@@ -15,29 +15,41 @@ class Worker:
         Args:
             env (simpy.Environment): SimPy 시뮬레이션 환경
             worker_id (str): 작업자의 고유 ID
+            name (str): 작업자의 이름
             skills (List[str]): 작업자가 가진 기술 목록
             work_speed (float): 작업 속도 배수 (1.0이 기본 속도)
             error_probability (Optional[float]): 작업당 실수 확률 (0.0~1.0, None=비활성화, 기본값: None)
             mean_time_to_rest (Optional[float]): 평균 휴식 필요 간격 (None=비활성화, 기본값: None)
             mean_rest_time (Optional[float]): 평균 휴식 시간 (None=비활성화, 기본값: None)
         """
-        self.env = env  # 시뮬레이션 환경
-        self.worker_id = worker_id  # 작업자 ID
-        self.skills = skills if skills is not None else []  # 보유 기술
-        self.work_speed = work_speed  # 작업 속도
-        self.resource = simpy.Resource(env, capacity=1)  # 작업자는 한 번에 하나의 작업만 수행
-        self.total_tasks_completed = 0  # 완료한 총 작업 수
-        self.total_work_time = 0  # 총 작업 시간
-        self.current_task = None  # 현재 수행 중인 작업
+        # 작업자별 특성을 properties에 저장
+        properties = {
+            'skills': skills if skills is not None else [],
+            'work_speed': work_speed,
+            'error_probability': error_probability,
+            'mean_time_to_rest': mean_time_to_rest,
+            'mean_rest_time': mean_rest_time,
+            'total_tasks_completed': 0,
+            'total_work_time': 0,
+            'current_task': None,
+            'is_resting': False,
+            'total_errors': 0,
+            'total_rest_time': 0,
+            'last_rest_time': 0
+        }
         
-        # 실수/휴식 관련 매개변수
-        self.error_probability = error_probability  # 작업당 실수 확률 (None이면 비활성화)
-        self.mean_time_to_rest = mean_time_to_rest  # 평균 휴식 필요 간격 (None이면 비활성화)
-        self.mean_rest_time = mean_rest_time  # 평균 휴식 시간 (None이면 비활성화)
-        self.is_resting = False  # 현재 휴식 상태
-        self.total_errors = 0  # 총 실수 횟수
-        self.total_rest_time = 0  # 총 휴식 시간
-        self.last_rest_time = 0  # 마지막 휴식 시간
+        # Resource 기본 클래스 초기화
+        super().__init__(
+            resource_id=worker_id,
+            name=name,
+            resource_type=ResourceType.WORKER,
+            quantity=1,
+            properties=properties
+        )
+        
+        # SimPy 관련 속성
+        self.env = env  # 시뮬레이션 환경
+        self.simpy_resource = simpy.Resource(env, capacity=1)  # 작업자는 한 번에 하나의 작업만 수행
         
     def work(self, product, task_name: str, base_duration: float) -> Generator[simpy.Event, None, None]:
         """작업자가 특정 작업을 수행하는 프로세스입니다.
@@ -51,32 +63,35 @@ class Worker:
             simpy.Event: SimPy 이벤트들
         """
         # 작업자가 휴식 중인지 확인
-        if self.is_resting:
-            print(f"[시간 {self.env.now:.1f}] 작업자 {self.worker_id}가 휴식 중입니다. 휴식이 완료될 때까지 대기합니다.")
+        if self.get_property('is_resting', False):
+            print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 휴식 중입니다. 휴식이 완료될 때까지 대기합니다.")
             return
             
         # 작업 시간을 작업자의 속도에 맞게 조정
-        actual_duration = base_duration / self.work_speed
+        work_speed = self.get_property('work_speed', 1.0)
+        actual_duration = base_duration / work_speed
         
         # 작업자 리소스 요청
-        with self.resource.request() as request:
+        with self.simpy_resource.request() as request:
             yield request  # 작업자가 사용 가능할 때까지 대기
             
-            self.current_task = task_name
+            self.set_property('current_task', task_name)
             start_time = self.env.now
             
-            print(f"[시간 {self.env.now:.1f}] 작업자 {self.worker_id}가 제품 {getattr(product, 'product_id', 'Unknown')}에 대한 '{task_name}' 작업을 시작합니다.")
+            print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 제품 {getattr(product, 'product_id', 'Unknown')}에 대한 '{task_name}' 작업을 시작합니다.")
             
             # 작업 중 실수 발생 체크 (실수 확률이 설정된 경우에만)
-            if self.error_probability is not None and self._check_error():
-                print(f"[시간 {self.env.now:.1f}] 작업자 {self.worker_id}가 실수를 했습니다! 작업을 다시 시작합니다.")
+            error_prob = self.get_property('error_probability')
+            if error_prob is not None and self._check_error():
+                print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 실수를 했습니다! 작업을 다시 시작합니다.")
                 # 실수 발생 시 작업 시간이 1.5배 증가
                 actual_duration *= 1.5
-                self.total_errors += 1
+                self.set_property('total_errors', self.get_property('total_errors', 0) + 1)
             
             # 휴식 필요 여부 체크 (휴식 기능이 활성화된 경우에만)
-            if self.mean_time_to_rest is not None and self._check_rest_needed():
-                print(f"[시간 {self.env.now:.1f}] 작업자 {self.worker_id}가 휴식이 필요합니다!")
+            mean_rest = self.get_property('mean_time_to_rest')
+            if mean_rest is not None and self._check_rest_needed():
+                print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 휴식이 필요합니다!")
                 # 휴식 프로세스 시작
                 yield self.env.process(self._rest_process())
                 return  # 휴식 후 작업 재시작 필요
@@ -263,35 +278,3 @@ class Worker:
             print(f"작업자 {self.worker_id}가 새로운 기술 '{new_skill}'을 습득했습니다.")
 
 
-def create_worker_resource(worker_id: str,
-                         worker_name: str,
-                         skill_level: str = "중급",
-                         department: str = "제조부") -> Resource:
-    """
-    작업자 자원을 생성하는 헬퍼 함수
-    
-    Args:
-        worker_id: 작업자의 고유 ID
-        worker_name: 작업자 이름
-        skill_level: 기술 수준 (초급, 중급, 고급)
-        department: 소속 부서
-        
-    Returns:
-        Resource: 작업자 자원 객체
-    """
-    worker_resource = Resource(
-        resource_id=worker_id,
-        name=worker_name,
-        resource_type=ResourceType.WORKER,
-        quantity=1.0,  # 작업자는 1명
-        unit="명"
-    )
-    
-    # 작업자 관련 속성들 설정
-    worker_resource.set_property("skill_level", skill_level)
-    worker_resource.set_property("department", department)
-    worker_resource.set_property("current_task", None)
-    worker_resource.set_property("is_working", False)
-    worker_resource.set_property("work_hours", 8.0)  # 일일 근무시간
-    
-    return worker_resource
