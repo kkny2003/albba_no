@@ -12,4 +12,4 @@ def inject_dynamic_resource_event(env: simpy.Environment, resources: list):
     """
     yield env.timeout(10)
     print(f"[시간 {env.now:.1f}] [동적이벤트] 신규 자원 투입!")
-    resources.append(Resource(resource_id='R999', name='긴급부품', resource_type=ResourceType.SEMI_FINISHED, quantity=1, unit='개'))
+    resources.append(Resource(resource_id='R999', name='긴급부품', resource_type=ResourceType.SEMI_FINISHED))

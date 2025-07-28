@@ -64,8 +64,7 @@ class ManufacturingProcess(BaseProcess):
                 resource_id=f"machine_{i}",
                 name=f"기계_{i+1}",
                 resource_type=ResourceType.MACHINE,
-                quantity=1.0,
-                unit="대"
+                properties={"unit": "대"}
             )
             self.add_input_resource(machine_resource)
             
@@ -75,8 +74,7 @@ class ManufacturingProcess(BaseProcess):
                 resource_id=f"worker_{i}",
                 name=f"작업자_{i+1}",
                 resource_type=ResourceType.WORKER,
-                quantity=1.0,
-                unit="명"
+                properties={"unit": "명"}
             )
             self.add_input_resource(worker_resource)
             
@@ -105,8 +103,7 @@ class ManufacturingProcess(BaseProcess):
             resource_id="semi_finished_001",
             name="반제품",
             resource_type=ResourceType.SEMI_FINISHED,
-            quantity=1.0,
-            unit="개"
+            properties={"unit": "개"}
         )
         self.add_output_resource(semi_finished_product)
 
