@@ -21,6 +21,7 @@ from src.Resource.resource_base import Resource, ResourceType
 from src.processes.manufacturing_process import ManufacturingProcess
 from src.processes.assembly_process import AssemblyProcess
 from src.processes.quality_control_process import QualityControlProcess
+from src.processes.transport_process import TransportProcess
 from src.processes.base_process import MultiProcessGroup, ProcessChain
 
 env = simpy.Environment()
@@ -65,28 +66,18 @@ qc = QualityControlProcess(
 )
 assembly = AssemblyProcess(env, [machines[5]], workers, [resources[1], resources[3], resources[4], resources[5]], [], [], process_name='최종조립', assembly_time=3.0)
 
-def transport_proc(env, transport, src, dst, resource):
-
-    """
-    src(출발지)에서 dst(도착지)로 resource를 운송하는 실제 로직 예시
-    - 운송 시작, 적재, 하역, 완료 로그 출력
-    - Transport 클래스의 transport 메서드 활용
-    """
-    while True:
-        log(f"[시간 {env.now:.1f}] {transport.resource_id} 운송 시작: {src} → {dst} (거리: 5.0)")
-        yield env.timeout(0.2)
-        log(f"[시간 {env.now:.1f}] {transport.resource_id} 제품 적재: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
-        # 실제 적재 로직 (예시)
-        transport.current_load += 1
-        yield env.timeout(0.3)
-        log(f"[시간 {env.now:.1f}] {transport.resource_id} 제품 하역: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
-        # 실제 하역 로직 (예시)
-        transport.current_load -= 1
-        yield env.timeout(0.5)
-        log(f"[시간 {env.now:.1f}] {transport.resource_id} 운송 완료: {src} → {dst}")
-        # Transport 클래스의 실제 운송 메서드 호출 (거리 5.0)
-        yield from transport.transport(resource, distance=5.0)
-        yield env.timeout(2.0)  # 다음 운송까지 대기
+# 운송 공정 생성 (모듈화된 클래스 사용)
+transport_a1_to_a2 = TransportProcess(
+    env, 
+    transports=[transports[0]], 
+    route='A1->A2',
+    input_resources=[resources[0]], 
+    distance=5.0,
+    loading_time=0.2,
+    unloading_time=0.3,
+    transport_time=0.5,
+    cooldown_time=2.0
+)
 
 def buffer_compete_proc(env, buffer, resource):
     # Buffer 클래스의 put 메서드 활용 예시
@@ -125,7 +116,7 @@ def main_chain(env):
 
 # 직접 SimPy에 프로세스 등록
 env.process(main_chain(env))
-env.process(transport_proc(env, transports[0], 'A1', 'A2', resources[0]))
+env.process(transport_a1_to_a2.execute())
 env.process(buffer_compete_proc(env, buffers[0], resources[0]))
 env.process(dynamic_event(env))
 
