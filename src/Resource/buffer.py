@@ -1,7 +1,7 @@
 import simpy
 from typing import Optional, Generator, Any, List, Union
 from enum import Enum
-from src.Resource.helper import ResourceType, Resource
+from src.Resource.resource_base import ResourceType, Resource
 
 
 class BufferPolicy(Enum):

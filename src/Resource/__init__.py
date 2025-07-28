@@ -8,4 +8,4 @@ from src.Resource.worker import Worker, create_worker_resource     # 작업자 �
 from src.Resource.product import Product, create_product_resource     # 제품 모델 클래스 및 생성 함수 임포트
 from src.Resource.transport import Transport, create_transport_resource  # 운송 모델 클래스 및 생성 함수 임포트
 from src.Resource.buffer import Buffer, BufferPolicy, create_buffer_resource  # 버퍼 모델 클래스 및 생성 함수 임포트
-from src.Resource.helper import Resource, ResourceType, ResourceRequirement  # 헬퍼 클래스들 임포트
+from src.Resource.resource_base import Resource, ResourceType, ResourceRequirement  # 헬퍼 클래스들 임포트

@@ -10,7 +10,7 @@ import uuid
 import concurrent.futures
 import re
 import simpy
-from src.Resource.helper import Resource, ResourceRequirement, ResourceType
+from src.Resource.resource_base import Resource, ResourceRequirement, ResourceType
 
 
 class PriorityValidationError(Exception):

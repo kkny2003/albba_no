@@ -1,6 +1,6 @@
 import simpy
 from typing import Optional, Generator, List, Dict, Any
-from src.Resource.helper import Resource, ResourceType
+from src.Resource.resource_base import Resource, ResourceType
 
 
 class Transport:

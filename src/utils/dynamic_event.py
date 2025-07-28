@@ -1,5 +1,5 @@
 import simpy
-from src.Resource.helper import Resource, ResourceType
+from src.Resource.resource_base import Resource, ResourceType
 
 def inject_dynamic_resource_event(env: simpy.Environment, resources: list):
     """

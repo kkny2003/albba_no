@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import uuid
 
-from src.Resource.helper import Resource, ResourceType, ResourceRequirement
+from src.Resource.resource_base import Resource, ResourceType, ResourceRequirement
 from src.core.centralized_statistics import CentralizedStatisticsManager, StatisticsInterface
 
 

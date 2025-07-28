@@ -1,7 +1,7 @@
 import simpy
 import random
 from typing import Optional, Generator, Any
-from src.Resource.helper import ResourceType, Resource
+from src.Resource.resource_base import ResourceType, Resource
 
 
 class Machine:

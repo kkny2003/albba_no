@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any
 from datetime import datetime
-from src.Resource.helper import Resource, ResourceType
+from src.Resource.resource_base import Resource, ResourceType
 
 
 class Product:
