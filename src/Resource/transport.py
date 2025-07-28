@@ -17,24 +17,21 @@ class Transport(Resource):
         :param capacity: 운송 수단의 수용 능력
         :param transport_speed: 운송 속도 (단위: 거리/시간)
         """
-        # 운송수단별 특성을 properties에 저장
-        properties = {
-            'capacity': capacity,
-            'transport_speed': transport_speed,
-            'current_load': 0,
-            'cargo': [],
-            'total_distance_traveled': 0.0,
-            'total_transport_time': 0.0
-        }
-        
         # Resource 기본 클래스 초기화
         super().__init__(
             resource_id=transport_id,
             name=name,
             resource_type=ResourceType.TRANSPORT,
-            quantity=1,
-            properties=properties
+            quantity=1
         )
+        
+        # 운송수단별 특성을 직접 어트리뷰트로 설정
+        self.capacity = capacity
+        self.transport_speed = transport_speed
+        self.current_load = 0
+        self.cargo = []
+        self.total_distance_traveled = 0.0
+        self.total_transport_time = 0.0
         
         # SimPy 관련 속성
         self.env = env  # SimPy 환경

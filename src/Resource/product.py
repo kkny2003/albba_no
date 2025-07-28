@@ -18,29 +18,26 @@ class Product(Resource):
             specifications (Optional[Dict[str, Any]]): 제품 사양 정보
             resource_type (ResourceType): 제품의 자원 타입 (원자재/반제품/완제품)
         """
-        # 제품별 특성을 properties에 저장
-        properties = {
-            'product_type': product_type,
-            'specifications': specifications or {},
-            'creation_time': None,
-            'completion_time': None,
-            'lead_time': None,
-            'current_process_step': "대기중",
-            'quality_status': "미검사",
-            'defect_count': 0,
-            'process_history': [],
-            'total_processing_time': 0.0,
-            'total_waiting_time': 0.0
-        }
-        
         # Resource 기본 클래스 초기화
         super().__init__(
             resource_id=product_id,
             name=name,
             resource_type=resource_type,
-            quantity=1,
-            properties=properties
+            quantity=1
         )
+        
+        # 제품별 특성을 직접 어트리뷰트로 설정
+        self.product_type = product_type
+        self.specifications = specifications or {}
+        self.creation_time = None
+        self.completion_time = None
+        self.lead_time = None
+        self.current_process_step = "대기중"
+        self.quality_status = "미검사"
+        self.defect_count = 0
+        self.process_history = []
+        self.total_processing_time = 0.0
+        self.total_waiting_time = 0.0
         
     def start_process_step(self, step_name: str, start_time: float):
         """새로운 공정 단계를 시작합니다.
@@ -49,26 +46,23 @@ class Product(Resource):
             step_name (str): 공정 단계 이름
             start_time (float): 시작 시간
         """
-        self.set_property('current_process_step', step_name)
+        self.current_process_step = step_name
         
         # 이전 단계가 있다면 완료 처리
-        process_history = self.get_property('process_history', [])
-        if process_history:
-            last_step = process_history[-1]
+        if self.process_history:
+            last_step = self.process_history[-1]
             if 'end_time' not in last_step:
                 last_step['end_time'] = start_time
                 last_step['duration'] = start_time - last_step['start_time']
-                total_time = self.get_property('total_processing_time', 0.0)
-                self.set_property('total_processing_time', total_time + last_step['duration'])
+                self.total_processing_time += last_step['duration']
         
         # 새 단계 기록
-        process_history.append({
+        self.process_history.append({
             'step_name': step_name,
             'start_time': start_time,
             'end_time': None,
             'duration': None
         })
-        self.set_property('process_history', process_history)
         
     def complete_process_step(self, end_time: float):
         """현재 공정 단계를 완료합니다.
@@ -76,13 +70,11 @@ class Product(Resource):
         Args:
             end_time (float): 완료 시간
         """
-        process_history = self.get_property('process_history', [])
-        if process_history:
-            current_step = process_history[-1]
+        if self.process_history:
+            current_step = self.process_history[-1]
             current_step['end_time'] = end_time
             current_step['duration'] = end_time - current_step['start_time']
-            total_time = self.get_property('total_processing_time', 0.0)
-            self.set_property('total_processing_time', total_time + current_step['duration'])
+            self.total_processing_time += current_step['duration']
         
     def set_quality_status(self, status: str, defects: int = 0):
         """품질 검사 결과를 설정합니다.
@@ -91,8 +83,8 @@ class Product(Resource):
             status (str): 품질 상태 ("양호", "불량", "재작업필요" 등)
             defects (int): 발견된 결함 수
         """
-        self.set_property('quality_status', status)
-        self.set_property('defect_count', defects)
+        self.quality_status = status
+        self.defect_count = defects
         
     def add_specification(self, key: str, value: Any):
         """제품 사양을 추가합니다.
@@ -101,9 +93,7 @@ class Product(Resource):
             key (str): 사양 키
             value (Any): 사양 값
         """
-        specifications = self.get_property('specifications', {})
-        specifications[key] = value
-        self.set_property('specifications', specifications)
+        self.specifications[key] = value
         
     def get_specification(self, key: str, default: Any = None) -> Any:
         """제품 사양을 가져옵니다.
@@ -145,7 +135,7 @@ class Product(Resource):
             Dict[str, Any]: 상태 요약 정보
         """
         return {
-            'product_id': self.product_id,
+            'product_id': self.resource_id,
             'product_type': self.product_type,
             'current_step': self.current_process_step,
             'quality_status': self.quality_status,
@@ -160,13 +150,13 @@ class Product(Resource):
     def __str__(self):
         """제품 정보를 문자열로 반환합니다."""
         status = self.get_status_summary()
-        return (f"제품[{self.product_id}] 유형:{self.product_type} "
+        return (f"제품[{self.resource_id}] 유형:{self.product_type} "
                 f"단계:{self.current_process_step} 품질:{self.quality_status} "
                 f"완료:{status['is_completed']}")
                 
     def __repr__(self):
         """제품의 상세 정보를 반환합니다."""
-        return (f"Product(id='{self.product_id}', type='{self.product_type}', "
+        return (f"Product(id='{self.resource_id}', type='{self.product_type}', "
                 f"step='{self.current_process_step}', quality='{self.quality_status}')")
 
 

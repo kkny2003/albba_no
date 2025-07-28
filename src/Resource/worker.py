@@ -22,30 +22,27 @@ class Worker(Resource):
             mean_time_to_rest (Optional[float]): 평균 휴식 필요 간격 (None=비활성화, 기본값: None)
             mean_rest_time (Optional[float]): 평균 휴식 시간 (None=비활성화, 기본값: None)
         """
-        # 작업자별 특성을 properties에 저장
-        properties = {
-            'skills': skills if skills is not None else [],
-            'work_speed': work_speed,
-            'error_probability': error_probability,
-            'mean_time_to_rest': mean_time_to_rest,
-            'mean_rest_time': mean_rest_time,
-            'total_tasks_completed': 0,
-            'total_work_time': 0,
-            'current_task': None,
-            'is_resting': False,
-            'total_errors': 0,
-            'total_rest_time': 0,
-            'last_rest_time': 0
-        }
-        
         # Resource 기본 클래스 초기화
         super().__init__(
             resource_id=worker_id,
             name=name,
             resource_type=ResourceType.WORKER,
-            quantity=1,
-            properties=properties
+            quantity=1
         )
+        
+        # 작업자별 특성을 직접 어트리뷰트로 설정
+        self.skills = skills if skills is not None else []
+        self.work_speed = work_speed
+        self.error_probability = error_probability
+        self.mean_time_to_rest = mean_time_to_rest
+        self.mean_rest_time = mean_rest_time
+        self.total_tasks_completed = 0
+        self.total_work_time = 0
+        self.current_task = None
+        self.is_resting = False
+        self.total_errors = 0
+        self.total_rest_time = 0
+        self.last_rest_time = 0
         
         # SimPy 관련 속성
         self.env = env  # 시뮬레이션 환경
@@ -63,34 +60,31 @@ class Worker(Resource):
             simpy.Event: SimPy 이벤트들
         """
         # 작업자가 휴식 중인지 확인
-        if self.get_property('is_resting', False):
+        if self.is_resting:
             print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 휴식 중입니다. 휴식이 완료될 때까지 대기합니다.")
             return
             
         # 작업 시간을 작업자의 속도에 맞게 조정
-        work_speed = self.get_property('work_speed', 1.0)
-        actual_duration = base_duration / work_speed
+        actual_duration = base_duration / self.work_speed
         
         # 작업자 리소스 요청
         with self.simpy_resource.request() as request:
             yield request  # 작업자가 사용 가능할 때까지 대기
             
-            self.set_property('current_task', task_name)
+            self.current_task = task_name
             start_time = self.env.now
             
             print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 제품 {getattr(product, 'product_id', 'Unknown')}에 대한 '{task_name}' 작업을 시작합니다.")
             
             # 작업 중 실수 발생 체크 (실수 확률이 설정된 경우에만)
-            error_prob = self.get_property('error_probability')
-            if error_prob is not None and self._check_error():
+            if self.error_probability is not None and self._check_error():
                 print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 실수를 했습니다! 작업을 다시 시작합니다.")
                 # 실수 발생 시 작업 시간이 1.5배 증가
                 actual_duration *= 1.5
-                self.set_property('total_errors', self.get_property('total_errors', 0) + 1)
+                self.total_errors += 1
             
             # 휴식 필요 여부 체크 (휴식 기능이 활성화된 경우에만)
-            mean_rest = self.get_property('mean_time_to_rest')
-            if mean_rest is not None and self._check_rest_needed():
+            if self.mean_time_to_rest is not None and self._check_rest_needed():
                 print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 휴식이 필요합니다!")
                 # 휴식 프로세스 시작
                 yield self.env.process(self._rest_process())
@@ -104,7 +98,7 @@ class Worker(Resource):
             self.total_work_time += actual_duration
             self.current_task = None
             
-            print(f"[시간 {self.env.now:.1f}] 작업자 {self.worker_id}가 '{task_name}' 작업을 완료했습니다.")
+            print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 '{task_name}' 작업을 완료했습니다.")
     
     def can_perform_task(self, required_skill: str) -> bool:
         """작업자가 특정 기술이 필요한 작업을 수행할 수 있는지 확인합니다.
@@ -144,10 +138,10 @@ class Worker(Resource):
             dict: 작업자의 현재 상태 정보
         """
         return {
-            'worker_id': self.worker_id,
+            'worker_id': self.resource_id,
             'skills': self.skills,
             'work_speed': self.work_speed,
-            'is_busy': len(self.resource.users) > 0,
+            'is_busy': len(self.simpy_resource.users) > 0,
             'current_task': self.current_task,
             'total_tasks_completed': self.total_tasks_completed,
             'efficiency': self.get_efficiency(),
@@ -161,7 +155,7 @@ class Worker(Resource):
     def __str__(self):
         """작업자의 정보를 문자열로 반환합니다."""
         status = self.get_status()
-        return (f"작업자 ID: {self.worker_id}, 기술: {', '.join(self.skills)}, "
+        return (f"작업자 ID: {self.resource_id}, 기술: {', '.join(self.skills)}, "
                 f"작업 속도: {self.work_speed}x, 현재 작업: {self.current_task or '없음'}, "
                 f"완료 작업: {self.total_tasks_completed}, 가동률: {status['utilization']:.2%}")
                 
@@ -174,14 +168,14 @@ class Worker(Resource):
         Yields:
             simpy.Event: SimPy 이벤트들
         """
-        print(f"[시간 {self.env.now:.1f}] 작업자 {self.worker_id}가 휴식을 시작합니다. (시간: {duration})")
+        print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 휴식을 시작합니다. (시간: {duration})")
         
         # 작업자 리소스를 독점적으로 사용 (다른 작업 불가)
-        with self.resource.request() as request:
+        with self.simpy_resource.request() as request:
             yield request
             yield self.env.timeout(duration)
             
-        print(f"[시간 {self.env.now:.1f}] 작업자 {self.worker_id}가 휴식을 마쳤습니다.")
+        print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 휴식을 마쳤습니다.")
     
     def _check_error(self) -> bool:
         """작업 중 실수 발생 여부를 확인합니다.
@@ -225,17 +219,17 @@ class Worker(Resource):
         self.is_resting = True
         self.last_rest_time = self.env.now
         
-        print(f"[시간 {self.env.now:.1f}] 작업자 {self.worker_id}가 휴식을 시작합니다. (예상 시간: {rest_duration:.2f})")
+        print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}가 휴식을 시작합니다. (예상 시간: {rest_duration:.2f})")
         
         # 작업자 리소스를 독점적으로 사용하여 휴식
-        with self.resource.request() as request:
+        with self.simpy_resource.request() as request:
             yield request
             yield self.env.timeout(rest_duration)
             
         self.total_rest_time += rest_duration
         self.is_resting = False
         
-        print(f"[시간 {self.env.now:.1f}] 작업자 {self.worker_id}의 휴식이 완료되었습니다.")
+        print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}의 휴식이 완료되었습니다.")
     
     def get_error_rate(self) -> float:
         """작업자의 실수율을 계산합니다 (실수 횟수 / 완료 작업 수).
@@ -264,7 +258,7 @@ class Worker(Resource):
         Yields:
             simpy.Event: SimPy 이벤트들
         """
-        print(f"[시간 {self.env.now:.1f}] 작업자 {self.worker_id}에게 강제 휴식을 발생시킵니다.")
+        print(f"[시간 {self.env.now:.1f}] 작업자 {self.resource_id}에게 강제 휴식을 발생시킵니다.")
         yield self.env.process(self._rest_process())
         
     def learn_skill(self, new_skill: str):
@@ -275,6 +269,6 @@ class Worker(Resource):
         """
         if new_skill not in self.skills:
             self.skills.append(new_skill)
-            print(f"작업자 {self.worker_id}가 새로운 기술 '{new_skill}'을 습득했습니다.")
+            print(f"작업자 {self.resource_id}가 새로운 기술 '{new_skill}'을 습득했습니다.")
 
 

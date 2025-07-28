@@ -23,29 +23,26 @@ class Machine(Resource):
             mean_time_to_failure (Optional[float]): 평균 고장 간격 시간 (None=비활성화, 기본값: None)
             mean_time_to_repair (Optional[float]): 평균 수리 시간 (None=비활성화, 기본값: None)
         """
-        # 기계별 특성을 properties에 저장
-        properties = {
-            'capacity': capacity,
-            'processing_time': processing_time,
-            'failure_probability': failure_probability,
-            'mean_time_to_failure': mean_time_to_failure,
-            'mean_time_to_repair': mean_time_to_repair,
-            'total_processed': 0,
-            'total_busy_time': 0,
-            'is_broken': False,
-            'total_failures': 0,
-            'total_repair_time': 0,
-            'last_failure_time': 0
-        }
-        
         # Resource 기본 클래스 초기화
         super().__init__(
             resource_id=machine_id,
             name=name,
             resource_type=ResourceType.MACHINE,
-            quantity=1,
-            properties=properties
+            quantity=1
         )
+        
+        # 기계별 특성을 직접 어트리뷰트로 설정
+        self.capacity = capacity
+        self.processing_time = processing_time
+        self.failure_probability = failure_probability
+        self.mean_time_to_failure = mean_time_to_failure
+        self.mean_time_to_repair = mean_time_to_repair
+        self.total_processed = 0
+        self.total_busy_time = 0
+        self.is_broken = False
+        self.total_failures = 0
+        self.total_repair_time = 0
+        self.last_failure_time = 0
         
         # SimPy 관련 속성
         self.env = env  # 시뮬레이션 환경
@@ -62,11 +59,11 @@ class Machine(Resource):
             simpy.Event: SimPy 이벤트들
         """
         # 기계가 고장 상태인지 확인
-        if self.get_property('is_broken', False):
+        if self.is_broken:
             print(f"[시간 {self.env.now:.1f}] {self.resource_id} 기계가 고장 상태입니다. 수리가 완료될 때까지 대기합니다.")
             return
             
-        process_time = processing_time if processing_time is not None else self.get_property('processing_time', 1.0)
+        process_time = processing_time if processing_time is not None else self.processing_time
         
         # 기계 리소스 요청
         with self.simpy_resource.request() as request:
@@ -76,8 +73,7 @@ class Machine(Resource):
             print(f"[시간 {self.env.now:.1f}] {self.resource_id} 기계가 제품 {getattr(product, 'product_id', 'Unknown')} 처리를 시작합니다.")
             
             # 작업 중 고장 발생 체크 (고장 확률이 설정된 경우에만)
-            failure_prob = self.get_property('failure_probability')
-            if failure_prob is not None and self._check_failure():
+            if self.failure_probability is not None and self._check_failure():
                 print(f"[시간 {self.env.now:.1f}] {self.resource_id} 기계에 고장이 발생했습니다!")
                 # 고장이 발생하면 수리 프로세스 시작
                 yield self.env.process(self._repair_process())
@@ -87,8 +83,8 @@ class Machine(Resource):
             yield self.env.timeout(process_time)
             
             # 통계 업데이트
-            self.set_property('total_processed', self.get_property('total_processed', 0) + 1)
-            self.set_property('total_busy_time', self.get_property('total_busy_time', 0) + process_time)
+            self.total_processed += 1
+            self.total_busy_time += process_time
             
             print(f"[시간 {self.env.now:.1f}] {self.resource_id} 기계가 제품 {getattr(product, 'product_id', 'Unknown')} 처리를 완료했습니다.")
     
@@ -100,7 +96,7 @@ class Machine(Resource):
         """
         if self.env.now == 0:
             return 0.0
-        return self.get_property('total_busy_time', 0) / self.env.now
+        return self.total_busy_time / self.env.now
     
     def get_status(self) -> dict:
         """기계의 현재 상태를 반환합니다.
@@ -111,14 +107,14 @@ class Machine(Resource):
         return {
             'machine_id': self.resource_id,
             'machine_name': self.name,
-            'capacity': self.get_property('capacity', 1),
+            'capacity': self.capacity,
             'current_users': len(self.simpy_resource.users),
             'queue_length': len(self.simpy_resource.queue),
-            'total_processed': self.get_property('total_processed', 0),
+            'total_processed': self.total_processed,
             'utilization': self.get_utilization(),
             'is_busy': len(self.simpy_resource.users) > 0,
-            'is_broken': self.get_property('is_broken', False),
-            'total_failures': self.get_property('total_failures', 0),
+            'is_broken': self.is_broken,
+            'total_failures': self.total_failures,
             'failure_rate': self.get_failure_rate(),
             'availability': self.get_availability()
         }
@@ -155,11 +151,10 @@ class Machine(Resource):
             bool: 고장 발생 여부
         """
         # 고장 확률이 None이면 고장 발생하지 않음
-        failure_prob = self.get_property('failure_probability')
-        if failure_prob is None:
+        if self.failure_probability is None:
             return False
         # 고장 확률에 따른 랜덤 고장 발생 체크
-        return random.random() < failure_prob
+        return random.random() < self.failure_probability
     
     def _repair_process(self) -> Generator[simpy.Event, None, None]:
         """기계 고장 시 수리 프로세스를 수행합니다.
@@ -167,17 +162,16 @@ class Machine(Resource):
         Yields:
             simpy.Event: SimPy 이벤트들
         """
-        self.set_property('is_broken', True)
-        self.set_property('total_failures', self.get_property('total_failures', 0) + 1)
-        self.set_property('last_failure_time', self.env.now)
+        self.is_broken = True
+        self.total_failures += 1
+        self.last_failure_time = self.env.now
         
         # 수리 시간이 None이면 기본값 사용
-        mean_repair_time = self.get_property('mean_time_to_repair')
-        if mean_repair_time is None:
+        if self.mean_time_to_repair is None:
             repair_time = 5.0  # 기본 수리 시간
         else:
             # 수리 시간은 지수분포를 따름 (평균: mean_time_to_repair)
-            repair_time = random.expovariate(1.0 / mean_repair_time)
+            repair_time = random.expovariate(1.0 / self.mean_time_to_repair)
         
         print(f"[시간 {self.env.now:.1f}] {self.resource_id} 기계 수리를 시작합니다. (예상 시간: {repair_time:.2f})")
         
@@ -186,8 +180,8 @@ class Machine(Resource):
             yield request
             yield self.env.timeout(repair_time)
             
-        self.set_property('total_repair_time', self.get_property('total_repair_time', 0) + repair_time)
-        self.set_property('is_broken', False)
+        self.total_repair_time += repair_time
+        self.is_broken = False
         
         print(f"[시간 {self.env.now:.1f}] {self.resource_id} 기계 수리가 완료되었습니다.")
     
@@ -199,7 +193,7 @@ class Machine(Resource):
         """
         if self.env.now == 0:
             return 0.0
-        return self.get_property('total_failures', 0) / self.env.now
+        return self.total_failures / self.env.now
     
     def get_availability(self) -> float:
         """기계의 가용성을 계산합니다 (정상 운영 시간 / 전체 시간).
@@ -209,7 +203,7 @@ class Machine(Resource):
         """
         if self.env.now == 0:
             return 1.0
-        uptime = self.env.now - self.get_property('total_repair_time', 0)
+        uptime = self.env.now - self.total_repair_time
         return uptime / self.env.now
     
     def force_failure(self) -> Generator[simpy.Event, None, None]:

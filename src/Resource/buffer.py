@@ -25,25 +25,22 @@ class Buffer(Resource):
             capacity (int): 버퍼의 최대 저장 용량 (기본값: 100)
             policy (BufferPolicy): 버퍼 정책 (기본값: FIFO)
         """
-        # 버퍼별 특성을 properties에 저장
-        properties = {
-            'buffer_type': buffer_type,
-            'capacity': capacity,
-            'policy': policy,
-            'total_put_operations': 0,
-            'total_get_operations': 0,
-            'total_items_stored': 0,
-            'total_items_retrieved': 0
-        }
-        
         # Resource 기본 클래스 초기화
         super().__init__(
             resource_id=buffer_id,
             name=name,
             resource_type=ResourceType.BUFFER,
-            quantity=capacity,
-            properties=properties
+            quantity=capacity
         )
+        
+        # 버퍼별 특성을 직접 어트리뷰트로 설정
+        self.buffer_type = buffer_type
+        self.capacity = capacity
+        self.policy = policy
+        self.total_put_operations = 0
+        self.total_get_operations = 0
+        self.total_items_stored = 0
+        self.total_items_retrieved = 0
         
         # SimPy 관련 속성
         self.env = env  # 시뮬레이션 환경
