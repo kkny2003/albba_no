@@ -26,9 +26,15 @@ from src.processes.base_process import MultiProcessGroup, ProcessChain
 env = simpy.Environment()
 # engine = SimulationEngine(env)  # 이 부분을 주석 처리
 
+# 로그 저장 리스트 및 기록 함수 추가
+simulation_logs = []
+def log(msg):
+    print(msg)
+    simulation_logs.append(msg)
+
 # 제품/부품 정의 (다품종)
-products = [Product(resource_id=f'P{i:03d}', name=f'제품{i}') for i in range(1, 11)]
-resources = [Resource(resource_id=f'R{i:03d}', name=f'부품{i}', resource_type=ResourceType.SEMI_FINISHED) for i in range(1, 11)]
+products = [Product(resource_id=f'Product{i:03d}', name=f'제품{i}') for i in range(1, 11)]
+resources = [Resource(resource_id=f'Part{i:03d}', name=f'부품{i}', resource_type=ResourceType.SEMI_FINISHED) for i in range(1, 11)]
 
 # 기계/작업자/운송/버퍼 (휴식, 고장, 경합, 다양한 속도)
 machines = [Machine(env, resource_id=f'M{i:03d}', name=f'기계{i}') for i in range(1, 8)]
@@ -67,17 +73,17 @@ def transport_proc(env, transport, src, dst, resource):
     - Transport 클래스의 transport 메서드 활용
     """
     while True:
-        print(f"[시간 {env.now:.1f}] {transport.resource_id} 운송 시작: {src} → {dst} (거리: 5.0)")
+        log(f"[시간 {env.now:.1f}] {transport.resource_id} 운송 시작: {src} → {dst} (거리: 5.0)")
         yield env.timeout(0.2)
-        print(f"[시간 {env.now:.1f}] {transport.resource_id} 제품 적재: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
+        log(f"[시간 {env.now:.1f}] {transport.resource_id} 제품 적재: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
         # 실제 적재 로직 (예시)
         transport.current_load += 1
         yield env.timeout(0.3)
-        print(f"[시간 {env.now:.1f}] {transport.resource_id} 제품 하역: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
+        log(f"[시간 {env.now:.1f}] {transport.resource_id} 제품 하역: {resource.name} (현재 적재량: {transport.current_load}/{transport.capacity})")
         # 실제 하역 로직 (예시)
         transport.current_load -= 1
         yield env.timeout(0.5)
-        print(f"[시간 {env.now:.1f}] {transport.resource_id} 운송 완료: {src} → {dst}")
+        log(f"[시간 {env.now:.1f}] {transport.resource_id} 운송 완료: {src} → {dst}")
         # Transport 클래스의 실제 운송 메서드 호출 (거리 5.0)
         yield from transport.transport(resource, distance=5.0)
         yield env.timeout(2.0)  # 다음 운송까지 대기
@@ -86,6 +92,7 @@ def buffer_compete_proc(env, buffer, resource):
     # Buffer 클래스의 put 메서드 활용 예시
     for _ in range(3):
         yield env.timeout(0.5)
+        log(f"[시간 {env.now:.1f}] 버퍼에 {resource.name} 투입 시도")
         yield from buffer.put(resource)
 
 # 동적 이벤트(신규 자원 투입)는 utils로 분리하여 재사용 가능하게 처리
@@ -107,12 +114,12 @@ main_group = MultiProcessGroup([aline_chain, bline_chain])
 # SimPy 프로세스 함수로 래핑
 def main_chain(env):
     try:
-        print(f"[Time {env.now:.1f}] Starting main process chain")
+        log(f"[Time {env.now:.1f}] Starting main process chain")
         # MultiProcessGroup을 단일 공정처럼 execute (SimPy generator)
         result = yield from main_group.execute()
-        print(f"[Time {env.now:.1f}] Main chain completed: {result}")
+        log(f"[Time {env.now:.1f}] Main chain completed: {result}")
     except Exception as e:
-        print(f"[Time {env.now:.1f}] Error in main_chain: {e}")
+        log(f"[Time {env.now:.1f}] Error in main_chain: {e}")
         import traceback
         traceback.print_exc()
 
@@ -122,6 +129,15 @@ env.process(transport_proc(env, transports[0], 'A1', 'A2', resources[0]))
 env.process(buffer_compete_proc(env, buffers[0], resources[0]))
 env.process(dynamic_event(env))
 
-print("Running simulation...")
+
+log("Running simulation...")
 env.run(until=50)
-print('Process chaining simulation completed!')
+log('Process chaining simulation completed!')
+
+# 시뮬레이션 결과 md 파일로 export
+md_path = os.path.join(os.path.dirname(__file__), "simulation_result.md")
+with io.open(md_path, "w", encoding="utf-8") as f:
+    f.write("# 시뮬레이션 결과 로그\n\n")
+    for line in simulation_logs:
+        f.write(f"- {line}\n")
+log(f"[Export] 시뮬레이션 결과가 {md_path}에 저장되었습니다.")
