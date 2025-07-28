@@ -3,7 +3,7 @@
 출발지에서 도착지로 자원을 운송하는 프로세스를 모델링합니다.
 """
 
-from src.processes.base_process import BaseProcess
+from src.Processes.base_process import BaseProcess
 from typing import Any, List, Generator
 import simpy
 from src.Resource.resource_base import Resource, ResourceRequirement, ResourceType
@@ -171,7 +171,7 @@ class TransportProcess(BaseProcess):
 
     def __rshift__(self, other):
         """>> 연산자를 통한 공정 체이닝 지원"""
-        from src.processes.base_process import ProcessChain
+        from src.Processes.base_process import ProcessChain
         return ProcessChain([self, other])
 
     def add_input_resource(self, resource: Resource):
