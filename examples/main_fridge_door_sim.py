@@ -14,9 +14,10 @@ from src.Resource.machine import Machine
 from src.Resource.worker import Worker
 from src.Resource.product import Product
 from src.Resource.transport import Transport
-from src.Resource.helper import Resource, ResourceType
-from src.processes.manufacturing_process import ManufacturingProcess
-from src.processes.assembly_process import AssemblyProcess
+from src.Resource.resource_base import Resource, ResourceType
+from src.Processes.manufacturing_process import ManufacturingProcess
+from src.Processes.assembly_process import AssemblyProcess
+from src.Flow.multi_process_group import MultiProcessGroup
 
 # 1. SimPy 환경 및 엔진 생성
 env = simpy.Environment()
@@ -30,14 +31,14 @@ insulation = Product('P003', '단열재')
 handle = Product('P004', '핸들')
 
 # 각 부품별 Resource 객체 (공정 input/output에 사용)
-outer_panel_res = Resource(resource_id='R001', name='도어외판', resource_type=ResourceType.SEMI_FINISHED, quantity=1, unit='개')
-inner_panel_res = Resource(resource_id='R002', name='도어내판', resource_type=ResourceType.SEMI_FINISHED, quantity=1, unit='개')
-insulation_res = Resource(resource_id='R003', name='단열재', resource_type=ResourceType.SEMI_FINISHED, quantity=1, unit='개')
-handle_res = Resource(resource_id='R004', name='핸들', resource_type=ResourceType.SEMI_FINISHED, quantity=1, unit='개')
+outer_panel_res = Resource(resource_id='R001', name='도어외판', resource_type=ResourceType.SEMI_FINISHED, properties={'quantity': 1, 'unit': '개'})
+inner_panel_res = Resource(resource_id='R002', name='도어내판', resource_type=ResourceType.SEMI_FINISHED, properties={'quantity': 1, 'unit': '개'})
+insulation_res = Resource(resource_id='R003', name='단열재', resource_type=ResourceType.SEMI_FINISHED, properties={'quantity': 1, 'unit': '개'})
+handle_res = Resource(resource_id='R004', name='핸들', resource_type=ResourceType.SEMI_FINISHED, properties={'quantity': 1, 'unit': '개'})
 
 # 3. 운송수단 정의 (2종)
-panel_robot = Transport(env, 'T001', capacity=5, transport_speed=2.0)  # 패널 운송 로봇
-parts_conveyor = Transport(env, 'T002', capacity=10, transport_speed=1.5)  # 부품 이송 컨베이어
+panel_robot = Transport(env, 'T001', '패널운송로봇', capacity=5, transport_speed=2.0)  # 패널 운송 로봇
+parts_conveyor = Transport(env, 'T002', '부품이송컨베이어', capacity=10, transport_speed=1.5)  # 부품 이송 컨베이어
 
 
 # 4. 각 라인별 직렬공정 정의 (각 3단계)
@@ -62,7 +63,6 @@ assembly = AssemblyProcess(env, [Machine(env, 'M010', '조립기')], [], [outer_
 # 6. 공정 체이닝 및 운송 연결 (개념적 예시)
 
 # 실제 연결 예시: 각 라인별 직렬공정 체이닝 및 조립공정 연결
-from src.processes.base_process import MultiProcessGroup
 a_line_chain = press_outer >> clean_outer >> paint_outer
 b_line_chain = press_inner >> clean_inner >> paint_inner
 c_line_chain = form_insulation >> inject_handle >> finish_handle

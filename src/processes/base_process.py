@@ -1,16 +1,16 @@
 """
-기본 공정 클래스와 공정 체인을 관리하는 모듈입니다.
-모든 제조 공정의 기본이 되는 클래스와 >> 연산자를 통한 공정 연결 기능을 제공합니다.
-고급 워크플로우 및 자원 관리 기능을 지원합니다.
+기본 공정 클래스를 관리하는 모듈입니다.
+모든 제조 공정의 기본이 되는 클래스와 공통 기능을 제공합니다.
+Flow 관련 기능은 별도의 Flow 모듈로 분리되었습니다.
 """
 
 from typing import List, Optional, Any, Union, Dict, Callable, Tuple, Generator
 from abc import ABC, abstractmethod
 import uuid
-import concurrent.futures
-import re
 import simpy
 from src.Resource.resource_base import Resource, ResourceRequirement, ResourceType
+# Flow 모듈은 런타임에 import하여 순환 import 방지
+# from src.Flow import ProcessChain, MultiProcessGroup
 
 
 class PriorityValidationError(Exception):
@@ -35,6 +35,7 @@ def parse_process_priority(process_name: str) -> Tuple[str, Optional[int]]:
         ("공정2", None)
     """
     # 정규식으로 공정명(우선순위) 패턴 매칭
+    import re
     pattern = r'^(.+?)\((\d+)\)$'
     match = re.match(pattern, process_name.strip())
     
@@ -100,469 +101,9 @@ def validate_priority_sequence(processes_with_priorities: List[Tuple['BaseProces
             if missing:
                 error_msg += f"\n누락된 우선순위: {sorted(missing)}"
             if extra:
-                error_msg += f"\n범위를 벗어난 우선순위: {sorted(extra)}"
-                
+                error_msg += f"\n잘못된 우선순위: {sorted(extra)}"
+            
             raise PriorityValidationError(error_msg)
-
-
-class ProcessChain:
-    """연결된 공정들의 체인을 관리하는 클래스"""
-    
-    def __init__(self, processes: List['BaseProcess'] = None):
-        """
-        공정 체인 초기화
-        
-        Args:
-            processes: 초기 공정 리스트 (선택적)
-        """
-        self.processes = processes or []  # 공정 리스트 초기화
-        self.chain_id = str(uuid.uuid4())  # 체인 고유 ID 생성
-        # process_name 속성 추가 (MultiProcessGroup 등에서 일관성 있게 사용)
-        self.process_name = self.get_process_summary()  # 대표 요약명 반환
-        
-        # BaseProcess와의 호환성을 위한 추가 속성들
-        self.process_id = self.chain_id  # BaseProcess와 동일한 인터페이스
-        self.env = self._get_environment_from_processes()  # SimPy 환경 추출
-        self.parallel_safe = True  # 기본적으로 병렬 안전으로 설정
-    
-    
-    def _get_environment_from_processes(self) -> Optional[simpy.Environment]:
-        """
-        체인 내 공정들로부터 SimPy 환경을 추출
-        
-        Returns:
-            simpy.Environment: 첫 번째 공정의 환경 또는 None
-        """
-        for process in self.processes:
-            if hasattr(process, 'env') and process.env is not None:
-                return process.env
-        return None
-    
-    def add_process(self, process: 'BaseProcess') -> 'ProcessChain':
-        """
-        체인에 공정을 추가
-        
-        Args:
-            process: 추가할 공정
-            
-        Returns:
-            ProcessChain: 현재 체인 (메서드 체이닝을 위해)
-        """
-        self.processes.append(process)
-        # 환경이 없으면 새로 추가된 공정에서 추출
-        if self.env is None:
-            self.env = self._get_environment_from_processes()
-        # process_name 업데이트
-        self.process_name = self.get_process_summary()
-        return self
-    
-    def execute(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
-        """
-        BaseProcess와 호환되는 SimPy generator 방식의 실행 메서드
-        
-        Args:
-            input_data: 첫 번째 공정에 전달할 입력 데이터
-            
-        Yields:
-            simpy.Event: SimPy 이벤트들
-            
-        Returns:
-            Any: 마지막 공정의 출력 결과
-        """
-        if not self.env:
-            raise RuntimeError(f"ProcessChain '{self.process_name}'에 SimPy 환경이 설정되지 않았습니다. 체인에 유효한 공정을 추가하세요.")
-        
-        current_data = input_data
-        
-        print(f"[시간 {self.env.now:.1f}] 공정 체인 실행 시작 (체인 ID: {self.chain_id})")
-        print(f"총 {len(self.processes)}개의 공정을 순차 실행합니다.")
-        
-        for i, process in enumerate(self.processes, 1):
-            print(f"\n[시간 {self.env.now:.1f}] [{i}/{len(self.processes)}] {process.process_name} 실행 중...")
-            
-            # 각 공정을 SimPy generator 방식으로 실행
-            if hasattr(process, 'execute') and callable(process.execute):
-                # BaseProcess 인스턴스인 경우 yield from으로 호출
-                try:
-                    current_data = yield from process.execute(current_data)
-                    print(f"[시간 {self.env.now:.1f}] [{i}/{len(self.processes)}] {process.process_name} 완료")
-                except Exception as e:
-                    print(f"[시간 {self.env.now:.1f}] [{i}/{len(self.processes)}] {process.process_name} 실행 중 오류: {e}")
-                    raise
-            else:
-                print(f"[경고] {process.process_name}에 execute 메서드가 없습니다. 건너뜀.")
-                continue
-        
-        print(f"\n[시간 {self.env.now:.1f}] 공정 체인 실행 완료 (체인 ID: {self.chain_id})")
-        return current_data
-    
-    def get_process_summary(self) -> str:
-        """
-        공정 체인의 요약 정보를 반환
-        
-        Returns:
-            str: 체인 요약 정보
-        """
-        if not self.processes:
-            return "빈 공정 체인"
-        
-        process_names = [p.process_name for p in self.processes]
-        return " → ".join(process_names)
-    
-    def __repr__(self) -> str:
-        return f"ProcessChain({self.get_process_summary()})"
-    
-    def __rshift__(self, other: Union['BaseProcess', 'ProcessChain', 'MultiProcessGroup']) -> 'ProcessChain':
-        """
-        >> 연산자를 사용하여 체인에 공정이나 다른 체인을 연결
-        
-        Args:
-            other: 연결할 공정 또는 체인
-            
-        Returns:
-            ProcessChain: 새로운 확장된 체인
-        """
-        new_chain = ProcessChain(self.processes.copy())
-        
-        if isinstance(other, BaseProcess):
-            new_chain.add_process(other)
-        elif isinstance(other, ProcessChain):
-            new_chain.processes.extend(other.processes)
-        elif isinstance(other, MultiProcessGroup):
-            # MultiProcessGroup을 래퍼로 감싸서 추가
-            group_wrapper = GroupWrapperProcess(other)
-            new_chain.add_process(group_wrapper)
-        else:
-            raise TypeError(f">> 연산자는 BaseProcess, ProcessChain, 또는 MultiProcessGroup과만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
-        
-        return new_chain
-
-
-class MultiProcessGroup:
-    """다중공정을 그룹으로 관리하여 병렬 실행을 지원하는 클래스 (우선순위 기반 실행 지원)"""
-    
-    def __init__(self, processes: List['BaseProcess'] = None):
-        """
-        다중공정 그룹 초기화
-        
-        Args:
-            processes: 그룹에 포함될 공정 리스트
-        """
-        self.processes = processes or []  # 그룹 내 공정들
-        self.group_id = str(uuid.uuid4())  # 그룹 고유 ID
-        self.parallel_execution = True  # 병렬 실행 여부
-        self.priority_based_execution = False  # 우선순위 기반 실행 여부
-        self.priority_mapping: Dict[str, int] = {}  # 공정 ID -> 연결 시점 우선순위 매핑
-        
-        # BaseProcess와의 호환성을 위한 추가 속성들
-        self.process_id = self.group_id  # BaseProcess와 동일한 인터페이스
-        self.process_name = self.get_group_summary()  # 그룹 요약명
-        self.env = self._get_environment_from_processes()  # SimPy 환경 추출
-        self.parallel_safe = True  # 기본적으로 병렬 안전으로 설정
-        
-        # 공정들에 우선순위가 설정되어 있는지 확인
-        self._check_priority_setup()
-        
-    def _get_environment_from_processes(self) -> Optional[simpy.Environment]:
-        """
-        그룹 내 공정들로부터 SimPy 환경을 추출
-        
-        Returns:
-            simpy.Environment: 첫 번째 공정의 환경 또는 None
-        """
-        for process in self.processes:
-            if hasattr(process, 'env') and process.env is not None:
-                return process.env
-        return None
-        
-    def _check_priority_setup(self) -> None:
-        """공정들의 우선순위 설정 상태를 확인하고 실행 모드를 결정합니다."""
-        if not self.processes:
-            return
-            
-        # 연결 시점 우선순위가 있는지 확인
-        if self.priority_mapping:
-            self.priority_based_execution = True
-            print(f"[그룹 {self.group_id}] 우선순위 기반 실행 모드 활성화")
-            
-    def set_process_priority(self, process: 'BaseProcess', priority: int) -> None:
-        """공정의 연결 시점 우선순위를 설정합니다."""
-        self.priority_mapping[process.process_id] = priority
-        self._check_priority_setup()
-            
-    def sort_by_priority(self) -> List['BaseProcess']:
-        """우선순위에 따라 공정들을 정렬합니다."""
-        if not self.priority_based_execution or not self.priority_mapping:
-            return self.processes.copy()
-            
-        # priority_mapping 기준으로 정렬 (낮은 숫자 = 높은 우선순위)
-        def get_priority(process):
-            return self.priority_mapping.get(process.process_id, 999)  # 우선순위 없으면 맨 뒤
-            
-        sorted_processes = sorted(self.processes, key=get_priority)
-        
-        priority_info = []
-        for p in sorted_processes:
-            priority = self.priority_mapping.get(p.process_id, "없음")
-            priority_info.append(f"{p.process_name}({priority})")
-            
-        print(f"[그룹 {self.group_id}] 우선순위 순서: {' → '.join(priority_info)}")
-        
-        return sorted_processes
-        
-    def add_process(self, process: 'BaseProcess') -> 'MultiProcessGroup':
-        """
-        그룹에 공정을 추가
-        
-        Args:
-            process: 추가할 공정
-            
-        Returns:
-            MultiProcessGroup: 현재 그룹 (메서드 체이닝용)
-        """
-        self.processes.append(process)
-        # 환경이 없으면 새로 추가된 공정에서 추출
-        if self.env is None:
-            self.env = self._get_environment_from_processes()
-        # process_name 업데이트
-        self.process_name = self.get_group_summary()
-        # 우선순위 설정 재확인
-        self._check_priority_setup()
-        return self
-        
-    def execute_group(self, input_data: Any = None) -> List[Any]:
-        """
-        그룹 내 모든 공정을 실행 (우선순위 기반 또는 병렬)
-        
-        Args:
-            input_data: 각 공정에 전달할 입력 데이터
-            
-        Returns:
-            List[Any]: 각 공정의 실행 결과 리스트 (우선순위 순서로 정렬됨)
-        """
-        if not self.processes:
-            print(f"다중공정 그룹 {self.group_id}: 실행할 공정이 없습니다")
-            return []
-            
-        print(f"다중공정 그룹 실행 시작 (그룹 ID: {self.group_id})")
-        
-        # 우선순위 기반 실행이면 정렬된 순서로 실행
-        if self.priority_based_execution:
-            sorted_processes = self.sort_by_priority()
-            print(f"우선순위 기반 순차 실행: {', '.join([p.process_name for p in sorted_processes])}")
-            
-            results = []
-            for i, process in enumerate(sorted_processes, 1):
-                try:
-                    priority = self.priority_mapping.get(process.process_id, "없음")
-                    print(f"  [{i}/{len(sorted_processes)}] {process.process_name} (우선순위: {priority}) 실행 중...")
-                    result = process.execute(input_data)
-                    results.append(result)
-                    print(f"  [OK] {process.process_name} 완료")
-                except Exception as e:
-                    print(f"  [ERROR] {process.process_name} 실행 중 오류: {e}")
-                    results.append(None)
-                    
-            print(f"우선순위 기반 실행 완료 (그룹 ID: {self.group_id})")
-            return results
-        
-        else:
-            # 기존 병렬/순차 실행 로직
-            print(f"병렬 실행할 공정: {', '.join([p.process_name for p in self.processes])}")
-            
-            results = []
-            
-            if self.parallel_execution and all(p.parallel_safe for p in self.processes):
-                # 병렬 실행 (모든 공정이 병렬 안전한 경우)
-                print("병렬 실행 모드 사용")
-                with concurrent.futures.ThreadPoolExecutor(max_workers=len(self.processes)) as executor:
-                    # 각 공정을 병렬로 실행
-                    future_to_process = {
-                        executor.submit(process.execute, input_data): process 
-                        for process in self.processes
-                    }
-                    
-                    for future in concurrent.futures.as_completed(future_to_process):
-                        process = future_to_process[future]
-                        try:
-                            result = future.result()
-                            results.append(result)
-                            print(f"  [OK] {process.process_name} 완료")
-                        except Exception as e:
-                            print(f"  [ERROR] {process.process_name} 실행 중 오류: {e}")
-                            results.append(None)
-            else:
-                # 순차 실행 (병렬 안전하지 않은 공정이 있는 경우)
-                print("순차 실행 모드 사용")
-                for process in self.processes:
-                    try:
-                        result = process.execute(input_data)
-                        results.append(result)
-                        print(f"  [OK] {process.process_name} 완료")
-                    except Exception as e:
-                        print(f"  [ERROR] {process.process_name} 실행 중 오류: {e}")
-                        results.append(None)
-            
-            print(f"다중공정 그룹 실행 완료 (그룹 ID: {self.group_id})")
-            return results
-        
-    def execute(self, input_data: Any = None) -> Generator[simpy.Event, None, List[Any]]:
-        """
-        BaseProcess와 호환되는 SimPy generator 방식의 실행 메서드
-        
-        Args:
-            input_data: 각 공정에 전달할 입력 데이터
-            
-        Yields:
-            simpy.Event: SimPy 이벤트들
-            
-        Returns:
-            List[Any]: 각 공정의 실행 결과 리스트
-        """
-        if not self.env:
-            raise RuntimeError(f"MultiProcessGroup '{self.process_name}'에 SimPy 환경이 설정되지 않았습니다. 그룹에 유효한 공정을 추가하세요.")
-        
-        if not self.processes:
-            print(f"[시간 {self.env.now:.1f}] 다중공정 그룹 {self.group_id}: 실행할 공정이 없습니다")
-            return []
-            
-        print(f"[시간 {self.env.now:.1f}] 다중공정 그룹 실행 시작 (그룹 ID: {self.group_id})")
-        
-        # 우선순위 기반 실행이면 정렬된 순서로 실행
-        if self.priority_based_execution:
-            sorted_processes = self.sort_by_priority()
-            print(f"우선순위 기반 순차 실행: {', '.join([p.process_name for p in sorted_processes])}")
-            
-            results = []
-            for i, process in enumerate(sorted_processes, 1):
-                try:
-                    priority = self.priority_mapping.get(process.process_id, "없음")
-                    print(f"  [시간 {self.env.now:.1f}] [{i}/{len(sorted_processes)}] {process.process_name} (우선순위: {priority}) 실행 중...")
-                    
-                    # SimPy generator 방식으로 실행
-                    if hasattr(process, 'execute') and callable(process.execute):
-                        result = yield from process.execute(input_data)
-                        results.append(result)
-                        print(f"  [시간 {self.env.now:.1f}] [OK] {process.process_name} 완료")
-                    else:
-                        print(f"  [경고] {process.process_name}에 execute 메서드가 없습니다. 건너뜀.")
-                        results.append(None)
-                        
-                except Exception as e:
-                    print(f"  [시간 {self.env.now:.1f}] [ERROR] {process.process_name} 실행 중 오류: {e}")
-                    results.append(None)
-                    
-            print(f"[시간 {self.env.now:.1f}] 우선순위 기반 실행 완료 (그룹 ID: {self.group_id})")
-            return results
-        
-        else:
-            # 순차 실행 (SimPy에서는 진정한 병렬 실행이 어려우므로 순차로 처리)
-            print(f"순차 실행할 공정: {', '.join([p.process_name for p in self.processes])}")
-            
-            results = []
-            for i, process in enumerate(self.processes, 1):
-                try:
-                    print(f"  [시간 {self.env.now:.1f}] [{i}/{len(self.processes)}] {process.process_name} 실행 중...")
-                    
-                    # SimPy generator 방식으로 실행
-                    if hasattr(process, 'execute') and callable(process.execute):
-                        result = yield from process.execute(input_data)
-                        results.append(result)
-                        print(f"  [시간 {self.env.now:.1f}] [OK] {process.process_name} 완료")
-                    else:
-                        print(f"  [경고] {process.process_name}에 execute 메서드가 없습니다. 건너뜀.")
-                        results.append(None)
-                        
-                except Exception as e:
-                    print(f"  [시간 {self.env.now:.1f}] [ERROR] {process.process_name} 실행 중 오류: {e}")
-                    results.append(None)
-            
-            print(f"[시간 {self.env.now:.1f}] 다중공정 그룹 실행 완료 (그룹 ID: {self.group_id})")
-            return results
-        
-    def __and__(self, other: 'BaseProcess') -> 'MultiProcessGroup':
-        """
-        & 연산자를 사용하여 공정을 그룹에 추가
-        연결 시점에 우선순위 문법을 지원합니다: 공정명(우선순위)
-        
-        Args:
-            other: 그룹에 추가할 공정 (우선순위 포함 가능)
-            
-        Returns:
-            MultiProcessGroup: 새로운 확장된 그룹
-            
-        Raises:
-            PriorityValidationError: 우선순위가 유효하지 않을 때
-        """
-        if isinstance(other, BaseProcess):
-            # 새로운 공정의 우선순위 파싱
-            other_name, other_priority = parse_process_priority(other.process_name)
-            
-            # 새 그룹 생성
-            new_group = MultiProcessGroup(self.processes.copy())
-            new_group.priority_mapping = self.priority_mapping.copy()  # 기존 우선순위 매핑 복사
-            new_group.add_process(other)
-            
-            # 우선순위가 파싱된 경우 설정 (공정명은 변경하지 않음)
-            if other_priority is not None:
-                new_group.set_process_priority(other, other_priority)
-            
-            # 우선순위 유효성 검사 (우선순위가 하나라도 있는 경우)
-            all_priorities = list(new_group.priority_mapping.values())
-            if all_priorities:  # 우선순위가 하나라도 설정된 경우
-                processes_with_priorities = []
-                
-                for process in new_group.processes:
-                    priority = new_group.priority_mapping.get(process.process_id)
-                    processes_with_priorities.append((process, priority))
-                
-                validate_priority_sequence(processes_with_priorities)
-            
-            return new_group
-        else:
-            raise TypeError(f"& 연산자는 BaseProcess와만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
-    
-    def __rshift__(self, other: Union['BaseProcess', 'ProcessChain', 'MultiProcessGroup']) -> 'ProcessChain':
-        """
-        >> 연산자를 사용하여 그룹을 다음 공정이나 체인과 연결
-        
-        Args:
-            other: 연결할 공정 또는 체인
-            
-        Returns:
-            ProcessChain: 그룹과 다음 공정이 연결된 체인
-        """
-        # 그룹을 단일 실행 단위로 래핑하는 특수 공정 생성
-        group_wrapper = GroupWrapperProcess(self)
-        
-        if isinstance(other, BaseProcess):
-            return ProcessChain([group_wrapper, other])
-        elif isinstance(other, ProcessChain):
-            new_chain = ProcessChain([group_wrapper])
-            new_chain.processes.extend(other.processes)
-            return new_chain
-        elif isinstance(other, MultiProcessGroup):
-            # 다른 그룹과 연결할 때는 두 그룹을 모두 래퍼로 감싸서 체인 생성
-            other_wrapper = GroupWrapperProcess(other)
-            return ProcessChain([group_wrapper, other_wrapper])
-        else:
-            raise TypeError(f">> 연산자는 BaseProcess, ProcessChain, 또는 MultiProcessGroup과만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
-    
-    def get_group_summary(self) -> str:
-        """
-        그룹 요약 정보 반환
-        
-        Returns:
-            str: 그룹 요약
-        """
-        if not self.processes:
-            return "빈 다중공정 그룹"
-        
-        process_names = [p.process_name for p in self.processes]
-        return f"[{' & '.join(process_names)}]"
-    
-    def __repr__(self) -> str:
-        return f"MultiProcessGroup({self.get_group_summary()})"
 
 
 class BaseProcess(ABC):
@@ -570,7 +111,10 @@ class BaseProcess(ABC):
     
     def __init__(self, env: simpy.Environment, machines=None, workers=None, 
                  process_id: str = None, process_name: str = None, batch_size: int = 1,
-                 failure_weight_machine: float = 1.0, failure_weight_worker: float = 1.0):
+                 failure_weight_machine: float = 1.0, failure_weight_worker: float = 1.0,
+                 input_resources: List[Resource], 
+                 output_resources: List[Resource],
+                 resource_requirements: List[ResourceRequirement]):
         """
         기본 공정 초기화 (SimPy 환경 필수, machine 또는 worker 중 하나는 필수)
         
@@ -583,6 +127,9 @@ class BaseProcess(ABC):
             batch_size: 배치 크기 (한번에 처리할 아이템 수, 기본값: 1)
             failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0, 1.5 = 1.5배 고장률)
             failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0, 1.5 = 1.5배 실수율)
+            input_resources: 입력 자원 목록 (필수)
+            output_resources: 출력 자원 목록 (필수)
+            resource_requirements: 자원 요구사항 목록 (필수)
             
         Raises:
             ValueError: machine과 worker가 모두 None인 경우
@@ -636,6 +183,56 @@ class BaseProcess(ABC):
         
         # SimPy 관련 속성들
         self.processing_time: float = 1.0  # 기본 처리 시간 (시뮬레이션 시간 단위)
+        
+        # 자원 설정 (개선된 통합 로직)
+        self._setup_resources(input_resources, output_resources, resource_requirements)
+        
+    def _setup_resources(self, input_resources: List[Resource], 
+                        output_resources: List[Resource],
+                        resource_requirements: List[ResourceRequirement]):
+        """
+        자원 정보를 설정하는 통합 메서드 (모든 프로세스에서 공통 사용)
+        
+        Args:
+            input_resources: 입력 자원 목록
+            output_resources: 출력 자원 목록
+            resource_requirements: 자원 요구사항 목록
+        """
+        # 입력 자원 설정
+        for resource in input_resources:
+            self.add_input_resource(resource)
+        
+        # 출력 자원 설정  
+        for resource in output_resources:
+            self.add_output_resource(resource)
+                
+        # 자원 요구사항 설정
+        for requirement in resource_requirements:
+            self.add_resource_requirement(requirement)
+        
+    def _setup_default_resources(self):
+        """
+        기본 자원 요구사항을 설정하는 메서드 (각 프로세스별로 오버라이드 가능)
+        """
+        # 기계 자원 추가
+        for i, machine in enumerate(self.machines):
+            machine_resource = Resource(
+                resource_id=f"machine_{i}",
+                name=f"기계_{i+1}",
+                resource_type=ResourceType.MACHINE,
+                properties={"unit": "대"}
+            )
+            self.add_input_resource(machine_resource)
+            
+        # 작업자 자원 추가
+        for i, worker in enumerate(self.workers):
+            worker_resource = Resource(
+                resource_id=f"worker_{i}",
+                name=f"작업자_{i+1}",
+                resource_type=ResourceType.WORKER,
+                properties={"unit": "명"}
+            )
+            self.add_input_resource(worker_resource)
         
     def validate_resources(self) -> bool:
         """
@@ -700,33 +297,33 @@ class BaseProcess(ABC):
     
     def get_available_machines(self):
         """
-        현재 사용 가능한 기계 목록을 반환
+        사용 가능한 기계들을 반환
         
         Returns:
             List: 사용 가능한 기계 리스트
         """
-        available = []
+        available_machines = []
         for machine in self.machines:
-            if hasattr(machine, 'resource') and machine.resource.count < machine.resource.capacity:
-                available.append(machine)
-        return available
+            if hasattr(machine, 'is_available') and machine.is_available():
+                available_machines.append(machine)
+        return available_machines
     
     def get_available_workers(self):
         """
-        현재 사용 가능한 작업자 목록을 반환
+        사용 가능한 작업자들을 반환
         
         Returns:
             List: 사용 가능한 작업자 리스트
         """
-        available = []
+        available_workers = []
         for worker in self.workers:
-            if hasattr(worker, 'resource') and worker.resource.count < worker.resource.capacity:
-                available.append(worker)
-        return available
-        
+            if hasattr(worker, 'is_available') and worker.is_available():
+                available_workers.append(worker)
+        return available_workers
+    
     def set_execution_priority(self, priority: int) -> 'BaseProcess':
         """
-        실행 우선순위 설정
+        실행 우선순위를 설정
         
         Args:
             priority: 우선순위 (1-10, 높을수록 우선)
@@ -740,36 +337,36 @@ class BaseProcess(ABC):
     
     def add_execution_condition(self, condition: Callable[[Any], bool]) -> 'BaseProcess':
         """
-        실행 조건 추가
+        실행 조건을 추가
         
         Args:
-            condition: 입력 데이터를 받아 bool을 반환하는 함수
+            condition: 실행 조건 함수 (입력 데이터를 받아 bool을 반환)
             
         Returns:
-            BaseProcess: 자기 자신
+            BaseProcess: 자기 자신 (메서드 체이닝용)
         """
         self.conditions.append(condition)
-        print(f"[{self.process_name}] 실행 조건 추가")
+        print(f"[{self.process_name}] 실행 조건 추가됨 (총 {len(self.conditions)}개)")
         return self
     
     def set_parallel_safe(self, safe: bool) -> 'BaseProcess':
         """
-        병렬 실행 안전 여부 설정
+        병렬 실행 안전 여부를 설정
         
         Args:
             safe: 병렬 실행 안전 여부
             
         Returns:
-            BaseProcess: 자기 자신
+            BaseProcess: 자기 자신 (메서드 체이닝용)
         """
         self.parallel_safe = safe
-        status = "안전" if safe else "불안전"
-        print(f"[{self.process_name}] 병렬 실행 {status}으로 설정")
+        status = "안전" if safe else "위험"
+        print(f"[{self.process_name}] 병렬 실행: {status}")
         return self
     
     def can_execute(self, input_data: Any = None) -> bool:
         """
-        실행 가능 여부 확인 (모든 조건 검사)
+        현재 공정을 실행할 수 있는지 확인
         
         Args:
             input_data: 입력 데이터
@@ -777,546 +374,22 @@ class BaseProcess(ABC):
         Returns:
             bool: 실행 가능 여부
         """
-        # 모든 조건이 만족되어야 실행 가능
+        # 모든 실행 조건을 확인
         for condition in self.conditions:
-            try:
-                if not condition(input_data):
-                    return False
-            except Exception as e:
-                print(f"[{self.process_name}] 조건 검사 중 오류: {e}")
+            if not condition(input_data):
+                print(f"[{self.process_name}] 실행 조건 불만족")
                 return False
         
-        return True
+        # 자원 검증
+        if not self.validate_resources():
+            print(f"[{self.process_name}] 자원 검증 실패")
+            return False
         
+        return True
+    
     def execute(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
-        공정을 실행하는 SimPy generator 메서드 (기본 구현)
-        
-        기본적으로 다음 순서로 실행됩니다:
-        1. 필수 자원(machine/worker) 검증
-        2. 고장률/실수율 가중치 적용
-        3. 입력 자원 소비 (consume_resources)
-        4. 구체적인 공정 로직 실행 (process_logic - 하위 클래스에서 구현)
-        5. 출력 자원 생산 (produce_resources)
-        6. 고장률/실수율 복원
-        
-        Args:
-            input_data: 공정에 전달되는 입력 데이터
-            
-        Yields:
-            simpy.Event: SimPy 이벤트들
-            
-        Returns:
-            Any: 공정 실행 결과 (생산된 자원 포함)
-        """
-        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 시작")
-        
-        # 1. 필수 자원(machine/worker) 검증
-        try:
-            self.validate_resources()
-        except ValueError as e:
-            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 실패: {e}")
-            return None
-        
-        # 2. 고장률/실수율 가중치 적용
-        self.apply_failure_weight_to_machines()
-        self.apply_failure_weight_to_workers()
-        
-        try:
-            # 3. 자원 소비 검증
-            if not self.consume_resources(input_data):
-                print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 실패: 자원 부족")
-                return None
-                
-            # 4. 구체적인 공정 로직 실행 (하위 클래스에서 구현하는 generator)
-            result = yield from self.process_logic(input_data)
-            
-            # 5. 자원 생산
-            produced_resources = self.produce_resources(result)
-            
-            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 공정 실행 완료")
-            
-            # 결과와 생산된 자원을 함께 반환
-            return {
-                'result': result,
-                'produced_resources': produced_resources,
-                'process_info': self.get_resource_status()
-            }
-        
-        finally:
-            # 6. 고장률/실수율 복원 (예외 발생해도 반드시 실행)
-            self.restore_original_failure_rates()
-        
-    @abstractmethod
-    def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
-        """
-        구체적인 공정 로직을 실행하는 추상 SimPy generator 메서드
-        각 구체적인 공정 클래스에서 구현해야 함
-        
-        Args:
-            input_data: 공정에 전달되는 입력 데이터
-            
-        Yields:
-            simpy.Event: SimPy 이벤트들
-            
-        Returns:
-            Any: 공정 로직 실행 결과
-        """
-        pass
-    
-    def process_batch(self, batch_items: List[Any]) -> Generator[simpy.Event, None, List[Any]]:
-        """
-        부품이 다른  경우가 하나의 batch로 묶인 경우를 생각해, 오버라이드 구현
-        배치 처리를 위한 SimPy generator 메서드
-        여러 아이템을 한번에 처리합니다.
-        
-        Args:
-            batch_items: 한번에 처리할 아이템들의 리스트
-            
-        Yields:
-            simpy.Event: SimPy 이벤트들
-            
-        Returns:
-            List[Any]: 처리된 결과들의 리스트
-        """
-        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 배치 처리 시작 (배치 크기: {len(batch_items)})")
-        
-        # 1. 자원 요청
-        allocated_resources = yield from self.request_resources()
-        if not allocated_resources:
-            print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 배치 처리 실패: 자원 부족")
-            return []
-            
-        # 2. 배치 공정 로직 실행 (하위 클래스에서 구현)
-        results = yield from self.batch_process_logic(batch_items)
-        
-        # 3. 자원 해제
-        self.release_resources(allocated_resources)
-        
-        # 4. 자원 생산
-        produced_resources = []
-        for result in results:
-            produced_resources.extend(self.produce_resources(result))
-        
-        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 배치 처리 완료 (처리된 아이템 수: {len(results)})")
-        
-        return results
-    
-    def batch_process_logic(self, batch_items: List[Any]) -> Generator[simpy.Event, None, List[Any]]:
-        """
-        배치 공정 로직을 실행하는 기본 구현
-        하위 클래스에서 오버라이드하여 구체적인 배치 로직을 구현할 수 있습니다.
-        기본 구현은 각 아이템을 개별적으로 처리합니다.
-        
-        Args:
-            batch_items: 처리할 아이템들의 리스트
-            
-        Yields:
-            simpy.Event: SimPy 이벤트들
-            
-        Returns:
-            List[Any]: 처리된 결과들의 리스트
-        """
-        results = []
-        
-        # 기본 구현: 각 아이템을 개별적으로 처리
-        for item in batch_items:
-            result = yield from self.process_logic(item)
-            results.append(result)
-            
-        return results
-    
-    def add_to_batch(self, item: Any) -> bool:
-        """
-        배치에 아이템을 추가합니다.
-        
-        Args:
-            item: 배치에 추가할 아이템
-            
-        Returns:
-            bool: 배치가 가득 찼는지 여부 (True면 처리 준비됨)
-        """
-        if not self.enable_batch_processing:
-            return True  # 배치 처리 비활성화시 즉시 처리
-            
-        self.current_batch.append(item)
-        
-        if len(self.current_batch) >= self.batch_size:
-            return True  # 배치가 가득 참
-        else:
-            return False  # 더 기다려야 함
-    
-    def get_current_batch(self) -> List[Any]:
-        """현재 배치를 반환하고 초기화합니다."""
-        batch = self.current_batch.copy()
-        self.current_batch.clear()
-        return batch
-    
-    def is_batch_ready(self) -> bool:
-        """배치가 처리 준비되었는지 확인합니다."""
-        if not self.enable_batch_processing:
-            return len(self.current_batch) > 0
-        return len(self.current_batch) >= self.batch_size
-    
-    def get_batch_status(self) -> Dict[str, Any]:
-        """배치 처리 상태 정보를 반환합니다."""
-        return {
-            'batch_size': self.batch_size,
-            'enable_batch_processing': self.enable_batch_processing,
-            'current_batch_count': len(self.current_batch),
-            'batch_utilization': len(self.current_batch) / self.batch_size if self.batch_size > 0 else 0
-        }
-    
-    def connect_to(self, next_process: 'BaseProcess') -> 'BaseProcess':
-        """
-        다른 공정과 연결 (명시적 연결 메서드)
-        
-        Args:
-            next_process: 연결할 다음 공정
-            
-        Returns:
-            BaseProcess: 연결된 다음 공정 (메서드 체이닝을 위해)
-        """
-        if next_process not in self.next_processes:
-            self.next_processes.append(next_process)
-        
-        if self not in next_process.previous_processes:
-            next_process.previous_processes.append(self)
-        
-        print(f"공정 연결: {self.process_name} → {next_process.process_name}")
-        return next_process
-    
-    def __rshift__(self, other: Union['BaseProcess', 'ProcessChain', 'MultiProcessGroup']) -> ProcessChain:
-        """
-        >> 연산자를 사용하여 공정을 연결
-        
-        Args:
-            other: 연결할 공정 또는 체인
-            
-        Returns:
-            ProcessChain: 연결된 공정들의 체인
-        """
-        if isinstance(other, BaseProcess):
-            # 공정 간 연결 설정
-            self.connect_to(other)
-            # 새로운 체인 생성하여 반환
-            return ProcessChain([self, other])
-        
-        elif isinstance(other, ProcessChain):
-            # 체인의 첫 번째 공정과 연결
-            if other.processes:
-                self.connect_to(other.processes[0])
-            # 새로운 체인 생성
-            new_chain = ProcessChain([self])
-            new_chain.processes.extend(other.processes)
-            return new_chain
-        
-        elif isinstance(other, MultiProcessGroup):
-            # MultiProcessGroup을 래퍼로 감싸서 연결
-            group_wrapper = GroupWrapperProcess(other)
-            return ProcessChain([self, group_wrapper])
-        
-        else:
-            raise TypeError(f">> 연산자는 BaseProcess, ProcessChain, 또는 MultiProcessGroup과만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
-    
-    def __and__(self, other: 'BaseProcess') -> 'MultiProcessGroup':
-        """
-        & 연산자를 사용하여 다중공정 그룹을 생성
-        연결 시점에 우선순위 문법을 지원합니다: 공정명(우선순위)
-        
-        Args:
-            other: 그룹에 포함할 다른 공정 (우선순위 포함 가능)
-            
-        Returns:
-            MultiProcessGroup: 두 공정이 포함된 다중공정 그룹
-            
-        Examples:
-            >>> process1 = SomeProcess(process_name="공정1")
-            >>> process2 = SomeProcess(process_name="공정2")
-            >>> # 연결 시점에 우선순위 지정
-            >>> group = process1(1) & process2(2)  # 실제로는 process1._with_priority(1) & process2._with_priority(2)
-            
-        Note:
-            실제 사용법: process1 >> (process2(1) & process3(2) & process4(3))
-            이 경우 다른 파싱 메커니즘이 필요할 수 있습니다.
-        """
-        if isinstance(other, BaseProcess):
-            # 현재 공정(self)의 우선순위 파싱 - 하지만 실제로는 다른 방식으로 처리될 예정
-            self_name, self_priority = parse_process_priority(self.process_name)
-            other_name, other_priority = parse_process_priority(other.process_name)
-            
-            # 그룹 생성
-            group = MultiProcessGroup([self, other])
-            
-            # 우선순위가 파싱된 경우 설정 (공정명은 변경하지 않음)
-            if self_priority is not None:
-                group.set_process_priority(self, self_priority)
-                
-            if other_priority is not None:
-                group.set_process_priority(other, other_priority)
-            
-            # 우선순위가 하나라도 있으면 유효성 검사
-            if self_priority is not None or other_priority is not None:
-                processes_with_priorities = [
-                    (self, self_priority),
-                    (other, other_priority)
-                ]
-                validate_priority_sequence(processes_with_priorities)
-            
-            return group
-        else:
-            raise TypeError(f"& 연산자는 BaseProcess와만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
-    
-    def add_input_resource(self, resource: Resource):
-        """
-        입력 자원을 추가하는 메서드
-        
-        Args:
-            resource: 추가할 입력 자원
-        """
-        self.input_resources.append(resource)
-        self.current_input_inventory[resource.resource_id] = resource
-        print(f"[{self.process_name}] 입력 자원 추가: {resource}")
-        
-    def add_output_resource(self, resource: Resource):
-        """
-        출력 자원을 추가하는 메서드
-        
-        Args:
-            resource: 추가할 출력 자원
-        """
-        self.output_resources.append(resource)
-        self.current_output_inventory[resource.resource_id] = resource
-        print(f"[{self.process_name}] 출력 자원 추가: {resource}")
-        
-    def add_resource_requirement(self, requirement: ResourceRequirement):
-        """
-        자원 요구사항을 추가하는 메서드
-        
-        Args:
-            requirement: 자원 요구사항
-        """
-        self.resource_requirements.append(requirement)
-        print(f"[{self.process_name}] 자원 요구사항 추가: {requirement}")
-        
-    def consume_resources(self, input_data: Any = None) -> bool:
-        """
-        필요한 입력 자원을 소비하는 메서드
-        
-        Args:
-            input_data: 외부에서 제공되는 입력 데이터
-            
-        Returns:
-            bool: 자원 소비 성공 여부
-        """
-        print(f"[{self.process_name}] 입력 자원 소비 시작")
-        
-        # 자원 검증 먼저 수행
-        if not self.validate_resources():
-            print(f"[{self.process_name}] 자원 소비 실패: 요구사항 미충족")
-            return False
-            
-        # 요구사항에 따라 자원 소비
-        for requirement in self.resource_requirements:
-            if requirement.is_mandatory:
-                for resource in self.input_resources:
-                    if requirement.is_satisfied_by(resource):
-                        if resource.consume(requirement.required_quantity):
-                            print(f"  소비: {requirement.name} {requirement.required_quantity}{requirement.unit}")
-                        else:
-                            print(f"  소비 실패: {requirement.name}")
-                            return False
-                        break
-                        
-        print(f"[{self.process_name}] 입력 자원 소비 완료")
-        return True
-        
-    def produce_resources(self, output_data: Any = None) -> List[Resource]:
-        """
-        출력 자원을 생산하는 메서드
-        
-        Args:
-            output_data: 생산할 출력 데이터
-            
-        Returns:
-            List[Resource]: 생산된 자원 리스트
-        """
-        print(f"[{self.process_name}] 출력 자원 생산 시작")
-        produced_resources = []
-        
-        # 기본 출력 자원들 생산
-        for resource in self.output_resources:
-            # 자원 복제하여 생산
-            produced_resource = resource.clone()
-            produced_resources.append(produced_resource)
-            
-            # 출력 재고에 추가
-            if produced_resource.resource_id in self.current_output_inventory:
-                self.current_output_inventory[produced_resource.resource_id].produce(produced_resource.quantity)
-            else:
-                self.current_output_inventory[produced_resource.resource_id] = produced_resource
-                
-            print(f"  생산: {produced_resource}")
-            
-        print(f"[{self.process_name}] 출력 자원 생산 완료 (총 {len(produced_resources)}개)")
-        return produced_resources
-        
-    def get_resource_status(self) -> Dict[str, Any]:
-        """
-        현재 자원 상태를 반환하는 메서드
-        
-        Returns:
-            Dict[str, Any]: 자원 상태 정보
-        """
-        return {
-            'process_id': self.process_id,
-            'process_name': self.process_name,
-            'input_resources': [str(r) for r in self.input_resources],
-            'output_resources': [str(r) for r in self.output_resources],
-            'requirements': [str(req) for req in self.resource_requirements],
-            'input_inventory': {k: str(v) for k, v in self.current_input_inventory.items()},
-            'output_inventory': {k: str(v) for k, v in self.current_output_inventory.items()}
-        }
-    
-    def get_input_resources(self) -> List[Resource]:
-        """
-        입력 자원 목록을 반환하는 메서드
-        
-        Returns:
-            List[Resource]: 입력 자원 목록
-        """
-        return self.input_resources.copy()
-    
-    def get_output_resources(self) -> List[Resource]:
-        """
-        출력 자원 목록을 반환하는 메서드
-        
-        Returns:
-            List[Resource]: 출력 자원 목록
-        """
-        return self.output_resources.copy()
-    
-    def get_resource_requirements(self) -> List[ResourceRequirement]:
-        """
-        자원 요구사항 목록을 반환하는 메서드
-        
-        Returns:
-            List[ResourceRequirement]: 자원 요구사항 목록
-        """
-        return self.resource_requirements.copy()
-
-    def get_process_info(self) -> dict:
-        """
-        공정 정보를 딕셔너리로 반환
-        
-        Returns:
-            dict: 공정 정보
-        """
-        return {
-            'process_id': self.process_id,
-            'process_name': self.process_name,
-            'process_type': self.__class__.__name__,
-            'next_processes': [p.process_name for p in self.next_processes],
-            'previous_processes': [p.process_name for p in self.previous_processes]
-        }
-    
-    def apply_failure_weight_to_machines(self):
-        """
-        이 공정에서 사용하는 모든 기계에 고장률 가중치를 적용합니다.
-        """
-        if self.failure_weight_machine == 1.0:
-            return  # 가중치가 1.0이면 적용할 필요 없음
-            
-        for machine in self.machines:
-            if hasattr(machine, 'failure_probability') and machine.failure_probability is not None:
-                # 원래 고장률에 가중치 적용 (최대 1.0을 넘지 않음)
-                original_probability = machine.failure_probability
-                weighted_probability = min(1.0, original_probability * self.failure_weight_machine)
-                machine._original_failure_probability = original_probability  # 원래값 백업
-                machine.failure_probability = weighted_probability
-                
-                print(f"[{self.process_name}] 기계 {machine.resource_id} 고장률 적용: "
-                      f"{original_probability:.3f} → {weighted_probability:.3f} (가중치: {self.failure_weight_machine})")
-
-    def apply_failure_weight_to_workers(self):
-        """
-        이 공정에서 사용하는 모든 작업자에 실수율 가중치를 적용합니다.
-        """
-        if self.failure_weight_worker == 1.0:
-            return  # 가중치가 1.0이면 적용할 필요 없음
-            
-        for worker in self.workers:
-            if hasattr(worker, 'error_probability') and worker.error_probability is not None:
-                # 원래 실수율에 가중치 적용 (최대 1.0을 넘지 않음)
-                original_probability = worker.error_probability
-                weighted_probability = min(1.0, original_probability * self.failure_weight_worker)
-                worker._original_error_probability = original_probability  # 원래값 백업
-                worker.error_probability = weighted_probability
-                
-                print(f"[{self.process_name}] 작업자 {worker.resource_id} 실수율 적용: "
-                      f"{original_probability:.3f} → {weighted_probability:.3f} (가중치: {self.failure_weight_worker})")
-
-    def restore_original_failure_rates(self):
-        """
-        기계와 작업자의 고장률/실수율을 원래값으로 복원합니다.
-        """
-        # 기계 고장률 복원
-        for machine in self.machines:
-            if hasattr(machine, '_original_failure_probability'):
-                machine.failure_probability = machine._original_failure_probability
-                delattr(machine, '_original_failure_probability')
-                print(f"[{self.process_name}] 기계 {machine.resource_id} 고장률 복원")
-        
-        # 작업자 실수율 복원
-        for worker in self.workers:
-            if hasattr(worker, '_original_error_probability'):
-                worker.error_probability = worker._original_error_probability
-                delattr(worker, '_original_error_probability')
-                print(f"[{self.process_name}] 작업자 {worker.resource_id} 실수율 복원")
-    
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(id='{self.process_id}', name='{self.process_name}')"
-    
-    def __str__(self) -> str:
-        return self.process_name
-
-
-class GroupWrapperProcess(BaseProcess):
-    """다중공정 그룹을 단일 공정처럼 취급하기 위한 래퍼 클래스"""
-    
-    def __init__(self, group: MultiProcessGroup):
-        """
-        그룹 래퍼 초기화
-        
-        Args:
-            group: 래핑할 다중공정 그룹
-        """
-        if not group.processes:
-            raise ValueError("그룹에 최소 하나의 공정이 있어야 합니다")
-        env = group.processes[0].env
-
-        # 그룹 내 모든 공정의 machine/worker를 합쳐서 전달
-        all_machines = []
-        all_workers = []
-        for proc in group.processes:
-            if hasattr(proc, 'machines') and proc.machines:
-                all_machines.extend(proc.machines)
-            if hasattr(proc, 'workers') and proc.workers:
-                all_workers.extend(proc.workers)
-
-        super().__init__(
-            env=env,
-            machines=all_machines if all_machines else None,
-            workers=all_workers if all_workers else None,
-            process_id=f"wrapper_{group.group_id}",
-            process_name=f"그룹({group.get_group_summary()})"
-        )
-        self.group = group
-        self.parallel_safe = all(p.parallel_safe for p in group.processes)
-    
-    def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
-        """
-        그룹 내 모든 공정을 실행하는 SimPy generator 로직
+        공정 실행의 메인 진입점 (SimPy generator 방식)
         
         Args:
             input_data: 입력 데이터
@@ -1325,12 +398,319 @@ class GroupWrapperProcess(BaseProcess):
             simpy.Event: SimPy 이벤트들
             
         Returns:
-            Any: 그룹 실행 결과
+            Any: 처리 결과
         """
-        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 그룹 래퍼 실행 중...")
+        print(f"[시간 {self.env.now:.1f}] {self.process_name} 실행 시작")
         
-        # 래핑된 그룹의 execute 메서드 호출 (새로 추가된 SimPy generator 버전)
-        results = yield from self.group.execute(input_data)
+        # 실행 가능 여부 확인
+        if not self.can_execute(input_data):
+            raise RuntimeError(f"{self.process_name} 실행 조건을 만족하지 않습니다.")
         
-        print(f"[시간 {self.env.now:.1f}] [{self.process_name}] 그룹 래퍼 실행 완료")
+        # 배치 처리 활성화된 경우 배치 처리
+        if self.enable_batch_processing:
+            # 배치에 추가
+            if self.add_to_batch(input_data):
+                # 배치가 준비되면 처리
+                if self.is_batch_ready():
+                    batch_items = self.get_current_batch()
+                    result = yield from self.process_batch(batch_items)
+                    self.current_batch = []  # 배치 초기화
+                    return result
+                else:
+                    # 배치가 아직 준비되지 않음
+                    return None
+            else:
+                # 배치에 추가할 수 없는 경우 개별 처리
+                result = yield from self.process_logic(input_data)
+                return result
+        else:
+            # 개별 처리
+            result = yield from self.process_logic(input_data)
+            return result
+    
+    @abstractmethod
+    def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
+        """
+        구체적인 프로세스 로직을 구현해야 하는 추상 메서드
+        
+        Args:
+            input_data: 입력 데이터
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
+        Returns:
+            Any: 처리 결과
+        """
+        pass
+    
+    def process_batch(self, batch_items: List[Any]) -> Generator[simpy.Event, None, List[Any]]:
+        """
+        배치 아이템들을 처리
+        
+        Args:
+            batch_items: 배치 아이템 리스트
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
+        Returns:
+            List[Any]: 처리 결과 리스트
+        """
+        print(f"[시간 {self.env.now:.1f}] {self.process_name} 배치 처리 시작 ({len(batch_items)}개)")
+        
+        # 배치 처리 로직 실행
+        results = yield from self.batch_process_logic(batch_items)
+        
+        print(f"[시간 {self.env.now:.1f}] {self.process_name} 배치 처리 완료")
         return results
+    
+    def batch_process_logic(self, batch_items: List[Any]) -> Generator[simpy.Event, None, List[Any]]:
+        """
+        배치 처리 로직 (기본 구현: 개별 처리)
+        
+        Args:
+            batch_items: 배치 아이템 리스트
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
+        Returns:
+            List[Any]: 처리 결과 리스트
+        """
+        results = []
+        for item in batch_items:
+            result = yield from self.process_logic(item)
+            results.append(result)
+        return results
+    
+    def add_to_batch(self, item: Any) -> bool:
+        """
+        배치에 아이템 추가
+        
+        Args:
+            item: 추가할 아이템
+            
+        Returns:
+            bool: 추가 성공 여부
+        """
+        if len(self.current_batch) < self.batch_size:
+            self.current_batch.append(item)
+            print(f"[{self.process_name}] 배치에 아이템 추가 ({len(self.current_batch)}/{self.batch_size})")
+            return True
+        return False
+    
+    def get_current_batch(self) -> List[Any]:
+        """현재 배치의 아이템들을 반환"""
+        return self.current_batch.copy()
+    
+    def is_batch_ready(self) -> bool:
+        """배치가 처리 준비가 되었는지 확인"""
+        return len(self.current_batch) >= self.batch_size
+    
+    def get_batch_status(self) -> Dict[str, Any]:
+        """배치 상태 정보를 반환"""
+        return {
+            'batch_size': self.batch_size,
+            'current_count': len(self.current_batch),
+            'is_ready': self.is_batch_ready(),
+            'enable_batch_processing': self.enable_batch_processing
+        }
+    
+    def connect_to(self, next_process: 'BaseProcess') -> 'BaseProcess':
+        """
+        다음 공정과 연결
+        
+        Args:
+            next_process: 연결할 다음 공정
+            
+        Returns:
+            BaseProcess: 자기 자신 (메서드 체이닝용)
+        """
+        if next_process not in self.next_processes:
+            self.next_processes.append(next_process)
+            next_process.previous_processes.append(self)
+            print(f"[{self.process_name}] → [{next_process.process_name}] 연결됨")
+        return self
+    
+    def __rshift__(self, other: Union['BaseProcess', 'ProcessChain', 'MultiProcessGroup']) -> 'ProcessChain':
+        """
+        >> 연산자를 사용하여 공정 체인 생성
+        
+        Args:
+            other: 연결할 공정, 체인, 또는 그룹
+            
+        Returns:
+            ProcessChain: 생성된 공정 체인
+        """
+        # 런타임에 Flow 모듈 import
+        from src.Flow import ProcessChain, MultiProcessGroup
+        from src.Flow.multi_process_group import GroupWrapperProcess
+        
+        if isinstance(other, BaseProcess):
+            return ProcessChain([self, other])
+        elif isinstance(other, ProcessChain):
+            new_chain = ProcessChain([self])
+            new_chain.processes.extend(other.processes)
+            return new_chain
+        elif isinstance(other, MultiProcessGroup):
+            # MultiProcessGroup을 래퍼로 감싸서 추가
+            group_wrapper = GroupWrapperProcess(other)
+            return ProcessChain([self, group_wrapper])
+        else:
+            raise TypeError(f">> 연산자는 BaseProcess, ProcessChain, 또는 MultiProcessGroup과만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
+    
+    def __and__(self, other: 'BaseProcess') -> 'MultiProcessGroup':
+        """
+        & 연산자를 사용하여 병렬 그룹 생성
+        
+        Args:
+            other: 병렬 실행할 공정
+            
+        Returns:
+            MultiProcessGroup: 생성된 병렬 그룹
+        """
+        # 런타임에 Flow 모듈 import
+        from src.Flow import MultiProcessGroup
+        
+        if isinstance(other, BaseProcess):
+            return MultiProcessGroup([self, other])
+        else:
+            raise TypeError(f"& 연산자는 BaseProcess와만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
+    
+    def add_input_resource(self, resource: Resource):
+        """입력 자원 추가"""
+        self.input_resources.append(resource)
+        self.current_input_inventory[resource.resource_id] = resource
+    
+    def add_output_resource(self, resource: Resource):
+        """출력 자원 추가"""
+        self.output_resources.append(resource)
+        self.current_output_inventory[resource.resource_id] = resource
+    
+    def add_resource_requirement(self, requirement: ResourceRequirement):
+        """자원 요구사항 추가"""
+        self.resource_requirements.append(requirement)
+    
+    def consume_resources(self, input_data: Any = None) -> bool:
+        """
+        입력 자원을 소비
+        
+        Args:
+            input_data: 입력 데이터
+            
+        Returns:
+            bool: 소비 성공 여부
+        """
+        # 자원 요구사항에 따라 입력 자원 소비
+        for requirement in self.resource_requirements:
+            if requirement.is_mandatory:
+                # 필수 자원이 있는지 확인
+                available_resources = [r for r in self.input_resources 
+                                     if r.resource_type == requirement.resource_type]
+                if len(available_resources) < requirement.required_quantity:
+                    print(f"[{self.process_name}] 필수 자원 부족: {requirement.name}")
+                    return False
+        
+        print(f"[{self.process_name}] 자원 소비 완료")
+        return True
+    
+    def produce_resources(self, output_data: Any = None) -> List[Resource]:
+        """
+        출력 자원을 생산
+        
+        Args:
+            output_data: 출력 데이터
+            
+        Returns:
+            List[Resource]: 생산된 자원 리스트
+        """
+        produced_resources = []
+        
+        # 출력 자원 생산
+        for output_resource in self.output_resources:
+            # 자원 복사본 생성
+            produced_resource = Resource(
+                resource_id=output_resource.resource_id,
+                name=output_resource.name,
+                resource_type=output_resource.resource_type,
+                properties=output_resource.properties.copy()
+            )
+            produced_resources.append(produced_resource)
+            self.current_output_inventory[produced_resource.resource_id] = produced_resource
+        
+        print(f"[{self.process_name}] 자원 생산 완료: {len(produced_resources)}개")
+        return produced_resources
+    
+    def get_resource_status(self) -> Dict[str, Any]:
+        """자원 상태 정보를 반환"""
+        return {
+            'input_resources': len(self.input_resources),
+            'output_resources': len(self.output_resources),
+            'resource_requirements': len(self.resource_requirements),
+            'input_inventory': len(self.current_input_inventory),
+            'output_inventory': len(self.current_output_inventory)
+        }
+    
+    def get_input_resources(self) -> List[Resource]:
+        """입력 자원 리스트를 반환"""
+        return self.input_resources.copy()
+    
+    def get_output_resources(self) -> List[Resource]:
+        """출력 자원 리스트를 반환"""
+        return self.output_resources.copy()
+    
+    def get_resource_requirements(self) -> List[ResourceRequirement]:
+        """자원 요구사항 리스트를 반환"""
+        return self.resource_requirements.copy()
+    
+    def get_process_info(self) -> dict:
+        """공정 정보를 반환"""
+        return {
+            'process_id': self.process_id,
+            'process_name': self.process_name,
+            'machines': len(self.machines),
+            'workers': len(self.workers),
+            'batch_size': self.batch_size,
+            'execution_priority': self.execution_priority,
+            'parallel_safe': self.parallel_safe,
+            'resource_status': self.get_resource_status()
+        }
+    
+    def apply_failure_weight_to_machines(self):
+        """기계 고장률 가중치 적용"""
+        for machine in self.machines:
+            if hasattr(machine, 'set_failure_rate'):
+                original_rate = getattr(machine, 'original_failure_rate', machine.failure_rate)
+                machine.original_failure_rate = original_rate
+                machine.failure_rate = original_rate * self.failure_weight_machine
+                print(f"[{self.process_name}] 기계 {getattr(machine, 'machine_id', 'Unknown')} 고장률 가중치 적용: {self.failure_weight_machine}")
+    
+    def apply_failure_weight_to_workers(self):
+        """작업자 실수율 가중치 적용"""
+        for worker in self.workers:
+            if hasattr(worker, 'set_error_rate'):
+                original_rate = getattr(worker, 'original_error_rate', worker.error_rate)
+                worker.original_error_rate = original_rate
+                worker.error_rate = original_rate * self.failure_weight_worker
+                print(f"[{self.process_name}] 작업자 {getattr(worker, 'worker_id', 'Unknown')} 실수율 가중치 적용: {self.failure_weight_worker}")
+    
+    def restore_original_failure_rates(self):
+        """원래 고장률/실수율로 복원"""
+        # 기계 고장률 복원
+        for machine in self.machines:
+            if hasattr(machine, 'original_failure_rate'):
+                machine.failure_rate = machine.original_failure_rate
+                print(f"[{self.process_name}] 기계 {getattr(machine, 'machine_id', 'Unknown')} 고장률 복원")
+        
+        # 작업자 실수율 복원
+        for worker in self.workers:
+            if hasattr(worker, 'original_error_rate'):
+                worker.error_rate = worker.original_error_rate
+                print(f"[{self.process_name}] 작업자 {getattr(worker, 'worker_id', 'Unknown')} 실수율 복원")
+    
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.process_name})"
+    
+    def __str__(self) -> str:
+        return f"{self.process_name} (ID: {self.process_id})"

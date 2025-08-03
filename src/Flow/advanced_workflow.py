@@ -8,6 +8,9 @@ from typing import List, Dict, Any, Callable, Optional, Set, Tuple, Generator
 from enum import Enum
 from dataclasses import dataclass
 import uuid
+from src.Processes.base_process import BaseProcess
+from .process_chain import ProcessChain
+from .multi_process_group import MultiProcessGroup
 
 
 class ExecutionMode(Enum):
@@ -99,104 +102,93 @@ class AdvancedWorkflowManager:
         
     def simple_sync(self, events: List[simpy.Event], sync_type: SynchronizationType = SynchronizationType.ALL_COMPLETE) -> Generator[simpy.Event, None, None]:
         """
-        SimPy 내장 기능을 활용한 간단한 동기화 (복잡한 동기화 시스템 대체)
+        간단한 동기화 기능 (SimPy Event 기반)
         
         Args:
             events: 동기화할 이벤트 리스트
             sync_type: 동기화 타입
             
         Yields:
-            simpy.Event: SimPy 이벤트들
+            simpy.Event: 동기화 완료 이벤트
         """
+        if not events:
+            return
+            
         if sync_type == SynchronizationType.ALL_COMPLETE:
-            # SimPy AllOf 사용: 모든 이벤트 완료 대기
+            # 모든 이벤트 완료 대기
             yield simpy.AllOf(self.env, events)
         elif sync_type == SynchronizationType.ANY_COMPLETE:
-            # SimPy AnyOf 사용: 하나의 이벤트만 완료되면 진행
+            # 하나의 이벤트 완료 대기
             yield simpy.AnyOf(self.env, events)
-        else:  # THRESHOLD
-            # 임계값 만큼의 이벤트 완료 대기 (SimPy Condition 활용)
+        elif sync_type == SynchronizationType.THRESHOLD:
+            # 임계값만큼 완료 대기 (복잡하므로 간단히 구현)
             completed_count = 0
-            threshold = len(events) // 2  # 예시: 절반 완료
+            threshold = min(len(events), 1)  # 기본값 1
             
             def check_completion():
+                nonlocal completed_count
+                completed_count += 1
                 return completed_count >= threshold
                 
-            condition = simpy.Condition(self.env)
-            
-            # 각 이벤트 완료 시 카운터 증가
             def monitor_event(event):
-                nonlocal completed_count
-                yield event
-                completed_count += 1
-                if check_completion():
-                    condition.succeed()
+                try:
+                    yield event
+                    if check_completion():
+                        return
+                except:
+                    pass
                     
-            for event in events:
-                self.env.process(monitor_event(event))
-                
-            yield condition
-            
-        print(f"[시간 {self.env.now:.1f}] 동기화 완료: {sync_type.value}")
+            # 모든 이벤트 모니터링
+            yield simpy.AllOf(self.env, [monitor_event(event) for event in events])
         
     def get_workflow_statistics(self) -> Dict[str, Any]:
         """
-        워크플로우 통계 반환
+        워크플로우 통계 정보를 반환합니다.
         
         Returns:
             Dict[str, Any]: 통계 정보
         """
-        total_results = len(self.execution_results)
-        successful_results = sum(1 for result in self.execution_results.values() if result.success)
+        total_processes = len(self.processes)
+        total_chains = len(self.process_chains)
+        active_workflows = len(self.active_workflows)
+        completed_workflows = len(self.completed_workflows)
+        
+        # 실행 결과 통계
+        successful_executions = sum(1 for result in self.execution_results.values() if result.success)
+        failed_executions = len(self.execution_results) - successful_executions
         
         return {
-            'simulation_time': self.env.now,
-            'total_workflows': len(self.completed_workflows) + len(self.active_workflows),
-            'active_workflows': len(self.active_workflows),
-            'completed_workflows': len(self.completed_workflows),
-            'total_process_executions': total_results,
-            'successful_executions': successful_results,
-            'success_rate': (successful_results / total_results * 100) if total_results > 0 else 0,
-            'worker_pool_capacity': self.worker_pool.capacity,
-            'worker_pool_usage': len(self.worker_pool.users),
-            'sync_points': len(self.sync_points)
+            'total_processes': total_processes,
+            'total_chains': total_chains,
+            'active_workflows': active_workflows,
+            'completed_workflows': completed_workflows,
+            'successful_executions': successful_executions,
+            'failed_executions': failed_executions,
+            'execution_results': len(self.execution_results)
         }
-    
+        
     def execute_workflow(self, product, workflow_steps):
         """
-        워크플로우 실행
+        워크플로우를 실행합니다.
         
         Args:
-            product: 처리할 제품 객체
-            workflow_steps: 워크플로우 단계 리스트
+            product: 처리할 제품
+            workflow_steps: 워크플로우 단계들
+            
+        Returns:
+            Generator: 워크플로우 실행 제너레이터
         """
-        workflow_id = f"workflow_{uuid.uuid4().hex[:8]}"
-        self.active_workflows.add(workflow_id)
-        
         def workflow_process():
-            try:
-                for step in workflow_steps:
-                    step_name = step['name']
-                    duration = step['duration']
+            print(f"[시간 {self.env.now:.1f}] 워크플로우 실행 시작")
+            
+            # 워크플로우 단계별 실행
+            for step in workflow_steps:
+                if hasattr(step, 'execute'):
+                    result = yield from step.execute(product)
+                    print(f"[시간 {self.env.now:.1f}] 워크플로우 단계 완료: {step.process_name}")
+                else:
+                    print(f"[시간 {self.env.now:.1f}] 워크플로우 단계 건너뜀: {step}")
                     
-                    print(f"[시간 {self.env.now:.1f}] {product.product_id} - {step_name} 시작")
-                    
-                    # 워커 풀에서 리소스 요청
-                    with self.worker_pool.request() as request:
-                        yield request
-                        
-                        # 작업 시간만큼 대기
-                        yield self.env.timeout(duration)
-                        
-                        print(f"[시간 {self.env.now:.1f}] {product.product_id} - {step_name} 완료")
-                
-                # 워크플로우 완료
-                self.active_workflows.remove(workflow_id)
-                self.completed_workflows.add(workflow_id)
-                
-            except Exception as e:
-                print(f"[오류] 워크플로우 실행 중 오류 발생: {e}")
-                if workflow_id in self.active_workflows:
-                    self.active_workflows.remove(workflow_id)
-        
-        return self.env.process(workflow_process())
+            print(f"[시간 {self.env.now:.1f}] 워크플로우 실행 완료")
+            
+        return workflow_process()

@@ -18,11 +18,11 @@ from src.Resource.worker import Worker
 from src.Resource.product import Product
 from src.Resource.transport import Transport
 from src.Resource.resource_base import Resource, ResourceType
-from src.processes.manufacturing_process import ManufacturingProcess
-from src.processes.assembly_process import AssemblyProcess
-from src.processes.quality_control_process import QualityControlProcess
-from src.processes.transport_process import TransportProcess
-from src.processes.base_process import MultiProcessGroup, ProcessChain
+from src.Processes.manufacturing_process import ManufacturingProcess
+from src.Processes.assembly_process import AssemblyProcess
+from src.Processes.quality_control_process import QualityControlProcess
+from src.Processes.transport_process import TransportProcess
+from src.Flow.multi_process_group import MultiProcessGroup
 
 env = simpy.Environment()
 # engine = SimulationEngine(env)  # 이 부분을 주석 처리
@@ -55,11 +55,11 @@ proc_b1 = ManufacturingProcess(env, [machines[2]], [workers[2]], [], [resources[
 proc_b2 = ManufacturingProcess(env, [machines[3]], [workers[3]], [resources[2]], [resources[3]], [], process_name='B2', processing_time=1.8)
 qc = QualityControlProcess(
     env,
-    inspection_criteria={'불량허용': 0.2},
-    input_resources=[resources[1], resources[3]],
-    output_resources=[],
-    resource_requirements=[],
     machines=[machines[4]],
+    workers=[],  # 빈 workers 리스트 추가
+    input_resources=[resources[1], resources[3]],
+    output_resources=[resources[1], resources[3]],  # output_resources 추가
+    resource_requirements=[],  # resource_requirements 추가
     process_name='품질검사',
     inspection_time=1.0,
     failure_weight_worker=2.0
@@ -69,10 +69,13 @@ assembly = AssemblyProcess(env, [machines[5]], workers, [resources[1], resources
 # 운송 공정 생성 (모듈화된 클래스 사용)
 transport_a1_to_a2 = TransportProcess(
     env, 
-    transports=[transports[0]], 
-    route='A1->A2',
+    machines=[transports[0]],  # transports를 machines로 변경
+    workers=[],  # 빈 workers 리스트 추가
     input_resources=[resources[0]], 
-    distance=5.0,
+    output_resources=[resources[0]],  # output_resources 추가
+    resource_requirements=[],  # resource_requirements 추가
+    process_id='T001',
+    process_name='A1_to_A2_운송',
     loading_time=0.2,
     unloading_time=0.3,
     transport_time=0.5,

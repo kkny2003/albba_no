@@ -1,15 +1,23 @@
-# /manufacturing-simulation-framework/manufacturing-simulation-framework/src/Processes/__init__.py
+"""
+Processes 모듈 - 제조 공정 관리
 
-# Processes 모듈의 초기화 파일입니다.
-# 이 파일은 제조 공정 관련 클래스를 포함하는 모듈을 초기화합니다.
+이 모듈은 제조 시뮬레이션에서 사용되는 다양한 공정들을 정의하고 관리합니다.
+BaseProcess를 상속받아 각각의 공정을 구현할 수 있습니다.
+"""
 
-from src.Processes.base_process import BaseProcess, ProcessChain, MultiProcessGroup, GroupWrapperProcess  # 기본 공정 클래스 및 체인 클래스 임포트
-from src.Processes.manufacturing_process import ManufacturingProcess  # 제조 공정 클래스 임포트
-from src.Processes.assembly_process import AssemblyProcess            # 조립 공정 클래스 임포트
-from src.Processes.quality_control_process import QualityControlProcess  # 품질 관리 공정 클래스 임포트
-from src.Processes.transport_process import TransportProcess  # 운송 공정 클래스 임포트
+from .base_process import BaseProcess, parse_process_priority, validate_priority_sequence, PriorityValidationError
+from .manufacturing_process import ManufacturingProcess
+from .assembly_process import AssemblyProcess
+from .quality_control_process import QualityControlProcess
+from .transport_process import TransportProcess
 
 __all__ = [
-    'BaseProcess', 'ProcessChain', 'MultiProcessGroup', 'GroupWrapperProcess',
-    'ManufacturingProcess', 'AssemblyProcess', 'QualityControlProcess', 'TransportProcess'
-]  # 공개 API 정의
+    'BaseProcess',
+    'ManufacturingProcess',
+    'AssemblyProcess', 
+    'QualityControlProcess',
+    'TransportProcess',
+    'parse_process_priority',
+    'validate_priority_sequence',
+    'PriorityValidationError'
+]
