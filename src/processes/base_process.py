@@ -4,13 +4,15 @@
 Flow 관련 기능은 별도의 Flow 모듈로 분리되었습니다.
 """
 
-from typing import List, Optional, Any, Union, Dict, Callable, Tuple, Generator
+from typing import List, Optional, Any, Union, Dict, Callable, Tuple, Generator, TYPE_CHECKING
 from abc import ABC, abstractmethod
 import uuid
 import simpy
 from src.Resource.resource_base import Resource, ResourceRequirement, ResourceType
-# Flow 모듈은 런타임에 import하여 순환 import 방지
-# from src.Flow import ProcessChain, MultiProcessGroup
+
+# 순환 import 방지를 위한 타입 체킹
+if TYPE_CHECKING:
+    from src.Flow import ProcessChain, MultiProcessGroup
 
 
 class PriorityValidationError(Exception):
@@ -263,7 +265,7 @@ class BaseProcess(ABC):
         
         return True
     
-    def add_machine(self, machine) -> 'BaseProcess':
+    def add_machine(self, machine: Any) -> 'BaseProcess':
         """
         공정에 기계를 추가
         
@@ -279,7 +281,7 @@ class BaseProcess(ABC):
             print(f"[{self.process_name}] 기계 추가: {machine_id}")
         return self
     
-    def add_worker(self, worker) -> 'BaseProcess':
+    def add_worker(self, worker: Any) -> 'BaseProcess':
         """
         공정에 작업자를 추가
         
@@ -295,12 +297,12 @@ class BaseProcess(ABC):
             print(f"[{self.process_name}] 작업자 추가: {worker_id}")
         return self
     
-    def get_available_machines(self):
+    def get_available_machines(self) -> List[Any]:
         """
-        사용 가능한 기계들을 반환
+        사용 가능한 기계들을 반환합니다.
         
         Returns:
-            List: 사용 가능한 기계 리스트
+            List[Any]: 현재 사용 가능한 기계들의 리스트
         """
         available_machines = []
         for machine in self.machines:
@@ -308,12 +310,12 @@ class BaseProcess(ABC):
                 available_machines.append(machine)
         return available_machines
     
-    def get_available_workers(self):
+    def get_available_workers(self) -> List[Any]:
         """
-        사용 가능한 작업자들을 반환
+        사용 가능한 작업자들을 반환합니다.
         
         Returns:
-            List: 사용 가능한 작업자 리스트
+            List[Any]: 현재 사용 가능한 작업자들의 리스트
         """
         available_workers = []
         for worker in self.workers:
@@ -501,15 +503,30 @@ class BaseProcess(ABC):
         return False
     
     def get_current_batch(self) -> List[Any]:
-        """현재 배치의 아이템들을 반환"""
+        """
+        현재 배치의 아이템들을 반환합니다.
+        
+        Returns:
+            List[Any]: 현재 배치에 축적된 아이템들의 복사본
+        """
         return self.current_batch.copy()
     
     def is_batch_ready(self) -> bool:
-        """배치가 처리 준비가 되었는지 확인"""
+        """
+        배치가 처리 준비가 되었는지 확인합니다.
+        
+        Returns:
+            bool: 배치 크기에 도달했으면 True, 아니면 False
+        """
         return len(self.current_batch) >= self.batch_size
     
     def get_batch_status(self) -> Dict[str, Any]:
-        """배치 상태 정보를 반환"""
+        """
+        배치 상태 정보를 반환합니다.
+        
+        Returns:
+            Dict[str, Any]: 배치 처리 관련 상태 정보를 담은 딕셔너리
+        """
         return {
             'batch_size': self.batch_size,
             'current_count': len(self.current_batch),
@@ -543,9 +560,12 @@ class BaseProcess(ABC):
         Returns:
             ProcessChain: 생성된 공정 체인
         """
-        # 런타임에 Flow 모듈 import
-        from src.Flow import ProcessChain, MultiProcessGroup
-        from src.Flow.multi_process_group import GroupWrapperProcess
+        # 런타임에 Flow 모듈 import (순환 import 방지)
+        try:
+            from src.Flow import ProcessChain, MultiProcessGroup
+            from src.Flow.multi_process_group import GroupWrapperProcess
+        except ImportError as e:
+            raise ImportError(f"Flow 모듈을 import할 수 없습니다: {e}. Flow 모듈이 올바르게 설치되어 있는지 확인하세요.")
         
         if isinstance(other, BaseProcess):
             return ProcessChain([self, other])
@@ -570,26 +590,44 @@ class BaseProcess(ABC):
         Returns:
             MultiProcessGroup: 생성된 병렬 그룹
         """
-        # 런타임에 Flow 모듈 import
-        from src.Flow import MultiProcessGroup
+        # 런타임에 Flow 모듈 import (순환 import 방지)
+        try:
+            from src.Flow import MultiProcessGroup
+        except ImportError as e:
+            raise ImportError(f"Flow 모듈을 import할 수 없습니다: {e}. Flow 모듈이 올바르게 설치되어 있는지 확인하세요.")
         
         if isinstance(other, BaseProcess):
             return MultiProcessGroup([self, other])
         else:
             raise TypeError(f"& 연산자는 BaseProcess와만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
     
-    def add_input_resource(self, resource: Resource):
-        """입력 자원 추가"""
+    def add_input_resource(self, resource: Resource) -> None:
+        """
+        입력 자원을 추가합니다.
+        
+        Args:
+            resource: 추가할 입력 자원
+        """
         self.input_resources.append(resource)
         self.current_input_inventory[resource.resource_id] = resource
     
-    def add_output_resource(self, resource: Resource):
-        """출력 자원 추가"""
+    def add_output_resource(self, resource: Resource) -> None:
+        """
+        출력 자원을 추가합니다.
+        
+        Args:
+            resource: 추가할 출력 자원
+        """
         self.output_resources.append(resource)
         self.current_output_inventory[resource.resource_id] = resource
     
-    def add_resource_requirement(self, requirement: ResourceRequirement):
-        """자원 요구사항 추가"""
+    def add_resource_requirement(self, requirement: ResourceRequirement) -> None:
+        """
+        자원 요구사항을 추가합니다.
+        
+        Args:
+            requirement: 추가할 자원 요구사항
+        """
         self.resource_requirements.append(requirement)
     
     def consume_resources(self, input_data: Any = None) -> bool:
@@ -643,7 +681,12 @@ class BaseProcess(ABC):
         return produced_resources
     
     def get_resource_status(self) -> Dict[str, Any]:
-        """자원 상태 정보를 반환"""
+        """
+        자원 상태 정보를 반환합니다.
+        
+        Returns:
+            Dict[str, Any]: 자원 관리 관련 상태 정보를 담은 딕셔너리
+        """
         return {
             'input_resources': len(self.input_resources),
             'output_resources': len(self.output_resources),
@@ -653,19 +696,39 @@ class BaseProcess(ABC):
         }
     
     def get_input_resources(self) -> List[Resource]:
-        """입력 자원 리스트를 반환"""
+        """
+        입력 자원 리스트를 반환합니다.
+        
+        Returns:
+            List[Resource]: 현재 공정의 입력 자원 리스트 복사본
+        """
         return self.input_resources.copy()
     
     def get_output_resources(self) -> List[Resource]:
-        """출력 자원 리스트를 반환"""
+        """
+        출력 자원 리스트를 반환합니다.
+        
+        Returns:
+            List[Resource]: 현재 공정의 출력 자원 리스트 복사본
+        """
         return self.output_resources.copy()
     
     def get_resource_requirements(self) -> List[ResourceRequirement]:
-        """자원 요구사항 리스트를 반환"""
+        """
+        자원 요구사항 리스트를 반환합니다.
+        
+        Returns:
+            List[ResourceRequirement]: 현재 공정의 자원 요구사항 리스트 복사본
+        """
         return self.resource_requirements.copy()
     
-    def get_process_info(self) -> dict:
-        """공정 정보를 반환"""
+    def get_process_info(self) -> Dict[str, Any]:
+        """
+        공정 정보를 반환합니다.
+        
+        Returns:
+            Dict[str, Any]: 공정의 상세 정보를 담은 딕셔너리
+        """
         return {
             'process_id': self.process_id,
             'process_name': self.process_name,
@@ -677,8 +740,10 @@ class BaseProcess(ABC):
             'resource_status': self.get_resource_status()
         }
     
-    def apply_failure_weight_to_machines(self):
-        """기계 고장률 가중치 적용"""
+    def apply_failure_weight_to_machines(self) -> None:
+        """
+        기계 고장률 가중치를 적용합니다.
+        """
         for machine in self.machines:
             if hasattr(machine, 'set_failure_rate'):
                 original_rate = getattr(machine, 'original_failure_rate', machine.failure_rate)
@@ -686,8 +751,10 @@ class BaseProcess(ABC):
                 machine.failure_rate = original_rate * self.failure_weight_machine
                 print(f"[{self.process_name}] 기계 {getattr(machine, 'machine_id', 'Unknown')} 고장률 가중치 적용: {self.failure_weight_machine}")
     
-    def apply_failure_weight_to_workers(self):
-        """작업자 실수율 가중치 적용"""
+    def apply_failure_weight_to_workers(self) -> None:
+        """
+        작업자 실수율 가중치를 적용합니다.
+        """
         for worker in self.workers:
             if hasattr(worker, 'set_error_rate'):
                 original_rate = getattr(worker, 'original_error_rate', worker.error_rate)
@@ -695,8 +762,10 @@ class BaseProcess(ABC):
                 worker.error_rate = original_rate * self.failure_weight_worker
                 print(f"[{self.process_name}] 작업자 {getattr(worker, 'worker_id', 'Unknown')} 실수율 가중치 적용: {self.failure_weight_worker}")
     
-    def restore_original_failure_rates(self):
-        """원래 고장률/실수율로 복원"""
+    def restore_original_failure_rates(self) -> None:
+        """
+        원래 고장률/실수율로 복원합니다.
+        """
         # 기계 고장률 복원
         for machine in self.machines:
             if hasattr(machine, 'original_failure_rate'):
