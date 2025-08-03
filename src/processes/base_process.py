@@ -112,9 +112,9 @@ class BaseProcess(ABC):
     def __init__(self, env: simpy.Environment, machines=None, workers=None, 
                  process_id: str = None, process_name: str = None, batch_size: int = 1,
                  failure_weight_machine: float = 1.0, failure_weight_worker: float = 1.0,
-                 input_resources: List[Resource], 
-                 output_resources: List[Resource],
-                 resource_requirements: List[ResourceRequirement]):
+                 input_resources: List[Resource] = None, 
+                 output_resources: List[Resource] = None,
+                 resource_requirements: List[ResourceRequirement] = None):
         """
         기본 공정 초기화 (SimPy 환경 필수, machine 또는 worker 중 하나는 필수)
         
