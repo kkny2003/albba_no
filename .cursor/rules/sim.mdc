@@ -1,6 +1,5 @@
 ---
-description: SimPy 제조공정 시뮬레이션 프레임워크 개발 가이드
-alwaysApply: false
+alwaysApply: true
 ---
 # SimPy 제조공정 시뮬레이션 프레임워크 개발 가이드
 
