@@ -18,12 +18,12 @@ class Buffer(Resource):
         """버퍼의 ID, 유형, 용량, 정책을 초기화합니다.
         
         Args:
-            env (simpy.Environment): SimPy 시뮬레이션 환경
-            resource_id (str): 버퍼의 고유 ID
-            name (str): 버퍼의 이름
-            buffer_type (str): 버퍼의 유형
-            capacity (int): 버퍼의 최대 저장 용량 (기본값: 100)
-            policy (BufferPolicy): 버퍼 정책 (기본값: FIFO)
+            env (simpy.Environment): SimPy 시뮬레이션 환경 (필수)
+            resource_id (str): 버퍼의 고유 ID (필수)
+            name (str): 버퍼의 이름 (필수)
+            buffer_type (str): 버퍼의 유형 (필수)
+            capacity (int): 버퍼의 최대 저장 용량 (선택적, 기본값: 100)
+            policy (BufferPolicy): 버퍼 정책 (선택적, 기본값: FIFO)
         """
         # Resource 기본 클래스 초기화
         super().__init__(
@@ -54,8 +54,8 @@ class Buffer(Resource):
         """버퍼에 아이템을 저장하는 프로세스입니다. (Store 기반으로 개선)
         
         Args:
-            item: 저장할 아이템 객체
-            quantity (int): 저장할 수량 (기본값: 1)
+            item (Any): 저장할 아이템 객체 (필수)
+            quantity (int): 저장할 수량 (선택적, 기본값: 1)
             
         Yields:
             simpy.Event: SimPy 이벤트들
@@ -82,7 +82,7 @@ class Buffer(Resource):
         """버퍼에서 아이템을 가져오는 프로세스입니다. (Store 기반으로 개선)
         
         Args:
-            quantity (int): 가져올 수량 (기본값: 1)
+            quantity (int): 가져올 수량 (선택적, 기본값: 1)
             
         Yields:
             simpy.Event: SimPy 이벤트들

@@ -36,11 +36,11 @@ class Resource:
         자원 초기화 (개선된 안전 버전)
         
         Args:
-            resource_id: 자원의 고유 ID
-            name: 자원 이름
-            resource_type: 자원 타입 (ResourceType 열거형)
-            properties: 추가 속성들 (선택적)
-            strict_mode: 엄격 모드 
+            resource_id (str): 자원의 고유 ID (필수)
+            name (str): 자원 이름 (필수)
+            resource_type (ResourceType): 자원 타입 (ResourceType 열거형) (필수)
+            properties (Optional[Dict[str, Any]]): 추가 속성들 (선택적, 기본값: None)
+            strict_mode (bool): 엄격 모드 (선택적, 기본값: False)
                         - True: 충돌 시 예외 발생 (안전한 개발)
                         - False: 충돌 시 자동 접두사 추가 (관대한 모드, 기본값)
             properties에 None, False 자료형(int, str, ...) type을 정의 가능
@@ -156,8 +156,8 @@ class Resource:
         자원의 속성값을 가져오는 메서드
         
         Args:
-            key: 속성 키
-            default: 기본값
+            key (str): 속성 키 (필수)
+            default (Any): 기본값 (선택적, 기본값: None)
             
         Returns:
             Any: 속성값
@@ -169,8 +169,8 @@ class Resource:
         자원의 속성값을 설정하는 메서드 (개선된 안전 버전)
         
         Args:
-            key: 속성 키
-            value: 속성값
+            key (str): 속성 키 (필수)
+            value (Any): 속성값 (필수)
         """
         # 보호된 attribute명 검사
         if key in self._PROTECTED_ATTRIBUTES:
@@ -206,7 +206,7 @@ class Resource:
         속성을 안전하게 제거
         
         Args:
-            key: 제거할 속성 키
+            key (str): 제거할 속성 키 (필수)
             
         Returns:
             bool: 제거 성공 여부
@@ -239,11 +239,11 @@ class ResourceRequirement:
         자원 요구사항 초기화
         
         Args:
-            resource_type: 필요한 자원 타입
-            name: 자원 이름
-            required_quantity: 필요한 수량
-            unit: 단위 (기본값: "개")
-            is_mandatory: 필수 여부 (기본값: True)
+            resource_type (ResourceType): 필요한 자원 타입 (필수)
+            name (str): 자원 이름 (필수)
+            required_quantity (int): 필요한 수량 (필수)
+            unit (str): 단위 (선택적, 기본값: "개")
+            is_mandatory (bool): 필수 여부 (선택적, 기본값: True)
         """
         self.resource_type = resource_type
         self.name = name
@@ -256,7 +256,7 @@ class ResourceRequirement:
         주어진 자원이 요구사항을 만족하는지 확인
         
         Args:
-            resource: 확인할 자원
+            resource (Resource): 확인할 자원 (필수)
             
         Returns:
             bool: 요구사항 만족 여부

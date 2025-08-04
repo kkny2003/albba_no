@@ -11,11 +11,12 @@ class Transport(Resource):
         """
         초기화 메서드입니다 (SimPy 환경 필수).
         
-        :param env: SimPy 환경 객체 (필수)
-        :param resource_id: 운송 수단의 ID
-        :param name: 운송 수단의 이름
-        :param capacity: 운송 수단의 수용 능력
-        :param transport_speed: 운송 속도 (단위: 거리/시간)
+        Args:
+            env (simpy.Environment): SimPy 환경 객체 (필수)
+            resource_id (str): 운송 수단의 ID (필수)
+            name (str): 운송 수단의 이름 (필수)
+            capacity (int): 운송 수단의 수용 능력 (선택적, 기본값: 10)
+            transport_speed (float): 운송 속도 (단위: 거리/시간, 선택적, 기본값: 1.0)
         """
         # Resource 기본 클래스 초기화
         super().__init__(
@@ -40,8 +41,9 @@ class Transport(Resource):
         """
         제품을 운송하는 SimPy generator 프로세스입니다.
         
-        :param product: 운송할 제품 객체
-        :param distance: 운송 거리
+        Args:
+            product: 운송할 제품 객체 (필수)
+            distance (float): 운송 거리 (필수)
         
         Yields:
             simpy.Event: SimPy 이벤트들

@@ -13,14 +13,14 @@ class Worker(Resource):
         """작업자의 정보를 초기화합니다.
         
         Args:
-            env (simpy.Environment): SimPy 시뮬레이션 환경
-            resource_id (str): 작업자의 고유 ID
-            name (str): 작업자의 이름
-            skills (List[str]): 작업자가 가진 기술 목록
-            work_speed (float): 작업 속도 배수 (1.0이 기본 속도)
-            error_probability (Optional[float]): 작업당 실수 확률 (0.0~1.0, None=비활성화, 기본값: None)
-            mean_time_to_rest (Optional[float]): 평균 휴식 필요 간격 (None=비활성화, 기본값: None)
-            mean_rest_time (Optional[float]): 평균 휴식 시간 (None=비활성화, 기본값: None)
+            env (simpy.Environment): SimPy 시뮬레이션 환경 (필수)
+            resource_id (str): 작업자의 고유 ID (필수)
+            name (str): 작업자의 이름 (필수)
+            skills (List[str]): 작업자가 가진 기술 목록 (선택적, 기본값: None)
+            work_speed (float): 작업 속도 배수 (1.0이 기본 속도, 선택적, 기본값: 1.0)
+            error_probability (Optional[float]): 작업당 실수 확률 (0.0~1.0, None=비활성화, 선택적, 기본값: None)
+            mean_time_to_rest (Optional[float]): 평균 휴식 필요 간격 (None=비활성화, 선택적, 기본값: None)
+            mean_rest_time (Optional[float]): 평균 휴식 시간 (None=비활성화, 선택적, 기본값: None)
         """
         # Resource 기본 클래스 초기화
         super().__init__(
@@ -51,9 +51,9 @@ class Worker(Resource):
         """작업자가 특정 작업을 수행하는 프로세스입니다.
         
         Args:
-            product: 작업할 제품 객체
-            task_name (str): 수행할 작업 이름
-            base_duration (float): 기본 작업 시간
+            product: 작업할 제품 객체 (필수)
+            task_name (str): 수행할 작업 이름 (필수)
+            base_duration (float): 기본 작업 시간 (필수)
             
         Yields:
             simpy.Event: SimPy 이벤트들
@@ -162,7 +162,7 @@ class Worker(Resource):
         """작업자가 휴식을 취하는 프로세스입니다.
         
         Args:
-            duration (float): 휴식 시간
+            duration (float): 휴식 시간 (필수)
             
         Yields:
             simpy.Event: SimPy 이벤트들
@@ -264,7 +264,7 @@ class Worker(Resource):
         """작업자가 새로운 기술을 습득합니다.
         
         Args:
-            new_skill (str): 새로 습득할 기술
+            new_skill (str): 새로 습득할 기술 (필수)
         """
         if new_skill not in self.skills:
             self.skills.append(new_skill)

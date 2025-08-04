@@ -14,14 +14,14 @@ class Machine(Resource):
         """기계의 ID, 유형, 용량 및 고장 관련 매개변수를 초기화합니다.
         
         Args:
-            env (simpy.Environment): SimPy 시뮬레이션 환경
-            resource_id (str): 기계의 고유 ID
-            name (str): 기계의 이름
-            capacity (int): 기계가 동시에 처리할 수 있는 작업 수 있는 작업 수 (기본값: 1)
-            processing_time (float): 기본 작업 처리 시간 (기본값: 1.0)
-            failure_probability (Optional[float]): 작업당 고장 확률 (0.0~1.0, None=비활성화, 기본값: None)
-            mean_time_to_failure (Optional[float]): 평균 고장 간격 시간 (None=비활성화, 기본값: None)
-            mean_time_to_repair (Optional[float]): 평균 수리 시간 (None=비활성화, 기본값: None)
+            env (simpy.Environment): SimPy 시뮬레이션 환경 (필수)
+            resource_id (str): 기계의 고유 ID (필수)
+            name (str): 기계의 이름 (필수)
+            capacity (int): 기계가 동시에 처리할 수 있는 작업 수 (선택적, 기본값: 1)
+            processing_time (float): 기본 작업 처리 시간 (선택적, 기본값: 1.0)
+            failure_probability (Optional[float]): 작업당 고장 확률 (0.0~1.0, None=비활성화, 선택적, 기본값: None)
+            mean_time_to_failure (Optional[float]): 평균 고장 간격 시간 (None=비활성화, 선택적, 기본값: None)
+            mean_time_to_repair (Optional[float]): 평균 수리 시간 (None=비활성화, 선택적, 기본값: None)
         """
         # Resource 기본 클래스 초기화
         super().__init__(
@@ -51,8 +51,8 @@ class Machine(Resource):
         """기계가 제품을 처리하는 프로세스입니다.
         
         Args:
-            product: 처리할 제품 객체
-            processing_time (Optional[float]): 이 작업의 처리 시간 (None이면 기본값 사용)
+            product: 처리할 제품 객체 (필수)
+            processing_time (Optional[float]): 이 작업의 처리 시간 (None이면 기본값 사용, 선택적, 기본값: None)
             
         Yields:
             simpy.Event: SimPy 이벤트들
@@ -129,7 +129,7 @@ class Machine(Resource):
         """기계 유지보수 프로세스입니다.
         
         Args:
-            duration (float): 유지보수 시간
+            duration (float): 유지보수 시간 (필수)
             
         Yields:
             simpy.Event: SimPy 이벤트들

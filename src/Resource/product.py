@@ -12,11 +12,11 @@ class Product(Resource):
         """제품을 초기화합니다.
         
         Args:
-            resource_id (str): 제품의 고유 ID
-            name (str): 제품의 이름
-            product_type (str): 제품 유형 (기본값: "기본제품")
-            specifications (Optional[Dict[str, Any]]): 제품 사양 정보
-            resource_type (ResourceType): 제품의 자원 타입 (원자재/반제품/완제품)
+            resource_id (str): 제품의 고유 ID (필수)
+            name (str): 제품의 이름 (필수)
+            product_type (str): 제품 유형 (선택적, 기본값: "기본제품")
+            specifications (Optional[Dict[str, Any]]): 제품 사양 정보 (선택적, 기본값: None)
+            resource_type (ResourceType): 제품의 자원 타입 (원자재/반제품/완제품, 선택적, 기본값: ResourceType.SEMI_FINISHED)
         """
         # Resource 기본 클래스 초기화
         super().__init__(
@@ -42,8 +42,8 @@ class Product(Resource):
         """새로운 공정 단계를 시작합니다.
         
         Args:
-            step_name (str): 공정 단계 이름
-            start_time (float): 시작 시간
+            step_name (str): 공정 단계 이름 (필수)
+            start_time (float): 시작 시간 (필수)
         """
         self.current_process_step = step_name
         
@@ -67,7 +67,7 @@ class Product(Resource):
         """현재 공정 단계를 완료합니다.
         
         Args:
-            end_time (float): 완료 시간
+            end_time (float): 완료 시간 (필수)
         """
         if self.process_history:
             current_step = self.process_history[-1]
@@ -79,8 +79,8 @@ class Product(Resource):
         """품질 검사 결과를 설정합니다.
         
         Args:
-            status (str): 품질 상태 ("양호", "불량", "재작업필요" 등)
-            defects (int): 발견된 결함 수
+            status (str): 품질 상태 ("양호", "불량", "재작업필요" 등) (필수)
+            defects (int): 발견된 결함 수 (선택적, 기본값: 0)
         """
         self.quality_status = status
         self.defect_count = defects
@@ -89,8 +89,8 @@ class Product(Resource):
         """제품 사양을 추가합니다.
         
         Args:
-            key (str): 사양 키
-            value (Any): 사양 값
+            key (str): 사양 키 (필수)
+            value (Any): 사양 값 (필수)
         """
         self.specifications[key] = value
         
@@ -98,8 +98,8 @@ class Product(Resource):
         """제품 사양을 가져옵니다.
         
         Args:
-            key (str): 사양 키
-            default (Any): 기본값
+            key (str): 사양 키 (필수)
+            default (Any): 기본값 (선택적, 기본값: None)
             
         Returns:
             Any: 사양 값
