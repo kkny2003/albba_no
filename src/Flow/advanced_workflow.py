@@ -64,14 +64,13 @@ class AdvancedWorkflowManager:
         self.env = env
         self.max_workers = max_workers
         
-        # 프로세스 관리 (BaseProcess 타입 체크를 위해 typing.TYPE_CHECKING 사용하지 않음)
-        self.processes: Dict[str, Any] = {}  # BaseProcess 객체들
-        self.process_chains: Dict[str, Any] = {}  # ProcessChain 객체들
+        # 프로세스 관리
+        self.processes: Dict[str, BaseProcess] = {}
+        self.process_chains: Dict[str, ProcessChain] = {}
         self.execution_results: Dict[str, ProcessResult] = {}
         
         # 동기화 관리 (SimPy Event 기반으로 단순화)
         self.sync_points: Dict[str, SynchronizationPoint] = {}
-        # sync_events, sync_results 제거: SimPy Event 직접 사용
         
         # 워크플로우 상태
         self.active_workflows: Set[str] = set()
@@ -80,23 +79,35 @@ class AdvancedWorkflowManager:
         # 리소스 제한
         self.worker_pool = simpy.Resource(env, capacity=max_workers)
         
-    def register_process(self, process):
+    def register_process(self, process: BaseProcess) -> None:
         """
         프로세스를 등록합니다.
         
         Args:
             process: 등록할 프로세스 (BaseProcess 객체)
+            
+        Raises:
+            TypeError: process가 BaseProcess가 아닌 경우
         """
+        if not isinstance(process, BaseProcess):
+            raise TypeError(f"BaseProcess 타입이어야 합니다. 받은 타입: {type(process)}")
+        
         self.processes[process.process_id] = process
         print(f"[시간 {self.env.now:.1f}] 프로세스 등록: {process.process_id} ({process.process_name})")
         
-    def register_process_chain(self, chain):
+    def register_process_chain(self, chain: ProcessChain) -> None:
         """
         프로세스 체인을 등록합니다.
         
         Args:
             chain: 등록할 프로세스 체인 (ProcessChain 객체)
+            
+        Raises:
+            TypeError: chain이 ProcessChain이 아닌 경우
         """
+        if not isinstance(chain, ProcessChain):
+            raise TypeError(f"ProcessChain 타입이어야 합니다. 받은 타입: {type(chain)}")
+        
         self.process_chains[chain.chain_id] = chain
         print(f"[시간 {self.env.now:.1f}] 프로세스 체인 등록: {chain.chain_id}")
         
@@ -167,7 +178,7 @@ class AdvancedWorkflowManager:
             'execution_results': len(self.execution_results)
         }
         
-    def execute_workflow(self, product, workflow_steps):
+    def execute_workflow(self, product: Any, workflow_steps: List[BaseProcess]) -> Generator[simpy.Event, None, Any]:
         """
         워크플로우를 실행합니다.
         
@@ -175,8 +186,11 @@ class AdvancedWorkflowManager:
             product: 처리할 제품
             workflow_steps: 워크플로우 단계들
             
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
         Returns:
-            Generator: 워크플로우 실행 제너레이터
+            Any: 워크플로우 실행 결과
         """
         def workflow_process():
             print(f"[시간 {self.env.now:.1f}] 워크플로우 실행 시작")
