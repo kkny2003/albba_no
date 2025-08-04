@@ -10,17 +10,27 @@ from src.Resource.resource_base import Resource, ResourceRequirement, ResourceTy
 
 
 class TransportProcess(BaseProcess):
-    """운송 공정을 정의하는 클래스입니다 (SimPy 기반)."""
+    """
+    운송 공정을 정의하는 클래스입니다 (SimPy 기반).
+    
+    운송 공정은 다음 4단계로 구성됩니다:
+    1. 적재 (loading_time): 출발지에서 운송 수단에 제품 적재
+    2. 운송 (transport_time): 출발지에서 도착지까지 실제 운송
+    3. 하역 (unloading_time): 도착지에서 운송 수단에서 제품 하역
+    4. 대기 (cooldown_time): 다음 운송 준비를 위한 대기
+    
+    시간 단위: 시뮬레이션 시간 단위 (1.0 = 1시간)
+    """
 
     def __init__(self, env: simpy.Environment, process_id: str, process_name: str,
                  machines, workers, 
                  input_resources: List[Resource], 
                  output_resources: List[Resource],
                  resource_requirements: List[ResourceRequirement],
-                 loading_time: float = 0.5,
-                 transport_time: float = 2.0,
-                 unloading_time: float = 0.5,
-                 cooldown_time: float = 0.2,
+                 loading_time: float,
+                 transport_time: float,
+                 unloading_time: float,
+                 cooldown_time: float = 0.0,
                  failure_weight_machine: float = 1.0, 
                  failure_weight_worker: float = 1.0):
         """
@@ -34,13 +44,30 @@ class TransportProcess(BaseProcess):
         :param resource_requirements: 자원 요구사항 목록 (필수)
         :param process_id: 공정 고유 ID (필수)
         :param process_name: 공정 이름 (필수)
-        :param loading_time: 적재 시간 (시뮬레이션 시간 단위)
-        :param transport_time: 운송 시간 (시뮬레이션 시간 단위)
-        :param unloading_time: 하역 시간 (시뮬레이션 시간 단위)
+        :param loading_time: 적재 시간 (시뮬레이션 시간 단위, 필수)
+            - 출발지에서 운송 수단에 제품을 적재하는데 소요되는 시간
+            - 실제 시간과의 변환: 1.0 = 1시간
+            - 예시: 0.5 = 30분, 1.0 = 1시간
+        :param transport_time: 운송 시간 (시뮬레이션 시간 단위, 필수)
+            - 출발지에서 도착지까지 실제 운송에 소요되는 시간
+            - 거리, 운송 수단 속도, 경로에 따라 조정 가능
+            - 예시: 2.0 = 2시간, 0.5 = 30분
+        :param unloading_time: 하역 시간 (시뮬레이션 시간 단위, 필수)
+            - 도착지에서 운송 수단에서 제품을 하역하는데 소요되는 시간
+            - 하역 장비, 작업자 수에 따라 조정 가능
+            - 예시: 0.5 = 30분, 1.0 = 1시간
         :param cooldown_time: 대기 시간 (시뮬레이션 시간 단위)
         :param failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0)
         :param failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0)
         """
+        # 필수 시간 매개변수 유효성 검사
+        if loading_time <= 0:
+            raise ValueError(f"loading_time은 0보다 큰 양수여야 합니다. 입력값: {loading_time}")
+        if transport_time <= 0:
+            raise ValueError(f"transport_time은 0보다 큰 양수여야 합니다. 입력값: {transport_time}")
+        if unloading_time <= 0:
+            raise ValueError(f"unloading_time은 0보다 큰 양수여야 합니다. 입력값: {unloading_time}")
+        
         # BaseProcess 초기화 (자원 정보 포함)
         super().__init__(
             env=env, 
@@ -56,12 +83,17 @@ class TransportProcess(BaseProcess):
             resource_requirements=resource_requirements
         )
         
+        # 운송 대기열 및 시간 설정
         self.transport_queue = []  # 운송 대기열 초기화
-        self.loading_time = loading_time  # 적재 시간
-        self.transport_time = transport_time  # 운송 시간
-        self.unloading_time = unloading_time  # 하역 시간
-        self.cooldown_time = cooldown_time  # 대기 시간
-        self.route = None  # 운송 경로
+        
+        # 운송 시간 구성 요소 (시뮬레이션 시간 단위)
+        self.loading_time = loading_time      # 적재 시간: 출발지에서 운송 수단에 제품 적재
+        self.transport_time = transport_time  # 운송 시간: 출발지에서 도착지까지 실제 운송
+        self.unloading_time = unloading_time  # 하역 시간: 도착지에서 운송 수단에서 제품 하역
+        self.cooldown_time = cooldown_time    # 대기 시간: 다음 운송 준비를 위한 대기
+        
+        # 운송 경로 및 상태
+        self.route = None  # 운송 경로 (문자열로 설정 가능)
         
         # 운송 공정 특화 자원 설정
         self._setup_transport_resources()
@@ -126,20 +158,20 @@ class TransportProcess(BaseProcess):
         """
         print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 로직 시작")
         
-        # 1. 적재 시간
-        print(f"[시간 {self.env.now:.1f}] {self.process_name} 적재 중...")
+        # 1. 적재 단계 (loading_time)
+        print(f"[시간 {self.env.now:.1f}] {self.process_name} 적재 중... (소요시간: {self.loading_time:.1f})")
         yield self.env.timeout(self.loading_time)
         
-        # 2. 운송 시간
-        print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 중...")
+        # 2. 운송 단계 (transport_time)
+        print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 중... (소요시간: {self.transport_time:.1f})")
         yield self.env.timeout(self.transport_time)
         
-        # 3. 하역 시간
-        print(f"[시간 {self.env.now:.1f}] {self.process_name} 하역 중...")
+        # 3. 하역 단계 (unloading_time)
+        print(f"[시간 {self.env.now:.1f}] {self.process_name} 하역 중... (소요시간: {self.unloading_time:.1f})")
         yield self.env.timeout(self.unloading_time)
         
-        # 4. 대기 시간 (다음 운송 준비)
-        print(f"[시간 {self.env.now:.1f}] {self.process_name} 대기 중...")
+        # 4. 대기 단계 (cooldown_time) - 다음 운송 준비
+        print(f"[시간 {self.env.now:.1f}] {self.process_name} 대기 중... (소요시간: {self.cooldown_time:.1f})")
         yield self.env.timeout(self.cooldown_time)
         
         print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 로직 완료")
