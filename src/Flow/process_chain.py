@@ -5,10 +5,13 @@ ProcessChain 모듈 - 순차 프로세스 체인 관리
 >> 연산자를 통해 프로세스들을 연결할 수 있습니다.
 """
 
-from typing import List, Optional, Any, Union, Generator
+from typing import List, Optional, Any, Union, Generator, TYPE_CHECKING
 import uuid
 import simpy
 from src.Processes.base_process import BaseProcess
+
+if TYPE_CHECKING:
+    from .multi_process_group import MultiProcessGroup
 
 
 class ProcessChain:
@@ -134,11 +137,15 @@ class ProcessChain:
             new_chain.add_process(other)
         elif isinstance(other, ProcessChain):
             new_chain.processes.extend(other.processes)
-        elif isinstance(other, MultiProcessGroup):
-            # MultiProcessGroup을 래퍼로 감싸서 추가
-            from .multi_process_group import GroupWrapperProcess
-            group_wrapper = GroupWrapperProcess(other)
-            new_chain.add_process(group_wrapper)
+        elif hasattr(other, 'processes') and hasattr(other, 'execute'):
+            # MultiProcessGroup 또는 유사한 그룹 객체인 경우
+            try:
+                from .multi_process_group import GroupWrapperProcess
+                group_wrapper = GroupWrapperProcess(other)
+                new_chain.add_process(group_wrapper)
+            except ImportError:
+                # GroupWrapperProcess를 사용할 수 없는 경우 직접 추가
+                new_chain.add_process(other)
         else:
             raise TypeError(f">> 연산자는 BaseProcess, ProcessChain, 또는 MultiProcessGroup과만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
         

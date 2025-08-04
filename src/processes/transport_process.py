@@ -12,11 +12,11 @@ from src.Resource.resource_base import Resource, ResourceRequirement, ResourceTy
 class TransportProcess(BaseProcess):
     """운송 공정을 정의하는 클래스입니다 (SimPy 기반)."""
 
-    def __init__(self, env: simpy.Environment, machines, workers, 
+    def __init__(self, env: simpy.Environment, process_id: str, process_name: str,
+                 machines, workers, 
                  input_resources: List[Resource], 
                  output_resources: List[Resource],
                  resource_requirements: List[ResourceRequirement],
-                 process_id: str = None, process_name: str = None,
                  loading_time: float = 0.5,
                  transport_time: float = 2.0,
                  unloading_time: float = 0.5,
@@ -44,10 +44,11 @@ class TransportProcess(BaseProcess):
         # BaseProcess 초기화 (자원 정보 포함)
         super().__init__(
             env=env, 
+            process_id=process_id, 
+            process_name=process_name,
             machines=machines, 
             workers=workers, 
-            process_id=process_id, 
-            process_name=process_name or "운송공정",
+            processing_time=loading_time + transport_time + unloading_time,
             failure_weight_machine=failure_weight_machine,
             failure_weight_worker=failure_weight_worker,
             input_resources=input_resources,

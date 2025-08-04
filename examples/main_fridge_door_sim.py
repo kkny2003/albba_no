@@ -43,22 +43,22 @@ parts_conveyor = Transport(env, 'T002', '부품이송컨베이어', capacity=10,
 
 # 4. 각 라인별 직렬공정 정의 (각 3단계)
 # A라인: 외판
-press_outer = ManufacturingProcess(env, [Machine(env, 'M001', '프레스')], [], [], [outer_panel_res], [], process_name='외판프레스', processing_time=2.0)
-clean_outer = ManufacturingProcess(env, [Machine(env, 'M002', '세척기')], [], [outer_panel_res], [outer_panel_res], [], process_name='외판세척', processing_time=1.5)
-paint_outer = ManufacturingProcess(env, [Machine(env, 'M003', '도장기')], [], [outer_panel_res], [outer_panel_res], [], process_name='외판도장', processing_time=2.5)
+press_outer = ManufacturingProcess(env, 'PROC001', '외판프레스', [Machine(env, 'M001', '프레스')], [], [], [outer_panel_res], [], processing_time=2.0)
+clean_outer = ManufacturingProcess(env, 'PROC002', '외판세척', [Machine(env, 'M002', '세척기')], [], [outer_panel_res], [outer_panel_res], [], processing_time=1.5)
+paint_outer = ManufacturingProcess(env, 'PROC003', '외판도장', [Machine(env, 'M003', '도장기')], [], [outer_panel_res], [outer_panel_res], [], processing_time=2.5)
 
 # B라인: 내판
-press_inner = ManufacturingProcess(env, [Machine(env, 'M004', '프레스')], [], [], [inner_panel_res], [], process_name='내판프레스', processing_time=2.0)
-clean_inner = ManufacturingProcess(env, [Machine(env, 'M005', '세척기')], [], [inner_panel_res], [inner_panel_res], [], process_name='내판세척', processing_time=1.5)
-paint_inner = ManufacturingProcess(env, [Machine(env, 'M006', '도장기')], [], [inner_panel_res], [inner_panel_res], [], process_name='내판도장', processing_time=2.5)
+press_inner = ManufacturingProcess(env, 'PROC004', '내판프레스', [Machine(env, 'M004', '프레스')], [], [], [inner_panel_res], [], processing_time=2.0)
+clean_inner = ManufacturingProcess(env, 'PROC005', '내판세척', [Machine(env, 'M005', '세척기')], [], [inner_panel_res], [inner_panel_res], [], processing_time=1.5)
+paint_inner = ManufacturingProcess(env, 'PROC006', '내판도장', [Machine(env, 'M006', '도장기')], [], [inner_panel_res], [inner_panel_res], [], processing_time=2.5)
 
 # C라인: 단열재/핸들
-form_insulation = ManufacturingProcess(env, [Machine(env, 'M007', '성형기')], [], [], [insulation_res], [], process_name='단열재성형', processing_time=2.2)
-inject_handle = ManufacturingProcess(env, [Machine(env, 'M008', '사출기')], [], [], [handle_res], [], process_name='핸드사출', processing_time=1.8)
-finish_handle = ManufacturingProcess(env, [Machine(env, 'M009', '마감기')], [], [handle_res], [handle_res], [], process_name='핸들마감', processing_time=1.2)
+form_insulation = ManufacturingProcess(env, 'PROC007', '단열재성형', [Machine(env, 'M007', '성형기')], [], [], [insulation_res], [], processing_time=2.2)
+inject_handle = ManufacturingProcess(env, 'PROC008', '핸드사출', [Machine(env, 'M008', '사출기')], [], [], [handle_res], [], processing_time=1.8)
+finish_handle = ManufacturingProcess(env, 'PROC009', '핸들마감', [Machine(env, 'M009', '마감기')], [], [handle_res], [handle_res], [], processing_time=1.2)
 
 # 5. 조립공정 정의 (4개 부품 모두 Resource 객체로)
-assembly = AssemblyProcess(env, [Machine(env, 'M010', '조립기')], [], [outer_panel_res, inner_panel_res, insulation_res, handle_res], [], [], process_name='도어조립', assembly_time=3.5)
+assembly = AssemblyProcess(env, 'PROC010', '도어조립', [Machine(env, 'M010', '조립기')], [], [outer_panel_res, inner_panel_res, insulation_res, handle_res], [], [], assembly_time=3.5)
 
 # 6. 공정 체이닝 및 운송 연결 (개념적 예시)
 

@@ -5,12 +5,14 @@ MultiProcessGroup 모듈 - 병렬 프로세스 그룹 관리
 & 연산자를 통해 프로세스들을 병렬 그룹으로 결합할 수 있습니다.
 """
 
-from typing import List, Optional, Any, Union, Dict, Generator
+from typing import List, Optional, Any, Union, Dict, Generator, TYPE_CHECKING
 import uuid
 import concurrent.futures
 import simpy
 from src.Processes.base_process import BaseProcess
-from .process_chain import ProcessChain
+
+if TYPE_CHECKING:
+    from .process_chain import ProcessChain
 
 
 class MultiProcessGroup:
@@ -311,18 +313,25 @@ class MultiProcessGroup:
         # 그룹을 단일 실행 단위로 래핑하는 특수 공정 생성
         group_wrapper = GroupWrapperProcess(self)
         
-        if isinstance(other, BaseProcess):
-            return ProcessChain([group_wrapper, other])
-        elif isinstance(other, ProcessChain):
-            new_chain = ProcessChain([group_wrapper])
-            new_chain.processes.extend(other.processes)
-            return new_chain
-        elif isinstance(other, MultiProcessGroup):
-            # 다른 그룹과 연결할 때는 두 그룹을 모두 래퍼로 감싸서 체인 생성
-            other_wrapper = GroupWrapperProcess(other)
-            return ProcessChain([group_wrapper, other_wrapper])
-        else:
-            raise TypeError(f">> 연산자는 BaseProcess, ProcessChain, 또는 MultiProcessGroup과만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
+        try:
+            from .process_chain import ProcessChain
+            
+            if isinstance(other, BaseProcess):
+                return ProcessChain([group_wrapper, other])
+            elif hasattr(other, 'processes') and hasattr(other, 'add_process'):
+                # ProcessChain 또는 유사한 체인 객체인 경우
+                new_chain = ProcessChain([group_wrapper])
+                new_chain.processes.extend(other.processes)
+                return new_chain
+            elif hasattr(other, 'processes') and hasattr(other, 'execute'):
+                # MultiProcessGroup 또는 유사한 그룹 객체인 경우
+                other_wrapper = GroupWrapperProcess(other)
+                return ProcessChain([group_wrapper, other_wrapper])
+            else:
+                raise TypeError(f">> 연산자는 BaseProcess, ProcessChain, 또는 MultiProcessGroup과만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
+        except ImportError:
+            # ProcessChain을 사용할 수 없는 경우 예외 발생
+            raise RuntimeError("ProcessChain 모듈을 import할 수 없습니다. 순환 import 문제가 발생했을 수 있습니다.")
     
     def get_group_summary(self) -> str:
         """
@@ -354,10 +363,13 @@ class GroupWrapperProcess(BaseProcess):
         # BaseProcess 초기화 (그룹의 환경 사용, 빈 machines/workers로 초기화)
         super().__init__(
             env=group.env,
+            process_id=f"wrapper_{group.group_id}",
+            process_name=f"그룹래퍼({group.process_name})",
             machines=[],  # 그룹 래퍼는 직접적인 기계를 가지지 않음
             workers=[],   # 그룹 래퍼는 직접적인 작업자를 가지지 않음
-            process_id=f"wrapper_{group.group_id}",
-            process_name=f"그룹래퍼({group.process_name})"
+            input_resources=[],  # 필수 파라미터
+            output_resources=[],  # 필수 파라미터
+            resource_requirements=[]  # 필수 파라미터
         )
         self.group = group
     

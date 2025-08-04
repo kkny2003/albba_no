@@ -8,6 +8,7 @@ Flow 모듈 - 프로세스 흐름 관리
 from .process_chain import ProcessChain
 from .multi_process_group import MultiProcessGroup, GroupWrapperProcess
 from .advanced_workflow import AdvancedWorkflowManager, ExecutionMode, SynchronizationType
+from . import operators  # 연산자 기능 자동 로드
 
 __all__ = [
     'ProcessChain',

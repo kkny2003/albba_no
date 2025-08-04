@@ -7,11 +7,11 @@ from src.Resource.resource_base import Resource, ResourceRequirement, ResourceTy
 class ManufacturingProcess(BaseProcess):
     """제조 공정을 정의하는 클래스입니다 (SimPy 기반)."""
 
-    def __init__(self, env: simpy.Environment, machines, workers, 
+    def __init__(self, env: simpy.Environment, process_id: str, process_name: str,
+                 machines, workers, 
                  input_resources: List[Resource], 
                  output_resources: List[Resource],
                  resource_requirements: List[ResourceRequirement],
-                 process_id: str = None, process_name: str = None,
                  processing_time: float = 2.0,
                  failure_weight_machine: float = 1.0, 
                  failure_weight_worker: float = 1.0):
@@ -33,10 +33,11 @@ class ManufacturingProcess(BaseProcess):
         # BaseProcess 초기화 (자원 정보 포함)
         super().__init__(
             env=env, 
+            process_id=process_id, 
+            process_name=process_name,
             machines=machines, 
             workers=workers, 
-            process_id=process_id, 
-            process_name=process_name or "제조공정",
+            processing_time=processing_time,
             failure_weight_machine=failure_weight_machine,
             failure_weight_worker=failure_weight_worker,
             input_resources=input_resources,

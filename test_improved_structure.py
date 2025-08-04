@@ -31,11 +31,12 @@ class TestProcess(BaseProcess):
                 
         super().__init__(
             env=env,
+            process_id=f"test_{name}",
+            process_name=name,
             machines=[DummyMachine(f"machine_{name}")],
             workers=[DummyWorker(f"worker_{name}")],
-            process_name=name
+            processing_time=processing_time
         )
-        self.processing_time = processing_time
         
     def process_logic(self, input_data=None):
         print(f"[시간 {self.env.now:.1f}] {self.process_name} 실행 중...")

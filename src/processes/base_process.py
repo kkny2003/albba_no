@@ -4,15 +4,11 @@
 Flow 관련 기능은 별도의 Flow 모듈로 분리되었습니다.
 """
 
-from typing import List, Optional, Any, Union, Dict, Callable, Tuple, Generator, TYPE_CHECKING
+from typing import List, Optional, Any, Union, Dict, Callable, Tuple, Generator
 from abc import ABC, abstractmethod
 import uuid
 import simpy
 from src.Resource.resource_base import Resource, ResourceRequirement, ResourceType
-
-# 순환 import 방지를 위한 타입 체킹
-if TYPE_CHECKING:
-    from src.Flow import ProcessChain, MultiProcessGroup
 
 
 class PriorityValidationError(Exception):
@@ -111,8 +107,8 @@ def validate_priority_sequence(processes_with_priorities: List[Tuple['BaseProces
 class BaseProcess(ABC):
     """모든 제조 공정의 기본이 되는 추상 클래스 (SimPy 기반, 배치 처리 지원)"""
     
-    def __init__(self, env: simpy.Environment, machines=None, workers=None, 
-                 process_id: str = None, process_name: str = None, batch_size: int = 1,
+    def __init__(self, env: simpy.Environment, process_id: str, process_name: str, 
+                 machines=None, workers=None, processing_time: float = 1.0, batch_size: int = 1,
                  failure_weight_machine: float = 1.0, failure_weight_worker: float = 1.0,
                  input_resources: List[Resource] = None, 
                  output_resources: List[Resource] = None,
@@ -122,10 +118,11 @@ class BaseProcess(ABC):
         
         Args:
             env: SimPy 환경 객체 (필수)
+            process_id: 공정 고유 ID (필수)
+            process_name: 공정 이름 (필수)
             machines: 사용할 기계 리스트 (machine 또는 worker 중 하나는 필수)
             workers: 사용할 작업자 리스트 (machine 또는 worker 중 하나는 필수)
-            process_id: 공정 고유 ID (선택적, 자동 생성됨)
-            process_name: 공정 이름 (선택적)
+            processing_time: 처리 시간 (시뮬레이션 시간 단위, 기본값: 1.0)
             batch_size: 배치 크기 (한번에 처리할 아이템 수, 기본값: 1)
             failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0, 1.5 = 1.5배 고장률)
             failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0, 1.5 = 1.5배 실수율)
@@ -135,14 +132,21 @@ class BaseProcess(ABC):
             
         Raises:
             ValueError: machine과 worker가 모두 None인 경우
+            ValueError: process_id 또는 process_name이 None인 경우
         """
+        # 필수 파라미터 검증
+        if process_id is None:
+            raise ValueError("process_id는 필수 파라미터입니다.")
+        if process_name is None:
+            raise ValueError("process_name은 필수 파라미터입니다.")
+        
         # machine 또는 worker 중 하나는 필수로 있어야 함
         if machines is None and workers is None:
-            raise ValueError(f"공정 '{process_name or self.__class__.__name__}'에는 machine 또는 worker 중 하나 이상이 필요합니다.")
+            raise ValueError(f"공정 '{process_name}'에는 machine 또는 worker 중 하나 이상이 필요합니다.")
         
         self.env = env  # SimPy 환경 객체 (필수)
-        self.process_id = process_id or str(uuid.uuid4())  # 고유 ID 생성
-        self.process_name = process_name or self.__class__.__name__  # 기본 이름 설정
+        self.process_id = process_id  # 고유 ID (필수)
+        self.process_name = process_name  # 공정 이름 (필수)
         self.next_processes = []  # 다음 공정들의 리스트
         self.previous_processes = []  # 이전 공정들의 리스트
         
@@ -184,7 +188,7 @@ class BaseProcess(ABC):
         self.resource_manager = None  # 고급 자원 관리자 (필요시 설정)
         
         # SimPy 관련 속성들
-        self.processing_time: float = 1.0  # 기본 처리 시간 (시뮬레이션 시간 단위)
+        self.processing_time: float = processing_time  # 처리 시간 (시뮬레이션 시간 단위)
         
         # 자원 설정 (개선된 통합 로직)
         self._setup_resources(input_resources, output_resources, resource_requirements)
@@ -550,56 +554,7 @@ class BaseProcess(ABC):
             print(f"[{self.process_name}] → [{next_process.process_name}] 연결됨")
         return self
     
-    def __rshift__(self, other: Union['BaseProcess', 'ProcessChain', 'MultiProcessGroup']) -> 'ProcessChain':
-        """
-        >> 연산자를 사용하여 공정 체인 생성
-        
-        Args:
-            other: 연결할 공정, 체인, 또는 그룹
-            
-        Returns:
-            ProcessChain: 생성된 공정 체인
-        """
-        # 런타임에 Flow 모듈 import (순환 import 방지)
-        try:
-            from src.Flow import ProcessChain, MultiProcessGroup
-            from src.Flow.multi_process_group import GroupWrapperProcess
-        except ImportError as e:
-            raise ImportError(f"Flow 모듈을 import할 수 없습니다: {e}. Flow 모듈이 올바르게 설치되어 있는지 확인하세요.")
-        
-        if isinstance(other, BaseProcess):
-            return ProcessChain([self, other])
-        elif isinstance(other, ProcessChain):
-            new_chain = ProcessChain([self])
-            new_chain.processes.extend(other.processes)
-            return new_chain
-        elif isinstance(other, MultiProcessGroup):
-            # MultiProcessGroup을 래퍼로 감싸서 추가
-            group_wrapper = GroupWrapperProcess(other)
-            return ProcessChain([self, group_wrapper])
-        else:
-            raise TypeError(f">> 연산자는 BaseProcess, ProcessChain, 또는 MultiProcessGroup과만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
-    
-    def __and__(self, other: 'BaseProcess') -> 'MultiProcessGroup':
-        """
-        & 연산자를 사용하여 병렬 그룹 생성
-        
-        Args:
-            other: 병렬 실행할 공정
-            
-        Returns:
-            MultiProcessGroup: 생성된 병렬 그룹
-        """
-        # 런타임에 Flow 모듈 import (순환 import 방지)
-        try:
-            from src.Flow import MultiProcessGroup
-        except ImportError as e:
-            raise ImportError(f"Flow 모듈을 import할 수 없습니다: {e}. Flow 모듈이 올바르게 설치되어 있는지 확인하세요.")
-        
-        if isinstance(other, BaseProcess):
-            return MultiProcessGroup([self, other])
-        else:
-            raise TypeError(f"& 연산자는 BaseProcess와만 사용할 수 있습니다. {type(other)} 타입은 지원되지 않습니다.")
+
     
     def add_input_resource(self, resource: Resource) -> None:
         """

@@ -49,33 +49,34 @@ from src.Resource.buffer import Buffer
 buffers = [Buffer(env, resource_id=f'B{i:03d}', name=f'버퍼{i}', capacity=5+i, buffer_type=ResourceType.SEMI_FINISHED) for i in range(1, 4)]
 
 # 공정 정의
-proc_a1 = ManufacturingProcess(env, [machines[0]], [workers[0]], [], [resources[0]], [], process_name='A1', processing_time=2.0)
-proc_a2 = ManufacturingProcess(env, [machines[1]], [workers[1]], [resources[0]], [resources[1]], [], process_name='A2', processing_time=1.5)
-proc_b1 = ManufacturingProcess(env, [machines[2]], [workers[2]], [], [resources[2]], [], process_name='B1', processing_time=2.2)
-proc_b2 = ManufacturingProcess(env, [machines[3]], [workers[3]], [resources[2]], [resources[3]], [], process_name='B2', processing_time=1.8)
+proc_a1 = ManufacturingProcess(env, 'PROC001', 'A1', [machines[0]], [workers[0]], [], [resources[0]], [], processing_time=2.0)
+proc_a2 = ManufacturingProcess(env, 'PROC002', 'A2', [machines[1]], [workers[1]], [resources[0]], [resources[1]], [], processing_time=1.5)
+proc_b1 = ManufacturingProcess(env, 'PROC003', 'B1', [machines[2]], [workers[2]], [], [resources[2]], [], processing_time=2.2)
+proc_b2 = ManufacturingProcess(env, 'PROC004', 'B2', [machines[3]], [workers[3]], [resources[2]], [resources[3]], [], processing_time=1.8)
 qc = QualityControlProcess(
     env,
+    'PROC005',
+    '품질검사',
     machines=[machines[4]],
     workers=[],  # 빈 workers 리스트 추가
     input_resources=[resources[1], resources[3]],
     output_resources=[resources[1], resources[3]],  # output_resources 추가
     resource_requirements=[],  # resource_requirements 추가
-    process_name='품질검사',
     inspection_time=1.0,
     failure_weight_worker=2.0
 )
-assembly = AssemblyProcess(env, [machines[5]], workers, [resources[1], resources[3], resources[4], resources[5]], [], [], process_name='최종조립', assembly_time=3.0)
+assembly = AssemblyProcess(env, 'PROC006', '최종조립', [machines[5]], workers, [resources[1], resources[3], resources[4], resources[5]], [], [], assembly_time=3.0)
 
 # 운송 공정 생성 (모듈화된 클래스 사용)
 transport_a1_to_a2 = TransportProcess(
     env, 
+    'T001',
+    'A1_to_A2_운송',
     machines=[transports[0]],  # transports를 machines로 변경
     workers=[],  # 빈 workers 리스트 추가
     input_resources=[resources[0]], 
     output_resources=[resources[0]],  # output_resources 추가
     resource_requirements=[],  # resource_requirements 추가
-    process_id='T001',
-    process_name='A1_to_A2_운송',
     loading_time=0.2,
     unloading_time=0.3,
     transport_time=0.5,
