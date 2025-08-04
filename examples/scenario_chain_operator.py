@@ -22,7 +22,7 @@ from src.Processes.manufacturing_process import ManufacturingProcess
 from src.Processes.assembly_process import AssemblyProcess
 from src.Processes.quality_control_process import QualityControlProcess
 from src.Processes.transport_process import TransportProcess
-from src.Flow.multi_process_group import MultiProcessGroup
+from src.Flow.multi_group_flow import MultiProcessGroup
 
 env = simpy.Environment()
 # engine = SimulationEngine(env)  # 이 부분을 주석 처리

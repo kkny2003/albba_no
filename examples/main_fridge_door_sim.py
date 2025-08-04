@@ -17,7 +17,7 @@ from src.Resource.transport import Transport
 from src.Resource.resource_base import Resource, ResourceType
 from src.Processes.manufacturing_process import ManufacturingProcess
 from src.Processes.assembly_process import AssemblyProcess
-from src.Flow.multi_process_group import MultiProcessGroup
+from src.Flow.multi_group_flow import MultiProcessGroup
 
 # 1. SimPy 환경 및 엔진 생성
 env = simpy.Environment()

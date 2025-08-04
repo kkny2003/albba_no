@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import uuid
 from src.Processes.base_process import BaseProcess
 from .process_chain import ProcessChain
-from .multi_process_group import MultiProcessGroup
+from .multi_group_flow import MultiProcessGroup
 
 
 class ExecutionMode(Enum):

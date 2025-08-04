@@ -5,7 +5,8 @@ Processes 모듈 - 제조 공정 관리
 BaseProcess를 상속받아 각각의 공정을 구현할 수 있습니다.
 """
 
-from .base_process import BaseProcess, parse_process_priority, validate_priority_sequence, PriorityValidationError
+from .base_process import BaseProcess
+from src.Flow.multi_group_flow import parse_process_priority, validate_priority_sequence, PriorityValidationError
 from .manufacturing_process import ManufacturingProcess
 from .assembly_process import AssemblyProcess
 from .quality_control_process import QualityControlProcess

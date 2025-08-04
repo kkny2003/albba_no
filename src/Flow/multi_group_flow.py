@@ -5,10 +5,96 @@ MultiProcessGroup 모듈 - 병렬 프로세스 그룹 관리
 & 연산자를 통해 프로세스들을 병렬 그룹으로 결합할 수 있습니다.
 """
 
-from typing import List, Optional, Any, Union, Dict, Generator
+from typing import List, Optional, Any, Union, Dict, Generator, Tuple
 import uuid
 import simpy
 from src.Processes.base_process import BaseProcess
+
+# ------------------ Priority Utilities (moved from Processes.base_process) ------------------
+
+class PriorityValidationError(Exception):
+    """우선순위 유효성 검사 실패 시 발생하는 예외 (Flow 모듈로 이동)"""
+    pass
+
+
+def parse_process_priority(process_name: str) -> Tuple[str, Optional[int]]:
+    """공정명에서 우선순위를 파싱합니다.
+
+    Args:
+        process_name: 공정명 (예: "공정2(1)" 또는 "공정2")
+
+    Returns:
+        Tuple[str, Optional[int]]: (실제 공정명, 우선순위) 튜플
+    """
+    import re
+    pattern = r'^(.+?)\((\d+)\)$'
+    match = re.match(pattern, process_name.strip())
+
+    if match:
+        actual_name = match.group(1).strip()
+        priority = int(match.group(2))
+        return actual_name, priority
+    else:
+        return process_name.strip(), None
+
+
+def validate_priority_sequence(processes_with_priorities: List[Tuple['BaseProcess', Optional[int]]]) -> None:
+    """공정들의 우선순위 시퀀스가 유효한지 검증합니다.
+
+    Args:
+        processes_with_priorities: (공정, 우선순위) 튜플 리스트
+
+    Raises:
+        PriorityValidationError: 우선순위가 유효하지 않을 때
+
+    Rules:
+        1. n개의 공정이 있을 때, 우선순위는 1부터 n까지여야 함
+        2. 모든 공정에 우선순위가 있거나, 모든 공정에 우선순위가 없어야 함
+        3. 중복된 우선순위는 허용되지 않음
+    """
+    total_processes = len(processes_with_priorities)
+    priorities = [p[1] for p in processes_with_priorities if p[1] is not None]
+
+    # 일부만 우선순위가 있는 경우 오류
+    if len(priorities) > 0 and len(priorities) != total_processes:
+        raise PriorityValidationError(
+            f"모든 공정에 우선순위를 지정하거나 모든 공정에서 우선순위를 생략해야 합니다. "
+            f"현재 {len(priorities)}개 공정에만 우선순위가 지정되어 있습니다."
+        )
+
+    # 우선순위가 지정된 경우 유효성 검사
+    if priorities:
+        # 중복 확인
+        if len(set(priorities)) != len(priorities):
+            duplicates = [p for p in set(priorities) if priorities.count(p) > 1]
+            raise PriorityValidationError(f"중복된 우선순위가 있습니다: {duplicates}")
+
+        # 범위 확인 (1부터 n까지)
+        expected_priorities = set(range(1, total_processes + 1))
+        actual_priorities = set(priorities)
+
+        if actual_priorities != expected_priorities:
+            missing = expected_priorities - actual_priorities
+            extra = actual_priorities - expected_priorities
+
+            # 더 자세한 오류 메시지 생성
+            process_info = []
+            for process, priority in processes_with_priorities:
+                if priority is not None:
+                    process_info.append(f"{process.process_name}({priority})")
+                else:
+                    process_info.append(f"{process.process_name}(없음)")
+
+            error_msg = f"{total_processes}개 공정에 대해 1부터 {total_processes}까지의 우선순위가 필요합니다."
+            error_msg += f"\n현재 공정들: {', '.join(process_info)}"
+
+            if missing:
+                error_msg += f"\n누락된 우선순위: {sorted(missing)}"
+            if extra:
+                error_msg += f"\n잘못된 우선순위: {sorted(extra)}"
+
+            raise PriorityValidationError(error_msg)
+
 
 
 

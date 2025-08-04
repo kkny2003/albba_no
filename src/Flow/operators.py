@@ -8,7 +8,7 @@ Flow Operators 모듈 - 공정 객체들 간의 연산자 기능
 from typing import Union
 from src.Processes.base_process import BaseProcess
 from .process_chain import ProcessChain
-from .multi_process_group import MultiProcessGroup, GroupWrapperProcess
+from .multi_group_flow import MultiProcessGroup, GroupWrapperProcess
 
 
 def create_process_chain(left: BaseProcess, right: Union[BaseProcess, ProcessChain, MultiProcessGroup]) -> ProcessChain:
@@ -148,7 +148,7 @@ def group_and(self, other: BaseProcess) -> MultiProcessGroup:
     """
     if isinstance(other, BaseProcess):
         # 새로운 공정의 우선순위 파싱
-        from src.Processes.base_process import parse_process_priority, validate_priority_sequence
+        from src.Flow.multi_group_flow import parse_process_priority, validate_priority_sequence
         other_name, other_priority = parse_process_priority(other.process_name)
         
         # 새 그룹 생성

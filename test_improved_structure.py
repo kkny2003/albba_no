@@ -78,7 +78,7 @@ def test_process_chain():
     print()
 
 
-def test_multi_process_group():
+def test_multi_group_flow():
     """다중 프로세스 그룹 테스트"""
     print("=== 다중 프로세스 그룹 테스트 ===")
     env = simpy.Environment()
@@ -174,7 +174,7 @@ def main():
     try:
         test_basic_process()
         test_process_chain()
-        test_multi_process_group()
+        test_multi_group_flow()
         test_advanced_workflow()
         test_manufacturing_process()
         
