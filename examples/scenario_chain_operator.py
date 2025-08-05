@@ -11,8 +11,7 @@ import io
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 import simpy
-# SimulationEngine 대신 직접 SimPy 사용
-# from src.core.simulation_engine import SimulationEngine
+from src.core.simulation_engine import SimulationEngine
 from src.Resource.machine import Machine
 from src.Resource.worker import Worker
 from src.Resource.product import Product
@@ -24,8 +23,9 @@ from src.Processes.quality_control_process import QualityControlProcess
 from src.Processes.transport_process import TransportProcess
 from src.Flow.multi_group_flow import MultiProcessGroup
 
-env = simpy.Environment()
-# engine = SimulationEngine(env)  # 이 부분을 주석 처리
+# Initialize SimulationEngine and environment
+engine = SimulationEngine()
+env = engine.env
 
 # 로그 저장 리스트 및 기록 함수 추가
 simulation_logs = []
@@ -33,7 +33,9 @@ def log(msg):
     print(msg)
     simulation_logs.append(msg)
 
-# 제품/부품 정의 (다품종)
+
+# 원자재, 제품, 부품 정의 (다품종)
+raw_materials = [Resource(resource_id=f'Raw{i:03d}', name=f'원자재{i}', resource_type=ResourceType.RAW_MATERIAL) for i in range(1, 6)]
 products = [Product(resource_id=f'Product{i:03d}', name=f'제품{i}') for i in range(1, 11)]
 resources = [Resource(resource_id=f'Part{i:03d}', name=f'부품{i}', resource_type=ResourceType.SEMI_FINISHED) for i in range(1, 11)]
 
@@ -48,10 +50,9 @@ transports = [Transport(env, resource_id=f'T{i:03d}', name=f'운송{i}', capacit
 from src.Resource.buffer import Buffer
 buffers = [Buffer(env, resource_id=f'B{i:03d}', name=f'버퍼{i}', capacity=5+i, buffer_type=ResourceType.SEMI_FINISHED) for i in range(1, 4)]
 
-# 공정 정의
-proc_a1 = ManufacturingProcess(env, 'PROC001', 'A1', [machines[0]], [workers[0]], [], [resources[0]], [], processing_time=2.0)
+proc_a1 = ManufacturingProcess(env, 'PROC001', 'A1', [machines[0]], [workers[0]], [raw_materials[0]], [resources[0]], [], processing_time=2.0)
 proc_a2 = ManufacturingProcess(env, 'PROC002', 'A2', [machines[1]], [workers[1]], [resources[0]], [resources[1]], [], processing_time=1.5)
-proc_b1 = ManufacturingProcess(env, 'PROC003', 'B1', [machines[2]], [workers[2]], [], [resources[2]], [], processing_time=2.2)
+proc_b1 = ManufacturingProcess(env, 'PROC003', 'B1', [machines[2]], [workers[2]], [raw_materials[1]], [resources[2]], [], processing_time=2.2)
 proc_b2 = ManufacturingProcess(env, 'PROC004', 'B2', [machines[3]], [workers[3]], [resources[2]], [resources[3]], [], processing_time=1.8)
 qc = QualityControlProcess(
     env,
@@ -90,13 +91,7 @@ def buffer_compete_proc(env, buffer, resource):
         log(f"[시간 {env.now:.1f}] 버퍼에 {resource.name} 투입 시도")
         yield from buffer.put(resource)
 
-# 동적 이벤트(신규 자원 투입)는 utils로 분리하여 재사용 가능하게 처리
 
-# 동적 이벤트 유틸리티 함수 import
-from src.utils.dynamic_event import inject_dynamic_resource_event
-
-def dynamic_event(env):
-    yield from inject_dynamic_resource_event(env, resources)
 
 # 공정 체이닝(>>) 및 병렬(MultiProcessGroup) 활용
 # A라인: A1 >> A2 >> 품질검사 >> 조립
@@ -106,33 +101,27 @@ bline_chain = proc_b1 >> proc_b2
 # 병렬 그룹: A라인과 B라인 동시 실행
 main_group = MultiProcessGroup([aline_chain, bline_chain])
 
-# SimPy 프로세스 함수로 래핑
+
+# main_chain에서 원자재 리스트를 입력 데이터로 전달
 def main_chain(env):
     try:
         log(f"[Time {env.now:.1f}] Starting main process chain")
-        # MultiProcessGroup을 단일 공정처럼 execute (SimPy generator)
-        result = yield from main_group.execute()
+        # 원자재 리스트를 첫 공정에 입력 데이터로 전달
+        result = yield from main_group.execute(raw_materials)
         log(f"[Time {env.now:.1f}] Main chain completed: {result}")
     except Exception as e:
         log(f"[Time {env.now:.1f}] Error in main_chain: {e}")
         import traceback
         traceback.print_exc()
 
-# 직접 SimPy에 프로세스 등록
-env.process(main_chain(env))
-env.process(transport_a1_to_a2.execute())
-env.process(buffer_compete_proc(env, buffers[0], resources[0]))
-env.process(dynamic_event(env))
+# Register processes with SimulationEngine
+
+engine.add_process(main_chain)
+engine.add_process(transport_a1_to_a2.execute)
+engine.add_process(buffer_compete_proc, buffers[0], resources[0])
 
 
 log("Running simulation...")
-env.run(until=50)
+engine.run(until=50)
 log('Process chaining simulation completed!')
 
-# 시뮬레이션 결과 md 파일로 export
-md_path = os.path.join(os.path.dirname(__file__), "simulation_result.md")
-with io.open(md_path, "w", encoding="utf-8") as f:
-    f.write("# 시뮬레이션 결과 로그\n\n")
-    for line in simulation_logs:
-        f.write(f"- {line}\n")
-log(f"[Export] 시뮬레이션 결과가 {md_path}에 저장되었습니다.")

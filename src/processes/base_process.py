@@ -66,10 +66,10 @@ class BaseProcess(ABC):
         # 초기화 검증 메시지 출력
         resource_info = []
         if self.machines:
-            machine_ids = [getattr(m, 'machine_id', str(m)) for m in self.machines]
+            machine_ids = [getattr(m, 'resource_id', str(m)) for m in self.machines]
             resource_info.append(f"기계: {', '.join(machine_ids)}")
         if self.workers:
-            worker_ids = [getattr(w, 'worker_id', str(w)) for w in self.workers]
+            worker_ids = [getattr(w, 'resource_id', str(w)) for w in self.workers]
             resource_info.append(f"작업자: {', '.join(worker_ids)}")
         
         print(f"[{self.process_name}] 공정 초기화 완료 - {' / '.join(resource_info)}")
@@ -203,15 +203,15 @@ class BaseProcess(ABC):
         
         # 기계 검증
         for i, machine in enumerate(self.machines):
-            if not hasattr(machine, 'machine_id'):
-                print(f"[경고] 기계 {i+1}에 machine_id 속성이 없습니다.")
+            if not hasattr(machine, 'resource_id'):
+                print(f"[경고] 기계 {i+1}에 resource_id 속성이 없습니다.")
             if not hasattr(machine, 'operate'):
                 print(f"[경고] 기계 {i+1}에 operate 메서드가 없습니다.")
         
         # 작업자 검증        
         for i, worker in enumerate(self.workers):
-            if not hasattr(worker, 'worker_id'):
-                print(f"[경고] 작업자 {i+1}에 worker_id 속성이 없습니다.")
+            if not hasattr(worker, 'resource_id'):
+                print(f"[경고] 작업자 {i+1}에 resource_id 속성이 없습니다.")
             if not hasattr(worker, 'work'):
                 print(f"[경고] 작업자 {i+1}에 work 메서드가 없습니다.")
         
@@ -229,7 +229,7 @@ class BaseProcess(ABC):
         """
         if machine not in self.machines:
             self.machines.append(machine)
-            machine_id = getattr(machine, 'machine_id', f'Machine-{len(self.machines)}')
+            machine_id = getattr(machine, 'resource_id', f'Machine-{len(self.machines)}')
             print(f"[{self.process_name}] 기계 추가: {machine_id}")
         return self
     
@@ -245,7 +245,7 @@ class BaseProcess(ABC):
         """
         if worker not in self.workers:
             self.workers.append(worker)
-            worker_id = getattr(worker, 'worker_id', f'Worker-{len(self.workers)}')
+            worker_id = getattr(worker, 'resource_id', f'Worker-{len(self.workers)}')
             print(f"[{self.process_name}] 작업자 추가: {worker_id}")
         return self
     
@@ -679,7 +679,7 @@ class BaseProcess(ABC):
                 original_rate = getattr(machine, 'original_failure_rate', machine.failure_rate)
                 machine.original_failure_rate = original_rate
                 machine.failure_rate = original_rate * self.failure_weight_machine
-                print(f"[{self.process_name}] 기계 {getattr(machine, 'machine_id', 'Unknown')} 고장률 가중치 적용: {self.failure_weight_machine}")
+                print(f"[{self.process_name}] 기계 {getattr(machine, 'resource_id', 'Unknown')} 고장률 가중치 적용: {self.failure_weight_machine}")
     
     def apply_failure_weight_to_workers(self) -> None:
         """
@@ -690,7 +690,7 @@ class BaseProcess(ABC):
                 original_rate = getattr(worker, 'original_error_rate', worker.error_rate)
                 worker.original_error_rate = original_rate
                 worker.error_rate = original_rate * self.failure_weight_worker
-                print(f"[{self.process_name}] 작업자 {getattr(worker, 'worker_id', 'Unknown')} 실수율 가중치 적용: {self.failure_weight_worker}")
+                print(f"[{self.process_name}] 작업자 {getattr(worker, 'resource_id', 'Unknown')} 실수율 가중치 적용: {self.failure_weight_worker}")
     
     def restore_original_failure_rates(self) -> None:
         """
@@ -700,13 +700,13 @@ class BaseProcess(ABC):
         for machine in self.machines:
             if hasattr(machine, 'original_failure_rate'):
                 machine.failure_rate = machine.original_failure_rate
-                print(f"[{self.process_name}] 기계 {getattr(machine, 'machine_id', 'Unknown')} 고장률 복원")
+                print(f"[{self.process_name}] 기계 {getattr(machine, 'resource_id', 'Unknown')} 고장률 복원")
         
         # 작업자 실수율 복원
         for worker in self.workers:
             if hasattr(worker, 'original_error_rate'):
                 worker.error_rate = worker.original_error_rate
-                print(f"[{self.process_name}] 작업자 {getattr(worker, 'worker_id', 'Unknown')} 실수율 복원")
+                print(f"[{self.process_name}] 작업자 {getattr(worker, 'resource_id', 'Unknown')} 실수율 복원")
     
     # ========== 출하품 Transport 관리 메서드들 ==========
     
