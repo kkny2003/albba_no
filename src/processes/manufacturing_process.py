@@ -65,15 +65,7 @@ class ManufacturingProcess(BaseProcess):
         # BaseProcess의 배치 처리 기능 활용 (production_line 대신)
         # self.production_line은 BaseProcess.current_batch로 대체됨
         
-        # 제조 공정 특화 자원 설정
-        self._setup_manufacturing_resources()
-        
-        # BaseProcess의 고급 기능들 활용
-        self.apply_failure_weight_to_machines()
-        self.apply_failure_weight_to_workers()
-        
-    def _setup_manufacturing_resources(self):
-        """제조 공정용 자원 요구사항을 설정하는 메서드"""
+        # 제조 공정 특화 자원 설정 (인라인 처리)
         # 기본 자원 설정 (BaseProcess에서 처리됨)
         self._setup_default_resources()
         
@@ -96,6 +88,12 @@ class ManufacturingProcess(BaseProcess):
             is_mandatory=False  # 선택적 (수동 운반도 가능)
         )
         self.add_resource_requirement(transport_req)
+        
+        # BaseProcess의 고급 기능들 활용
+        self.apply_failure_weight_to_machines()
+        self.apply_failure_weight_to_workers()
+        
+
         
     def start_process(self):
         """제조 공정 시작"""

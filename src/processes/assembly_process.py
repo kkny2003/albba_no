@@ -69,40 +69,15 @@ class AssemblyProcess(BaseProcess):
         # BaseProcess의 배치 처리 기능 활용 (assembly_line 대신)
         # self.assembly_line은 BaseProcess.current_batch로 대체됨
         
-        # 조립 공정 특화 자원 설정
-        self._setup_assembly_resources()
+
         
         # BaseProcess의 고급 기능들 활용
         self.apply_failure_weight_to_machines()
         self.apply_failure_weight_to_workers()
         
-        # 조립 공정 특화 자원 설정
-        self._setup_assembly_resources()
+
         
-    def _setup_assembly_resources(self):
-        """조립 공정용 자원 요구사항을 설정하는 메서드"""
-        # 기본 자원 설정 (BaseProcess에서 처리됨)
-        self._setup_default_resources()
-        
-        # 반제품 요구사항 추가 (조립용 입력)
-        semi_finished_req = ResourceRequirement(
-            resource_type=ResourceType.SEMI_FINISHED,
-            name="반제품",
-            required_quantity=2.0,  # 조립을 위해 2개의 반제품 필요
-            unit="개",
-            is_mandatory=True
-        )
-        self.add_resource_requirement(semi_finished_req)
-        
-        # 도구 요구사항 추가
-        tool_req = ResourceRequirement(
-            resource_type=ResourceType.TOOL,
-            name="조립도구",
-            required_quantity=1.0,
-            unit="세트",
-            is_mandatory=True
-        )
-        self.add_resource_requirement(tool_req)
+
         
     def add_to_assembly_line(self, product):
         """

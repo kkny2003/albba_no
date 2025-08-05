@@ -51,19 +51,9 @@ class QualityControlProcess(BaseProcess):
         # BaseProcess의 배치 처리 기능 활용 (inspection_line 대신)
         # self.inspection_line은 BaseProcess.current_batch로 대체됨
         self.quality_criteria = {}  # 품질 기준
+        self.inspection_time = inspection_time  # 검사 시간 저장
         
-        # 품질 관리 공정 특화 자원 설정
-        self._setup_quality_control_resources()
-        
-        # BaseProcess의 고급 기능들 활용
-        self.apply_failure_weight_to_machines()
-        self.apply_failure_weight_to_workers()
-        
-        # 품질 관리 공정 특화 자원 설정
-        self._setup_quality_control_resources()
-        
-    def _setup_quality_control_resources(self):
-        """품질 관리 공정용 자원 요구사항을 설정하는 메서드"""
+        # 품질 관리 공정 특화 자원 설정 (인라인 처리)
         # 기본 자원 설정 (BaseProcess에서 처리됨)
         self._setup_default_resources()
         
@@ -86,6 +76,10 @@ class QualityControlProcess(BaseProcess):
             is_mandatory=True
         )
         self.add_resource_requirement(inspection_tool_req)
+        
+        # BaseProcess의 고급 기능들 활용
+        self.apply_failure_weight_to_machines()
+        self.apply_failure_weight_to_workers()
         
     def add_to_inspection_line(self, product):
         """

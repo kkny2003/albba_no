@@ -96,15 +96,7 @@ class TransportProcess(BaseProcess):
         self.route = None  # 운송 경로 (문자열로 설정 가능)
         self.transport_status = "대기"  # 운송 상태: 대기, 적재중, 운송중, 하역중
         
-        # 운송 공정 특화 자원 설정
-        self._setup_transport_resources()
-        
-        # BaseProcess의 고급 기능들 활용
-        self.apply_failure_weight_to_machines()
-        self.apply_failure_weight_to_workers()
-        
-    def _setup_transport_resources(self):
-        """운송 공정용 자원 요구사항을 설정하는 메서드"""
+        # 운송 공정 특화 자원 설정 (인라인 처리)
         # 기본 자원 설정 (BaseProcess에서 처리됨)
         self._setup_default_resources()
         
@@ -127,6 +119,10 @@ class TransportProcess(BaseProcess):
             is_mandatory=True
         )
         self.add_resource_requirement(transport_vehicle_req)
+        
+        # BaseProcess의 고급 기능들 활용
+        self.apply_failure_weight_to_machines()
+        self.apply_failure_weight_to_workers()
         
     def add_to_transport_queue(self, item):
         """

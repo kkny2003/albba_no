@@ -109,20 +109,7 @@ class BaseProcess(ABC):
         # SimPy 관련 속성들
         self.processing_time: float = processing_time  # 처리 시간 (시뮬레이션 시간 단위)
         
-        # 자원 설정 (개선된 통합 로직)
-        self._setup_resources(input_resources, output_resources, resource_requirements)
-        
-    def _setup_resources(self, input_resources: Union[List[Resource], Dict[str, float], None], 
-                        output_resources: Union[List[Resource], Dict[str, float], None],
-                        resource_requirements: List[ResourceRequirement]):
-        """
-        자원 정보를 설정하는 통합 메서드 (모든 프로세스에서 공통 사용)
-        
-        Args:
-            input_resources: 입력 자원 (List[Resource], Dict[str, float], 또는 None)
-            output_resources: 출력 자원 (List[Resource], Dict[str, float], 또는 None)
-            resource_requirements: 자원 요구사항 목록
-        """
+        # 자원 설정 (인라인 처리)
         # 입력 자원 설정
         if input_resources is not None:
             if isinstance(input_resources, dict):
@@ -131,6 +118,7 @@ class BaseProcess(ABC):
                     input_resource = Resource(
                         resource_id=f"input_{resource_name}",
                         name=resource_name,
+                        resource_type=ResourceType.RAW_MATERIAL,
                         properties={"quantity": float(quantity), "unit": "단위"}
                     )
                     self.add_input_resource(input_resource)
@@ -148,6 +136,7 @@ class BaseProcess(ABC):
                     output_resource = Resource(
                         resource_id=f"output_{resource_name}",
                         name=resource_name,
+                        resource_type=ResourceType.SEMI_FINISHED,
                         properties={"quantity": float(quantity), "unit": "개"}
                     )
                     self.add_output_resource(output_resource)
@@ -161,6 +150,8 @@ class BaseProcess(ABC):
         if resource_requirements is not None:
             for requirement in resource_requirements:
                 self.add_resource_requirement(requirement)
+        
+
         
     def _setup_default_resources(self):
         """
