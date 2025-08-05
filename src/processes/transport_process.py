@@ -31,7 +31,6 @@ class TransportProcess(BaseProcess):
                  transport_time: float,
                  unloading_time: float,
                  cooldown_time: float = 0.0,
-                 products_per_cycle: int = None,
                  failure_weight_machine: float = 1.0, 
                  failure_weight_worker: float = 1.0):
         """
@@ -58,7 +57,6 @@ class TransportProcess(BaseProcess):
             - 하역 장비, 작업자 수에 따라 조정 가능
             - 예시: 0.5 = 30분, 1.0 = 1시간
         :param cooldown_time: 대기 시간 (시뮬레이션 시간 단위)
-        :param products_per_cycle: 한번 공정 실행 시 생산되는 제품 수 (None이면 batch_size와 동일)
         :param failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0)
         :param failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0)
         """
@@ -78,7 +76,6 @@ class TransportProcess(BaseProcess):
             machines=machines, 
             workers=workers, 
             processing_time=loading_time + transport_time + unloading_time,
-            products_per_cycle=products_per_cycle,
             failure_weight_machine=failure_weight_machine,
             failure_weight_worker=failure_weight_worker,
             input_resources=input_resources,
@@ -174,15 +171,6 @@ class TransportProcess(BaseProcess):
         self.batch_size = max(1, batch_size)
         self.enable_batch_processing = batch_size > 1
         print(f"[{self.process_name}] 운송 배치 크기 설정: {self.batch_size}")
-    
-    def set_transport_priority(self, priority: int):
-        """
-        운송 우선순위 설정 (BaseProcess 기능 활용)
-        
-        Args:
-            priority: 우선순위 (1-10)
-        """
-        return self.set_execution_priority(priority)
     
     def add_transport_condition(self, condition):
         """
@@ -301,7 +289,7 @@ class TransportProcess(BaseProcess):
         운송 공정의 핵심 로직 (SimPy generator 방식)
         
         Args:
-            input_data: 입력 데이터 (운송할 제품 정보)
+            input_data: 입력 데이터 (운송할 제품 정보 + ResourceManager 정보)
             
         Yields:
             simpy.Event: SimPy 이벤트들
@@ -311,11 +299,29 @@ class TransportProcess(BaseProcess):
         """
         print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 로직 시작")
         
+        # input_data에서 ResourceManager와 allocation_id 정보 추출
+        resource_manager = None
+        original_allocation_id = None
+        requester_id = None
+        
+        if input_data and isinstance(input_data, dict):
+            resource_manager = input_data.get('resource_manager')
+            original_allocation_id = input_data.get('original_allocation_id')
+            requester_id = input_data.get('requester_id')
+        
         # 1. 적재 단계 (loading_time)
         print(f"[시간 {self.env.now:.1f}] {self.process_name} 적재 중... (소요시간: {self.loading_time:.1f})")
         yield self.env.timeout(self.loading_time)
         
-        # 2. 운송 단계 (transport_time)
+        # 🚛 적재 완료 시점에 ResourceManager에게 알림 전송
+        print(f"[시간 {self.env.now:.1f}] {self.process_name} ✅ 적재 완료! ResourceManager에게 알림 전송")
+        if resource_manager and original_allocation_id and requester_id:
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} → ResourceManager: 적재 완료 알림 (요청자: {requester_id})")
+            resource_manager._notify_transport_completion(original_allocation_id, requester_id, success=True)
+        else:
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} ⚠️ 적재 완료 알림 생략 (필요한 정보 부족)")
+        
+        # 2. 운송 단계 (transport_time) - 백그라운드에서 계속 진행
         print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 중... (소요시간: {self.transport_time:.1f})")
         yield self.env.timeout(self.transport_time)
         
@@ -330,3 +336,123 @@ class TransportProcess(BaseProcess):
         print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 로직 완료")
         
         return input_data  # 운송된 자원 반환
+    
+    def enable_auto_transport(self, enable: bool = True):
+        """
+        자동 Transport 기능 활성화/비활성화
+        
+        Args:
+            enable: 활성화 여부
+        """
+        # TransportProcess 레벨에서 자동 운송 설정 관리
+        if not hasattr(self, 'auto_transport_enabled'):
+            self.auto_transport_enabled = True  # 기본값
+        
+        self.auto_transport_enabled = enable
+        print(f"[{self.process_name}] 자동 Transport: {'활성화' if enable else '비활성화'}")
+        return True
+    
+    def get_transport_status(self) -> Dict[str, Any]:
+        """
+        Transport 관련 상태 조회
+        
+        Returns:
+            Dict: Transport 상태 정보
+        """
+        # 현재 운송 대기열 상태
+        queue_status = self.get_transport_queue_status()
+        
+        # 자동 운송 활성화 상태
+        auto_enabled = getattr(self, 'auto_transport_enabled', True)
+        
+        return {
+            'process_id': self.process_id,
+            'process_name': self.process_name,
+            'auto_transport_enabled': auto_enabled,
+            'transport_status': self.transport_status,
+            'route': self.route,
+            'timing': {
+                'loading_time': self.loading_time,
+                'transport_time': self.transport_time,
+                'unloading_time': self.unloading_time,
+                'cooldown_time': self.cooldown_time,
+                'total_cycle_time': self.processing_time
+            },
+            'queue_info': {
+                'items_in_queue': len(queue_status['items_in_queue']),
+                'batch_ready': queue_status['is_batch_ready'],
+                'batch_status': queue_status['batch_status']
+            },
+            'transport_mode': 'full_process'  # 완전한 운송 프로세스 담당
+        }
+    
+    def set_transport_settings(self, loading_time: float = None, transport_time: float = None, 
+                              unloading_time: float = None, cooldown_time: float = None, 
+                              route: str = None):
+        """
+        운송 설정 변경
+        
+        Args:
+            loading_time: 적재 시간 (선택적)
+            transport_time: 운송 시간 (선택적)
+            unloading_time: 하역 시간 (선택적)
+            cooldown_time: 대기 시간 (선택적)
+            route: 운송 경로 (선택적)
+        """
+        if loading_time is not None:
+            if loading_time <= 0:
+                raise ValueError("loading_time은 0보다 큰 양수여야 합니다.")
+            self.loading_time = loading_time
+            
+        if transport_time is not None:
+            if transport_time <= 0:
+                raise ValueError("transport_time은 0보다 큰 양수여야 합니다.")
+            self.transport_time = transport_time
+            
+        if unloading_time is not None:
+            if unloading_time <= 0:
+                raise ValueError("unloading_time은 0보다 큰 양수여야 합니다.")
+            self.unloading_time = unloading_time
+            
+        if cooldown_time is not None:
+            if cooldown_time >= 0:  # cooldown_time은 0 이상이면 됨
+                self.cooldown_time = cooldown_time
+        
+        if route is not None:
+            self.route = route
+        
+        # 총 처리 시간 재계산
+        self.processing_time = self.loading_time + self.transport_time + self.unloading_time
+        
+        print(f"[{self.process_name}] Transport 설정 업데이트 완료")
+        print(f"  - 적재: {self.loading_time}시간, 운송: {self.transport_time}시간")
+        print(f"  - 하역: {self.unloading_time}시간, 대기: {self.cooldown_time}시간")
+        print(f"  - 총 사이클 시간: {self.processing_time}시간")
+        if route:
+            print(f"  - 경로: {self.route}")
+    
+    def get_transport_performance_metrics(self) -> Dict[str, Any]:
+        """
+        운송 성능 메트릭 조회
+        
+        Returns:
+            Dict: 운송 성능 정보
+        """
+        # BaseProcess의 통계 기능 활용
+        process_info = self.get_process_info()
+        
+        return {
+            'transport_process_id': self.process_id,
+            'efficiency_metrics': {
+                'loading_efficiency': self.loading_time / self.processing_time * 100,
+                'transport_efficiency': self.transport_time / self.processing_time * 100,
+                'unloading_efficiency': self.unloading_time / self.processing_time * 100,
+                'cooldown_ratio': self.cooldown_time / self.processing_time * 100
+            },
+            'cycle_info': {
+                'total_cycle_time': self.processing_time,
+                'active_transport_time': self.loading_time + self.transport_time + self.unloading_time,
+                'idle_time': self.cooldown_time
+            },
+            'process_statistics': process_info
+        }

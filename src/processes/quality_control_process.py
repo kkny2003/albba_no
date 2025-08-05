@@ -130,15 +130,6 @@ class QualityControlProcess(BaseProcess):
         self.enable_batch_processing = batch_size > 1
         print(f"[{self.process_name}] 검사 배치 크기 설정: {self.batch_size}")
     
-    def set_inspection_priority(self, priority: int):
-        """
-        검사 우선순위 설정 (BaseProcess 기능 활용)
-        
-        Args:
-            priority: 우선순위 (1-10)
-        """
-        return self.set_execution_priority(priority)
-    
     def add_inspection_condition(self, condition):
         """
         검사 실행 조건 추가 (BaseProcess 기능 활용)

@@ -102,7 +102,6 @@ class BaseProcess(ABC):
         self.waiting_for_transport: bool = False  # 운송 대기 상태
         
         # 고급 워크플로우 지원을 위한 새로운 속성들
-        self.execution_priority: int = 5  # 실행 우선순위 (1-10, 높을수록 우선)
         self.conditions: List[Callable[[Any], bool]] = []  # 실행 조건들
         self.parallel_safe: bool = True  # 병렬 실행 안전 여부
         self.resource_manager = None  # 고급 자원 관리자 (필요시 설정)
@@ -275,20 +274,6 @@ class BaseProcess(ABC):
             if hasattr(worker, 'is_available') and worker.is_available():
                 available_workers.append(worker)
         return available_workers
-    
-    def set_execution_priority(self, priority: int) -> 'BaseProcess':
-        """
-        실행 우선순위를 설정
-        
-        Args:
-            priority: 우선순위 (1-10, 높을수록 우선)
-            
-        Returns:
-            BaseProcess: 자기 자신 (메서드 체이닝용)
-        """
-        self.execution_priority = max(1, min(10, priority))
-        print(f"[{self.process_name}] 실행 우선순위 설정: {self.execution_priority}")
-        return self
     
     def add_execution_condition(self, condition: Callable[[Any], bool]) -> 'BaseProcess':
         """
@@ -681,7 +666,6 @@ class BaseProcess(ABC):
             'batch_size': self.batch_size,
             'products_per_cycle': self.products_per_cycle,
             'output_buffer_capacity': self.output_buffer_capacity,
-            'execution_priority': self.execution_priority,
             'parallel_safe': self.parallel_safe,
             'resource_status': self.get_resource_status()
         }

@@ -109,8 +109,16 @@ class AdvancedResourceManager:
                 stats_manager=stats_manager
             )
         
+        # Transport 완료 이벤트 관리 시스템
+        self.transport_completion_events: Dict[str, simpy.Event] = {}  # allocation_id -> Event 매핑
+        self.transport_requester_map: Dict[str, str] = {}  # allocation_id -> requester_id 매핑
+        
         # 스케줄링 관련
         self._monitoring_process = None
+        
+        # TransportProcess 관리
+        self.transport_processes: Dict[str, Any] = {}  # transport_id -> TransportProcess 매핑
+        self.transport_queue: List[Dict[str, Any]] = []  # 운송 요청 대기열
         
     def register_resource(self, resource_id: str, capacity: int, resource_type: ResourceType = None, **metadata):
         """
@@ -136,6 +144,30 @@ class AdvancedResourceManager:
         # wait_queues 제거: SimPy PriorityResource 내장 큐 사용
         
         print(f"[시간 {self.env.now:.1f}] 고급 자원 등록 (우선순위 지원): {resource_id} (용량: {capacity}, 타입: {resource_type})")
+        
+    def register_transport_process(self, transport_id: str, transport_process):
+        """
+        TransportProcess를 ResourceManager에 등록
+        
+        Args:
+            transport_id: Transport 식별자
+            transport_process: TransportProcess 인스턴스
+        """
+        self.transport_processes[transport_id] = transport_process
+        print(f"[시간 {self.env.now:.1f}] TransportProcess 등록: {transport_id} (프로세스 ID: {transport_process.process_id})")
+        
+    def unregister_transport_process(self, transport_id: str):
+        """
+        TransportProcess 등록 해제
+        
+        Args:
+            transport_id: Transport 식별자
+        """
+        if transport_id in self.transport_processes:
+            del self.transport_processes[transport_id]
+            print(f"[시간 {self.env.now:.1f}] TransportProcess 등록 해제: {transport_id}")
+            return True
+        return False
         
     def request_resource_with_priority(self, resource_id: str, requester_id: str, 
                                      priority: int = 5, duration: float = None) -> Generator[simpy.Event, None, Optional[str]]:
@@ -172,6 +204,11 @@ class AdvancedResourceManager:
             self.stats_interface.record_counter("total_requests")
             
         print(f"[시간 {self.env.now:.1f}] 우선순위 자원 요청: {resource_id} by {requester_id} (우선순위: {priority})")
+        
+        # Transport 자원 요청의 경우 특별 처리
+        if resource_id == "transport":
+            allocation_id = yield from self._handle_transport_request(requester_id, priority, request_time)
+            return allocation_id
         
         # SimPy PriorityResource 우선순위 변환 (높은 값 → 낮은 값)
         simpy_priority = 10 - priority  # 사용자 우선순위 10 → SimPy 우선순위 0 (최고 우선순위)
@@ -502,3 +539,259 @@ class AdvancedResourceManager:
             'average_percentage': average_utilization * 100,
             'total_resources': len(self.resources)
         }
+    
+    def _handle_transport_request(self, requester_id: str, priority: int, request_time: float, 
+                                 original_allocation_id: str = None) -> Generator[simpy.Event, None, Optional[str]]:
+        """
+        Transport 요청 특별 처리 (TransportProcess 할당 및 실행)
+        
+        Args:
+            requester_id: 요청자 ID
+            priority: 우선순위
+            request_time: 요청 시간
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+            
+        Returns:
+            Optional[str]: 할당 ID 또는 None
+        """
+        # 사용 가능한 TransportProcess 찾기
+        available_transport = self._find_available_transport_process()
+        
+        if not available_transport:
+            print(f"[시간 {self.env.now:.1f}] Transport 요청 실패: 사용 가능한 TransportProcess가 없습니다")
+            return None
+        
+        transport_id, transport_process = available_transport
+        
+        # SimPy PriorityResource를 사용한 우선순위 기반 자원 요청
+        simpy_priority = 10 - priority  # 사용자 우선순위 변환
+        
+        with self.resources["transport"].request(priority=simpy_priority) as request:
+            yield request
+            
+            # 대기 시간 계산
+            wait_time = self.env.now - request_time
+            
+            # 할당 성공
+            allocation_id = str(uuid.uuid4())
+            allocation = ResourceAllocation(
+                allocation_id=allocation_id,
+                resource_id="transport",
+                requester_id=requester_id,
+                allocated_amount=1.0,
+                allocation_time=self.env.now,
+                expected_release_time=None  # TransportProcess에서 관리
+            )
+            
+            self.allocations[allocation_id] = allocation
+            self.allocation_history.append(allocation)
+            self.successful_allocations += 1
+            
+            # 메트릭 업데이트
+            metrics = self.resource_metrics["transport"]
+            metrics.successful_allocations += 1
+            metrics.average_wait_time = ((metrics.average_wait_time * (metrics.successful_allocations - 1)) + wait_time) / metrics.successful_allocations
+            
+            # 중앙 통계 관리자에 기록
+            if self.stats_interface:
+                self.stats_interface.record_counter("successful_allocations")
+                self.stats_interface.record_histogram("waiting_time", wait_time)
+                self.stats_interface.record_gauge("utilization", self.get_resource_utilization("transport") * 100)
+            
+            print(f"[시간 {self.env.now:.1f}] Transport 할당 완료: {transport_id} to {requester_id} (할당 ID: {allocation_id}, 대기시간: {wait_time:.1f})")
+            
+            # TransportProcess 실행 (백그라운드에서 실행)
+            # 원래 요청의 allocation_id도 함께 전달하여 완료 알림과 연결
+            self.env.process(self._execute_transport_process(
+                transport_process, requester_id, allocation_id, original_allocation_id
+            ))
+            
+            return allocation_id
+    
+    def _find_available_transport_process(self):
+        """
+        사용 가능한 TransportProcess 찾기
+        
+        Returns:
+            Tuple[str, TransportProcess] 또는 None: (transport_id, transport_process)
+        """
+        for transport_id, transport_process in self.transport_processes.items():
+            # TransportProcess가 사용 가능한지 확인 (간단한 체크)
+            if hasattr(transport_process, 'transport_status') and transport_process.transport_status == "대기":
+                return (transport_id, transport_process)
+        
+        # 첫 번째로 등록된 TransportProcess 반환 (기본값)
+        if self.transport_processes:
+            first_item = next(iter(self.transport_processes.items()))
+            return first_item
+        
+        return None
+    
+    def _execute_transport_process(self, transport_process, requester_id: str, allocation_id: str, 
+                                  original_allocation_id: str = None) -> Generator[simpy.Event, None, None]:
+        """
+        TransportProcess 실행 (백그라운드 프로세스)
+        
+        Args:
+            transport_process: 실행할 TransportProcess
+            requester_id: 요청자 ID
+            allocation_id: 할당 ID
+            original_allocation_id: 원래 요청의 allocation_id (완료 알림용)
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+        """
+        try:
+            print(f"[시간 {self.env.now:.1f}] ResourceManager가 TransportProcess 실행 시작: {transport_process.process_id} (요청자: {requester_id})")
+            
+            # TransportProcess의 process_logic 실행 (적재 완료 알림을 위한 정보 전달)
+            yield from transport_process.process_logic(
+                input_data={
+                    "requester_id": requester_id, 
+                    "allocation_id": allocation_id,
+                    "resource_manager": self,  # ResourceManager 참조 전달
+                    "original_allocation_id": original_allocation_id  # 적재 완료 알림용
+                }
+            )
+            
+            print(f"[시간 {self.env.now:.1f}] ResourceManager가 TransportProcess 실행 완료: {transport_process.process_id}")
+            
+            # 할당 정보 정리
+            if allocation_id in self.allocations:
+                del self.allocations[allocation_id]
+            
+            # � 전체 운송 프로세스 완료 시에는 추가 처리 없음 (적재 완료 시 이미 알림 전송됨)
+            print(f"[시간 {self.env.now:.1f}] ResourceManager: 전체 운송 프로세스 완료 (적재 완료 시 이미 알림 전송됨)")
+            
+        except Exception as e:
+            print(f"[시간 {self.env.now:.1f}] TransportProcess 실행 중 오류: {e}")
+            # 오류 발생 시에도 완료 알림 (실패로 표시)
+            if original_allocation_id:
+                self._notify_transport_completion(original_allocation_id, requester_id, success=False)
+    
+    def get_transport_status(self) -> Dict[str, Any]:
+        """
+        Transport 관리 상태 조회
+        
+        Returns:
+            Dict: Transport 관리 상태 정보
+        """
+        transport_info = {}
+        for transport_id, transport_process in self.transport_processes.items():
+            transport_info[transport_id] = {
+                'process_id': transport_process.process_id,
+                'process_name': transport_process.process_name,
+                'status': getattr(transport_process, 'transport_status', 'unknown'),
+                'route': getattr(transport_process, 'route', None)
+            }
+        
+        return {
+            'registered_transports': len(self.transport_processes),
+            'transport_queue_length': len(self.transport_queue),
+            'transport_processes': transport_info,
+            'transport_resource_status': self.get_resource_status("transport") if "transport" in self.resources else None
+        }
+    
+    def request_transport(self, requester_id: str, output_products: Any, priority: int = 7) -> Optional[simpy.Event]:
+        """
+        단순한 운송 요청 (완료 이벤트 반환)
+        
+        Args:
+            requester_id: 요청자 ID
+            output_products: 운송할 출하품
+            priority: 우선순위 (기본값: 7)
+            
+        Returns:
+            Optional[simpy.Event]: 운송 완료 이벤트 (실패 시 None)
+        """
+        try:
+            print(f"[시간 {self.env.now:.1f}] ResourceManager: {requester_id}로부터 운송 요청 접수")
+            
+            # 고유한 allocation_id 생성
+            allocation_id = f"transport_{requester_id}_{self.env.now}_{uuid.uuid4().hex[:8]}"
+            
+            # 완료 이벤트 생성
+            completion_event = self.env.event()
+            self.transport_completion_events[allocation_id] = completion_event
+            self.transport_requester_map[allocation_id] = requester_id
+            
+            print(f"[시간 {self.env.now:.1f}] ResourceManager: 운송 완료 이벤트 생성 (할당 ID: {allocation_id})")
+            
+            # 운송 요청을 비동기적으로 처리하기 위해 프로세스 시작
+            self.env.process(self._process_transport_request(requester_id, output_products, priority, allocation_id))
+            
+            return completion_event
+            
+        except Exception as e:
+            print(f"[시간 {self.env.now:.1f}] ResourceManager: 운송 요청 접수 실패 - {e}")
+            return None
+    
+    def _process_transport_request(self, requester_id: str, output_products: Any, priority: int, allocation_id: str) -> Generator[simpy.Event, None, None]:
+        """
+        운송 요청을 백그라운드에서 처리하는 내부 메서드
+        
+        Args:
+            requester_id: 요청자 ID
+            output_products: 운송할 출하품
+            priority: 우선순위
+            allocation_id: 할당 ID
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+        """
+        try:
+            print(f"[시간 {self.env.now:.1f}] ResourceManager: {requester_id} 운송 요청 처리 시작 (할당 ID: {allocation_id})")
+            
+            # 기존 transport 할당 로직 활용 (원래 allocation_id 전달)
+            transport_allocation_id = yield from self._handle_transport_request(
+                requester_id, priority, self.env.now, allocation_id
+            )
+            
+            if transport_allocation_id:
+                print(f"[시간 {self.env.now:.1f}] ResourceManager: {requester_id} 운송 할당 성공 (할당 ID: {transport_allocation_id})")
+                print(f"[시간 {self.env.now:.1f}] ResourceManager: 실제 운송 처리는 TransportProcess에서 수행")
+                
+                # 📦 실제 TransportProcess 실행이 완료될 때까지 대기한 후 완료 알림
+                # 완료 알림은 _handle_transport_request 내부의 _execute_transport_process에서 처리해야 함
+                
+            else:
+                print(f"[시간 {self.env.now:.1f}] ResourceManager: {requester_id} 운송 할당 실패")
+                self._notify_transport_completion(allocation_id, requester_id, success=False)
+                
+        except Exception as e:
+            print(f"[시간 {self.env.now:.1f}] ResourceManager: {requester_id} 운송 요청 처리 중 오류 - {e}")
+            self._notify_transport_completion(allocation_id, requester_id, success=False)
+    
+    def _notify_transport_completion(self, allocation_id: str, requester_id: str, success: bool = True):
+        """
+        운송 완료 알림
+        
+        Args:
+            allocation_id: 할당 ID
+            requester_id: 요청자 ID
+            success: 성공 여부
+        """
+        if allocation_id in self.transport_completion_events:
+            completion_event = self.transport_completion_events[allocation_id]
+            
+            # 완료 정보를 이벤트에 첨부
+            completion_event.value = {
+                'allocation_id': allocation_id,
+                'requester_id': requester_id, 
+                'success': success,
+                'completion_time': self.env.now
+            }
+            
+            # 이벤트 trigger
+            completion_event.succeed()
+            
+            print(f"[시간 {self.env.now:.1f}] ResourceManager: {requester_id} 운송 완료 알림 전송 (성공: {success})")
+            
+            # 정리
+            del self.transport_completion_events[allocation_id]
+            if allocation_id in self.transport_requester_map:
+                del self.transport_requester_map[allocation_id]
+        else:
+            print(f"[시간 {self.env.now:.1f}] ResourceManager: 완료 이벤트를 찾을 수 없음 (할당 ID: {allocation_id})")

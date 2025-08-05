@@ -1,7 +1,10 @@
 from src.Processes.base_process import BaseProcess
-from typing import Any, List, Generator, Dict, Union
+from typing import Any, List, Generator, Dict, Union, Optional, TYPE_CHECKING
 import simpy
 from src.Resource.resource_base import Resource, ResourceRequirement, ResourceType
+
+if TYPE_CHECKING:
+    from src.Processes.transport_process import TransportProcess
 
 
 class ManufacturingProcess(BaseProcess):
@@ -15,7 +18,9 @@ class ManufacturingProcess(BaseProcess):
                  processing_time: float = 2.0,
                  products_per_cycle: int = None,
                  failure_weight_machine: float = 1.0, 
-                 failure_weight_worker: float = 1.0):
+                 failure_weight_worker: float = 1.0,
+                 resource_manager=None,
+                 transport_process: Optional['TransportProcess'] = None):
         """
         제조 공정의 초기화 메서드입니다 (SimPy 환경 필수).
 
@@ -31,6 +36,8 @@ class ManufacturingProcess(BaseProcess):
         :param products_per_cycle: 한번 공정 실행 시 생산되는 제품 수 (None이면 batch_size와 동일)
         :param failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0)
         :param failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0)
+        :param resource_manager: 자원 관리자 객체 (transport 할당용, 선택적)
+        :param transport_process: 운송 공정 객체 (TransportProcess 인스턴스, 선택적)
         """
         # BaseProcess 초기화 (자원 정보 포함)
         super().__init__(
@@ -47,6 +54,13 @@ class ManufacturingProcess(BaseProcess):
             output_resources=output_resources,
             resource_requirements=resource_requirements
         )
+        
+        # Transport 관련 설정
+        self.resource_manager = resource_manager
+        self.transport_process = transport_process  # 참조용 (직접 호출하지 않음)
+        self.auto_transport_enabled = resource_manager is not None  # resource_manager가 있으면 자동 transport 활성화
+        
+        print(f"[{self.process_name}] Transport 설정 - 자동 운송: {'활성화' if self.auto_transport_enabled else '비활성화'}")
         
         # BaseProcess의 배치 처리 기능 활용 (production_line 대신)
         # self.production_line은 BaseProcess.current_batch로 대체됨
@@ -354,4 +368,85 @@ class ManufacturingProcess(BaseProcess):
         
         print(f"[시간 {self.env.now:.1f}] {self.process_name} 제조 로직 완료")
         
+        # 4. 출하품 생성 후 운송 요청 (자동 운송이 활성화된 경우)
+        if self.auto_transport_enabled and self.resource_manager:
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} 출하품 운송 요청 시작")
+            yield from self.request_transport_for_output(output_resources)
+        
         return output_resources
+    
+    def request_transport_for_output(self, output_products: Any) -> Generator[simpy.Event, None, None]:
+        """
+        출하품을 위한 Transport 요청 (완료까지 대기)
+        
+        Args:
+            output_products: 운송할 출하품
+            
+        Yields:
+            simpy.Event: SimPy 이벤트들
+        """
+        if not self.resource_manager:
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} Transport 요청 실패: resource_manager가 없습니다")
+            return
+        
+        print(f"[시간 {self.env.now:.1f}] {self.process_name} Transport 요청을 ResourceManager에게 전달")
+        
+        # ResourceManager에게 운송 요청하고 완료 이벤트 받기
+        completion_event = self.resource_manager.request_transport(
+            requester_id=self.process_id,
+            output_products=output_products,
+            priority=7  # 제조 완료 후 운송은 높은 우선순위
+        )
+        
+        if completion_event:
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} Transport 요청 접수됨 - 완료까지 대기")
+            
+            # 출력 버퍼에서 제품 제거 (요청 접수 성공으로 간주)
+            if hasattr(self, 'current_output_count') and self.current_output_count > 0:
+                self.current_output_count -= 1
+                print(f"[시간 {self.env.now:.1f}] {self.process_name} 출력 버퍼에서 제품 제거 (운송 요청 접수 완료, 남은 개수: {self.current_output_count})")
+            
+            # 운송 완료까지 대기
+            try:
+                completion_info = yield completion_event
+                print(f"[시간 {self.env.now:.1f}] {self.process_name} Transport 완료 알림 수신: {completion_info}")
+                
+                if completion_info and completion_info.get('success', False):
+                    print(f"[시간 {self.env.now:.1f}] {self.process_name} Transport 성공적으로 완료")
+                else:
+                    print(f"[시간 {self.env.now:.1f}] {self.process_name} Transport 실패")
+                    
+            except Exception as e:
+                print(f"[시간 {self.env.now:.1f}] {self.process_name} Transport 완료 대기 중 오류: {e}")
+        else:
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} Transport 요청 접수 실패")
+    
+    def request_batch_transport(self, batch_products: List[Any]) -> bool:
+        """
+        배치 단위로 Transport 요청 (단순 요청만 담당)
+        
+        Args:
+            batch_products: 운송 요청할 제품들의 배치
+            
+        Returns:
+            bool: 요청 성공 여부
+        """
+        if not self.resource_manager:
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} 배치 운송 요청 실패: resource_manager가 없습니다")
+            return False
+        
+        print(f"[시간 {self.env.now:.1f}] {self.process_name} 배치 운송 요청 ({len(batch_products)}개 제품)")
+        
+        # 배치 전체를 하나의 운송 요청으로 처리
+        success = self.resource_manager.request_transport(
+            requester_id=self.process_id,
+            output_products=batch_products,
+            priority=6  # 배치 운송은 일반 우선순위
+        )
+        
+        if success:
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} 배치 운송 요청 접수됨 - ResourceManager에서 처리")
+        else:
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} 배치 운송 요청 접수 실패")
+            
+        return success
