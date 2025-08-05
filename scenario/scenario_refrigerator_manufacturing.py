@@ -13,6 +13,8 @@
 
 import os
 import sys
+import io
+from datetime import datetime
 
 # 프로젝트 루트를 파이썬 모듈 검색 경로에 추가
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -848,23 +850,93 @@ def monitor_refrigerator_system(scenario_data, interval=15.0):
 def main():
     """메인 실행 함수"""
     
-    # 1. 냉장고 제조 시나리오 생성
-    print("냉장고 제조 시나리오 생성 중...")
-    scenario_data = create_refrigerator_manufacturing_scenario()
+    # 출력 캡처를 위한 StringIO 객체 생성
+    output_capture = io.StringIO()
+    original_stdout = sys.stdout
     
-    # 2. 냉장고 제조 워크플로우 생성
-    print("냉장고 제조 워크플로우 생성 중...")
-    workflow = create_refrigerator_workflow(scenario_data)
+    try:
+        # stdout을 StringIO로 리다이렉트
+        sys.stdout = output_capture
+        
+        # 1. 냉장고 제조 시나리오 생성
+        print("냉장고 제조 시나리오 생성 중...")
+        scenario_data = create_refrigerator_manufacturing_scenario()
+        
+        # 2. 냉장고 제조 워크플로우 생성
+        print("냉장고 제조 워크플로우 생성 중...")
+        workflow = create_refrigerator_workflow(scenario_data)
+        
+        # 3. 모니터링 시작
+        print("모니터링 시작...")
+        monitor_process = monitor_refrigerator_system(scenario_data)
+        
+        # 4. 시뮬레이션 실행
+        print("냉장고 제조 시뮬레이션 실행 중...")
+        run_refrigerator_simulation(scenario_data, workflow, num_refrigerators=2)
+        
+        print("\n=== 냉장고 제조공정 시뮬레이션 완료 ===")
+        
+    finally:
+        # 원래 stdout으로 복원
+        sys.stdout = original_stdout
+        
+        # 캡처된 출력을 가져오기
+        captured_output = output_capture.getvalue()
+        output_capture.close()
+        
+        # md 파일로 저장
+        save_output_to_md(captured_output)
+        
+        # 터미널에도 출력 (선택사항)
+        print(captured_output)
+
+
+def save_output_to_md(output_text):
+    """캡처된 출력을 md 파일로 저장"""
     
-    # 3. 모니터링 시작
-    print("모니터링 시작...")
-    monitor_process = monitor_refrigerator_system(scenario_data)
+    # log 폴더 경로 생성
+    log_dir = os.path.join(project_root, 'log')
     
-    # 4. 시뮬레이션 실행
-    print("냉장고 제조 시뮬레이션 실행 중...")
-    run_refrigerator_simulation(scenario_data, workflow, num_refrigerators=2)
+    # log 폴더가 없으면 생성
+    try:
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+            print(f"📁 log 폴더가 생성되었습니다: {log_dir}")
+    except Exception as e:
+        print(f"❌ log 폴더 생성 중 오류 발생: {e}")
+        return
     
-    print("\n=== 냉장고 제조공정 시뮬레이션 완료 ===")
+    # 현재 시간을 파일명에 포함
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = os.path.join(log_dir, f"refrigerator_simulation_log_{timestamp}.md")
+    
+    # md 파일 내용 구성
+    md_content = f"""# 냉장고 제조공정 시뮬레이션 로그
+
+**시뮬레이션 실행 시간**: {datetime.now().strftime("%Y년 %m월 %d일 %H시 %M분 %S초")}
+
+## 시뮬레이션 출력 로그
+
+```
+{output_text}
+```
+
+## 로그 정보
+
+- **파일 생성 시간**: {datetime.now().strftime("%Y년 %m월 %d일 %H시 %M분 %S초")}
+- **시뮬레이션 유형**: 냉장고 제조공정 시뮬레이션
+- **프로세스 수**: 15개 (제조, 조립, 품질검사, 운송)
+- **리소스 수**: 12개 기계, 7명 작업자, 4개 운송수단, 5개 버퍼
+- **저장 위치**: {log_dir}
+"""
+    
+    # 파일 저장
+    try:
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(md_content)
+        print(f"\n✅ 시뮬레이션 로그가 '{filename}' 파일로 저장되었습니다.")
+    except Exception as e:
+        print(f"\n❌ 파일 저장 중 오류 발생: {e}")
 
 
 if __name__ == "__main__":
