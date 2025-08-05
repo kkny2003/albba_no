@@ -776,16 +776,13 @@ class AdvancedResourceManager:
         if allocation_id in self.transport_completion_events:
             completion_event = self.transport_completion_events[allocation_id]
             
-            # 완료 정보를 이벤트에 첨부
-            completion_event.value = {
+            # SimPy Event는 succeed(value)로 값을 전달해야 함
+            completion_event.succeed({
                 'allocation_id': allocation_id,
                 'requester_id': requester_id, 
                 'success': success,
                 'completion_time': self.env.now
-            }
-            
-            # 이벤트 trigger
-            completion_event.succeed()
+            })
             
             print(f"[시간 {self.env.now:.1f}] ResourceManager: {requester_id} 운송 완료 알림 전송 (성공: {success})")
             

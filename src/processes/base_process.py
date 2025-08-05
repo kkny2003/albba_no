@@ -131,7 +131,6 @@ class BaseProcess(ABC):
                     input_resource = Resource(
                         resource_id=f"input_{resource_name}",
                         name=resource_name,
-                        resource_type=ResourceType.MATERIAL,
                         properties={"quantity": float(quantity), "unit": "단위"}
                     )
                     self.add_input_resource(input_resource)
@@ -149,7 +148,6 @@ class BaseProcess(ABC):
                     output_resource = Resource(
                         resource_id=f"output_{resource_name}",
                         name=resource_name,
-                        resource_type=ResourceType.PRODUCT,
                         properties={"quantity": float(quantity), "unit": "개"}
                     )
                     self.add_output_resource(output_resource)

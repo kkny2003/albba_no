@@ -43,7 +43,7 @@ def create_separated_architecture_scenario():
     # 3. 제조 장비 및 인력 생성
     machine = Machine(
         env=env,
-        machine_id="machine_001", 
+        resource_id="machine_001", 
         name="제조기계1",
         capacity=1,
         processing_time=2.0
@@ -51,16 +51,15 @@ def create_separated_architecture_scenario():
     
     worker = Worker(
         env=env,
-        worker_id="worker_001",
+        resource_id="worker_001",
         name="작업자1", 
-        skills=["제조", "조립"],
-        efficiency=1.0
+        skills=["제조", "조립"]
     )
     
     # 4. 운송 장비 및 인력 생성
     transport_machine = Machine(
         env=env,
-        machine_id="transport_vehicle_001", 
+        resource_id="transport_vehicle_001", 
         name="운송차량1",
         capacity=1,
         processing_time=1.0
@@ -68,10 +67,9 @@ def create_separated_architecture_scenario():
     
     transport_worker = Worker(
         env=env,
-        worker_id="transport_worker_001",
+        resource_id="transport_worker_001",
         name="운송작업자1", 
-        skills=["운송", "하역"],
-        efficiency=1.2
+        skills=["운송", "하역"]
     )
     
     # 5. 자원 요구사항 정의
@@ -95,12 +93,46 @@ def create_separated_architecture_scenario():
         )
     ]
     
-    # 6. 입력/출력 자원 정의
-    manufacturing_input = {"원자재": 1.5, "전력": 0.5}
-    manufacturing_output = {"완제품": 1.0}
-    
-    transport_input = {"완제품": 1.0}
-    transport_output = {"배송완료": 1.0}
+    # 6. 입력/출력 자원 정의 (Resource 객체로 명시적으로 생성)
+    manufacturing_input = [
+        Resource(
+            resource_id="input_raw_material",
+            name="원자재",
+            resource_type=ResourceType.RAW_MATERIAL,
+            properties={"quantity": 1.5, "unit": "kg"}
+        ),
+        Resource(
+            resource_id="input_electricity",
+            name="전력",
+            resource_type=ResourceType.ENERGY,
+            properties={"quantity": 0.5, "unit": "kWh"}
+        )
+    ]
+    manufacturing_output = [
+        Resource(
+            resource_id="output_product",
+            name="완제품",
+            resource_type=ResourceType.FINISHED_PRODUCT,
+            properties={"quantity": 1.0, "unit": "개"}
+        )
+    ]
+
+    transport_input = [
+        Resource(
+            resource_id="input_product",
+            name="완제품",
+            resource_type=ResourceType.FINISHED_PRODUCT,
+            properties={"quantity": 1.0, "unit": "개"}
+        )
+    ]
+    transport_output = [
+        Resource(
+            resource_id="output_delivered",
+            name="배송완료",
+            resource_type=ResourceType.FINISHED_PRODUCT,
+            properties={"quantity": 1.0, "unit": "개"}
+        )
+    ]
     
     # 7. TransportProcess 생성
     transport_process = TransportProcess(
@@ -115,8 +147,7 @@ def create_separated_architecture_scenario():
         loading_time=0.3,    # 18분 적재
         transport_time=1.5,  # 1.5시간 운송
         unloading_time=0.2,  # 12분 하역
-        cooldown_time=0.2,   # 12분 대기
-        products_per_cycle=1
+        cooldown_time=0.2    # 12분 대기
     )
     
     # 운송 경로 설정
@@ -188,10 +219,10 @@ def monitor_separated_system(env, resource_manager, manufacturing_process, inter
         
         print(f"\n[시간 {env.now:.1f}] === 분리구조 시스템 상태 모니터링 ===")
         
-        # ManufacturingProcess 상태
-        mfg_status = manufacturing_process.get_transport_status()
-        print(f"제조공정 운송모드: {mfg_status['transport_mode']}")
-        print(f"제조공정 자동운송: {mfg_status['auto_transport_enabled']}")
+        # ManufacturingProcess 상태 (임시: get_resource_status로 대체)
+        mfg_status = manufacturing_process.get_resource_status()
+        print(f"제조공정 입력자원 수: {mfg_status['input_resources']}")
+        print(f"제조공정 출력자원 수: {mfg_status['output_resources']}")
         
         # ResourceManager Transport 관리 상태
         transport_mgmt_status = resource_manager.get_transport_status()
@@ -234,10 +265,10 @@ def main():
     print("분리구조 시뮬레이션 완료 - 최종 결과")
     print("=" * 80)
     
-    # ManufacturingProcess 최종 상태
-    mfg_final_status = manufacturing_process.get_transport_status()
-    print(f"제조공정 운송 모드: {mfg_final_status['transport_mode']}")
-    print(f"제조공정에서 ResourceManager 연동: {mfg_final_status['has_resource_manager']}")
+    # ManufacturingProcess 최종 상태 (임시: get_resource_status로 대체)
+    mfg_final_status = manufacturing_process.get_resource_status()
+    print(f"제조공정 입력자원 수: {mfg_final_status['input_resources']}")
+    print(f"제조공정 출력자원 수: {mfg_final_status['output_resources']}")
     
     # ResourceManager Transport 관리 최종 상태
     rm_transport_status = resource_manager.get_transport_status()
