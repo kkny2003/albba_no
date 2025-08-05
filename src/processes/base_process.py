@@ -16,9 +16,10 @@ class BaseProcess(ABC):
     
     def __init__(self, env: simpy.Environment, process_id: str, process_name: str, 
                  machines=None, workers=None, processing_time: float = 1.0, batch_size: int = 1,
+                 products_per_cycle: int = None,
                  failure_weight_machine: float = 1.0, failure_weight_worker: float = 1.0,
-                 input_resources: List[Resource] = None, 
-                 output_resources: List[Resource] = None,
+                 input_resources: Union[List[Resource], Dict[str, float], None] = None, 
+                 output_resources: Union[List[Resource], Dict[str, float], None] = None,
                  resource_requirements: List[ResourceRequirement] = None):
         """
         기본 공정 초기화 (SimPy 환경 필수, machine 또는 worker 중 하나는 필수)
@@ -31,10 +32,11 @@ class BaseProcess(ABC):
             workers: 사용할 작업자 리스트 (machine 또는 worker 중 하나는 필수)
             processing_time: 처리 시간 (시뮬레이션 시간 단위, 기본값: 1.0)
             batch_size: 배치 크기 (한번에 처리할 아이템 수, 기본값: 1)
+            products_per_cycle: 한번 공정 실행 시 생산되는 제품 수 (None이면 batch_size와 동일, 기본값: None)
             failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0, 1.5 = 1.5배 고장률)
             failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0, 1.5 = 1.5배 실수율)
-            input_resources: 입력 자원 목록 (필수)
-            output_resources: 출력 자원 목록 (필수)
+            input_resources: 입력 자원 (List[Resource] 또는 Dict[str, float]로 자원량 지정, 예: {"철강": 1.3, "플라스틱": 2.0})
+            output_resources: 출력 자원 (List[Resource] 또는 Dict[str, float]로 자원량 지정, 예: {"완제품": 1.5, "부품": 0.8})
             resource_requirements: 자원 요구사항 목록 (필수)
             
         Raises:
@@ -81,12 +83,23 @@ class BaseProcess(ABC):
         self.enable_batch_processing = batch_size > 1  # 배치 처리 활성화 여부
         self.current_batch = []  # 현재 배치에 축적된 아이템들
         
+        # 출력 생산량 설정 (한번 공정 실행 시 생산되는 제품 수)
+        self.products_per_cycle = products_per_cycle if products_per_cycle is not None else self.batch_size
+        print(f"[{self.process_name}] 한번 실행당 생산량: {self.products_per_cycle}개")
+        
         # 자원 관리 관련 속성들
         self.input_resources: List[Resource] = []  # 입력 자원 리스트
         self.output_resources: List[Resource] = []  # 출력 자원 리스트
         self.resource_requirements: List[ResourceRequirement] = []  # 자원 요구사항
         self.current_input_inventory: Dict[str, Resource] = {}  # 현재 입력 자원 재고
         self.current_output_inventory: Dict[str, Resource] = {}  # 현재 출력 자원 재고
+        
+        # 출하품 관리 및 blocking 기능 (생산량 기준으로 설정)
+        self.output_buffer_capacity: int = self.products_per_cycle  # 출력 버퍼 최대 용량 = 한번 실행당 생산량
+        self.current_output_count: int = 0  # 현재 출력 버퍼에 쌓인 개수
+        self.enable_output_blocking: bool = True  # 출력 blocking 활성화 여부
+        self.transport_ready_event: Optional[simpy.Event] = None  # 운송 준비 완료 이벤트
+        self.waiting_for_transport: bool = False  # 운송 대기 상태
         
         # 고급 워크플로우 지원을 위한 새로운 속성들
         self.execution_priority: int = 5  # 실행 우선순위 (1-10, 높을수록 우선)
@@ -100,28 +113,57 @@ class BaseProcess(ABC):
         # 자원 설정 (개선된 통합 로직)
         self._setup_resources(input_resources, output_resources, resource_requirements)
         
-    def _setup_resources(self, input_resources: List[Resource], 
-                        output_resources: List[Resource],
+    def _setup_resources(self, input_resources: Union[List[Resource], Dict[str, float], None], 
+                        output_resources: Union[List[Resource], Dict[str, float], None],
                         resource_requirements: List[ResourceRequirement]):
         """
         자원 정보를 설정하는 통합 메서드 (모든 프로세스에서 공통 사용)
         
         Args:
-            input_resources: 입력 자원 목록
-            output_resources: 출력 자원 목록
+            input_resources: 입력 자원 (List[Resource], Dict[str, float], 또는 None)
+            output_resources: 출력 자원 (List[Resource], Dict[str, float], 또는 None)
             resource_requirements: 자원 요구사항 목록
         """
         # 입력 자원 설정
-        for resource in input_resources:
-            self.add_input_resource(resource)
+        if input_resources is not None:
+            if isinstance(input_resources, dict):
+                # 딕셔너리가 입력된 경우 자원별로 생성
+                for resource_name, quantity in input_resources.items():
+                    input_resource = Resource(
+                        resource_id=f"input_{resource_name}",
+                        name=resource_name,
+                        resource_type=ResourceType.MATERIAL,
+                        properties={"quantity": float(quantity), "unit": "단위"}
+                    )
+                    self.add_input_resource(input_resource)
+                print(f"[{self.process_name}] 입력자원 생성: {input_resources}")
+            elif isinstance(input_resources, list):
+                # 기존 List[Resource] 처리
+                for resource in input_resources:
+                    self.add_input_resource(resource)
         
         # 출력 자원 설정  
-        for resource in output_resources:
-            self.add_output_resource(resource)
+        if output_resources is not None:
+            if isinstance(output_resources, dict):
+                # 딕셔너리가 입력된 경우 자원별로 생성
+                for resource_name, quantity in output_resources.items():
+                    output_resource = Resource(
+                        resource_id=f"output_{resource_name}",
+                        name=resource_name,
+                        resource_type=ResourceType.PRODUCT,
+                        properties={"quantity": float(quantity), "unit": "개"}
+                    )
+                    self.add_output_resource(output_resource)
+                print(f"[{self.process_name}] 출력자원 생성: {output_resources}")
+            elif isinstance(output_resources, list):
+                # 기존 List[Resource] 처리
+                for resource in output_resources:
+                    self.add_output_resource(resource)
                 
         # 자원 요구사항 설정
-        for requirement in resource_requirements:
-            self.add_resource_requirement(requirement)
+        if resource_requirements is not None:
+            for requirement in resource_requirements:
+                self.add_resource_requirement(requirement)
         
     def _setup_default_resources(self):
         """
@@ -302,7 +344,7 @@ class BaseProcess(ABC):
     
     def execute(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
-        공정 실행의 메인 진입점 (SimPy generator 방식)
+        공정 실행의 메인 진입점 (SimPy generator 방식, 출력 blocking 지원)
         
         Args:
             input_data: 입력 데이터
@@ -318,6 +360,22 @@ class BaseProcess(ABC):
         # 실행 가능 여부 확인
         if not self.can_execute(input_data):
             raise RuntimeError(f"{self.process_name} 실행 조건을 만족하지 않습니다.")
+        
+        # 출력 버퍼가 가득 찬 경우 운송 대기
+        if self.enable_output_blocking and self.current_output_count >= self.output_buffer_capacity:
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} 출력 버퍼 가득참. 운송 대기 중...")
+            self.waiting_for_transport = True
+            
+            # 운송 준비 이벤트 생성 및 대기
+            if self.transport_ready_event is None:
+                self.transport_ready_event = self.env.event()
+            
+            yield self.transport_ready_event  # 운송이 완료될 때까지 대기
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 완료, 공정 재개")
+            
+            # 이벤트 초기화
+            self.transport_ready_event = None
+            self.waiting_for_transport = False
         
         # 배치 처리 활성화된 경우 배치 처리
         if self.enable_batch_processing:
@@ -517,29 +575,53 @@ class BaseProcess(ABC):
     
     def produce_resources(self, output_data: Any = None) -> List[Resource]:
         """
-        출력 자원을 생산
+        출력 자원을 생산 (출력 버퍼 용량 확인 포함)
         
         Args:
             output_data: 출력 데이터
             
         Returns:
             List[Resource]: 생산된 자원 리스트
+            
+        Raises:
+            RuntimeError: 출력 버퍼가 가득 찬 경우
         """
+        # 출력 버퍼 용량 확인 (blocking 활성화된 경우)
+        if self.enable_output_blocking:
+            if self.current_output_count >= self.output_buffer_capacity:
+                self.waiting_for_transport = True
+                raise RuntimeError(f"[{self.process_name}] 출력 버퍼 가득참 ({self.current_output_count}/{self.output_buffer_capacity}). 운송을 기다리는 중...")
+        
         produced_resources = []
         
-        # 출력 자원 생산
-        for output_resource in self.output_resources:
-            # 자원 복사본 생성
-            produced_resource = Resource(
-                resource_id=output_resource.resource_id,
-                name=output_resource.name,
-                resource_type=output_resource.resource_type,
-                properties=output_resource.properties.copy()
-            )
+        # products_per_cycle 만큼 출력 자원 생산
+        for i in range(self.products_per_cycle):
+            # 기본 출력 자원이 정의되어 있다면 그것을 기반으로 생성
+            if self.output_resources:
+                # 첫 번째 출력 자원을 템플릿으로 사용
+                template_resource = self.output_resources[0]
+                produced_resource = Resource(
+                    resource_id=f"{template_resource.resource_id}_{i+1}",
+                    name=f"{template_resource.name}_{i+1}",
+                    resource_type=template_resource.resource_type,
+                    properties=template_resource.properties.copy()
+                )
+            else:
+                # 기본 출력 자원이 없다면 기본 제품 생성
+                produced_resource = Resource(
+                    resource_id=f"product_{i+1}",
+                    name=f"제품_{i+1}",
+                    resource_type=ResourceType.PRODUCT,
+                    properties={"unit": "개"}
+                )
+            
             produced_resources.append(produced_resource)
             self.current_output_inventory[produced_resource.resource_id] = produced_resource
         
-        print(f"[{self.process_name}] 자원 생산 완료: {len(produced_resources)}개")
+        # 출력 개수 증가 (products_per_cycle 만큼)
+        self.current_output_count += self.products_per_cycle
+        
+        print(f"[{self.process_name}] 자원 생산 완료: {self.products_per_cycle}개 (버퍼: {self.current_output_count}/{self.output_buffer_capacity})")
         return produced_resources
     
     def get_resource_status(self) -> Dict[str, Any]:
@@ -597,6 +679,8 @@ class BaseProcess(ABC):
             'machines': len(self.machines),
             'workers': len(self.workers),
             'batch_size': self.batch_size,
+            'products_per_cycle': self.products_per_cycle,
+            'output_buffer_capacity': self.output_buffer_capacity,
             'execution_priority': self.execution_priority,
             'parallel_safe': self.parallel_safe,
             'resource_status': self.get_resource_status()
@@ -639,6 +723,154 @@ class BaseProcess(ABC):
             if hasattr(worker, 'original_error_rate'):
                 worker.error_rate = worker.original_error_rate
                 print(f"[{self.process_name}] 작업자 {getattr(worker, 'worker_id', 'Unknown')} 실수율 복원")
+    
+    # ========== 출하품 Transport 관리 메서드들 ==========
+    
+    def set_output_buffer_capacity(self, capacity: int) -> 'BaseProcess':
+        """
+        출력 버퍼 용량을 설정합니다.
+        
+        Args:
+            capacity: 버퍼 용량 (1 이상)
+            
+        Returns:
+            BaseProcess: 자기 자신 (메서드 체이닝용)
+        """
+        self.output_buffer_capacity = max(1, capacity)
+        print(f"[{self.process_name}] 출력 버퍼 용량 설정: {self.output_buffer_capacity}")
+        return self
+    
+    def enable_output_blocking_feature(self, enable: bool = True) -> 'BaseProcess':
+        """
+        출력 blocking 기능을 활성화/비활성화합니다.
+        
+        Args:
+            enable: blocking 활성화 여부 (기본값: True)
+            
+        Returns:
+            BaseProcess: 자기 자신 (메서드 체이닝용)
+        """
+        self.enable_output_blocking = enable
+        status = "활성화" if enable else "비활성화"
+        print(f"[{self.process_name}] 출력 blocking 기능 {status}")
+        return self
+    
+    def get_output_buffer_status(self) -> Dict[str, Any]:
+        """
+        출력 버퍼 상태 정보를 반환합니다.
+        
+        Returns:
+            Dict[str, Any]: 출력 버퍼 상태 정보
+        """
+        return {
+            'current_count': self.current_output_count,
+            'capacity': self.output_buffer_capacity,
+            'utilization_rate': self.current_output_count / self.output_buffer_capacity if self.output_buffer_capacity > 0 else 0,
+            'is_full': self.current_output_count >= self.output_buffer_capacity,
+            'waiting_for_transport': self.waiting_for_transport,
+            'blocking_enabled': self.enable_output_blocking
+        }
+    
+    def transport_output_items(self, count: int = None) -> int:
+        """
+        출력 아이템들을 transport로 옮깁니다 (공정 재개 신호 포함).
+        
+        Args:
+            count: 옮길 아이템 수 (None이면 모든 아이템)
+            
+        Returns:
+            int: 실제로 옮겨진 아이템 수
+        """
+        if count is None:
+            count = self.current_output_count
+        
+        transported_count = min(count, self.current_output_count)
+        self.current_output_count -= transported_count
+        
+        print(f"[시간 {self.env.now:.1f}] {self.process_name} 출하품 운송: {transported_count}개 (잔여: {self.current_output_count})")
+        
+        # 운송 완료 후 공정 재개 신호
+        if self.waiting_for_transport and self.transport_ready_event is not None:
+            self.transport_ready_event.succeed()
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 완료, 공정 재개 신호 발송")
+        
+        return transported_count
+    
+    def is_output_buffer_full(self) -> bool:
+        """
+        출력 버퍼가 가득 찬 상태인지 확인합니다.
+        
+        Returns:
+            bool: 버퍼가 가득 찬 경우 True
+        """
+        return self.current_output_count >= self.output_buffer_capacity
+    
+    def get_available_output_space(self) -> int:
+        """
+        출력 버퍼의 사용 가능한 공간을 반환합니다.
+        
+        Returns:
+            int: 사용 가능한 공간 수
+        """
+        return self.output_buffer_capacity - self.current_output_count
+    
+    def clear_output_buffer(self) -> int:
+        """
+        출력 버퍼를 완전히 비웁니다 (강제 초기화).
+        
+        Returns:
+            int: 제거된 아이템 수
+        """
+        removed_count = self.current_output_count
+        self.current_output_count = 0
+        print(f"[{self.process_name}] 출력 버퍼 강제 초기화: {removed_count}개 제거")
+        
+        # 대기 중인 공정 재개
+        if self.waiting_for_transport and self.transport_ready_event is not None:
+            self.transport_ready_event.succeed()
+        
+        return removed_count
+    
+    def set_batch_size(self, batch_size: int) -> 'BaseProcess':
+        """
+        배치 크기를 설정합니다. (출력 버퍼 크기는 변경하지 않음)
+        
+        Args:
+            batch_size: 새로운 배치 크기 (1 이상)
+            
+        Returns:
+            BaseProcess: 자기 자신 (메서드 체이닝용)
+        """
+        old_batch_size = self.batch_size
+        
+        self.batch_size = max(1, batch_size)
+        self.enable_batch_processing = self.batch_size > 1
+        
+        print(f"[{self.process_name}] 배치 크기 변경: {old_batch_size} → {self.batch_size}")
+        print(f"[{self.process_name}] 출력 버퍼 크기 유지: {self.output_buffer_capacity}")
+        
+        return self
+    
+    def set_products_per_cycle(self, count: int) -> 'BaseProcess':
+        """
+        한번 공정 실행 시 생산되는 제품 수를 설정하고 출력 버퍼 크기도 동기화합니다.
+        
+        Args:
+            count: 한번 실행당 생산할 제품 수 (1 이상)
+            
+        Returns:
+            BaseProcess: 자기 자신 (메서드 체이닝용)
+        """
+        old_products_per_cycle = self.products_per_cycle
+        old_buffer_capacity = self.output_buffer_capacity
+        
+        self.products_per_cycle = max(1, count)
+        self.output_buffer_capacity = self.products_per_cycle
+        
+        print(f"[{self.process_name}] 실행당 생산량 변경: {old_products_per_cycle} → {self.products_per_cycle}")
+        print(f"[{self.process_name}] 출력 버퍼 크기 동기화: {old_buffer_capacity} → {self.output_buffer_capacity}")
+        
+        return self
     
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.process_name})"

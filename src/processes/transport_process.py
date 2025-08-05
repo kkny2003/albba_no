@@ -4,7 +4,7 @@
 """
 
 from src.Processes.base_process import BaseProcess
-from typing import Any, List, Generator
+from typing import Any, List, Generator, Dict, Union
 import simpy
 from src.Resource.resource_base import Resource, ResourceRequirement, ResourceType
 
@@ -24,13 +24,14 @@ class TransportProcess(BaseProcess):
 
     def __init__(self, env: simpy.Environment, process_id: str, process_name: str,
                  machines, workers, 
-                 input_resources: List[Resource], 
-                 output_resources: List[Resource],
+                 input_resources: Union[List[Resource], Dict[str, float], None], 
+                 output_resources: Union[List[Resource], Dict[str, float], None],
                  resource_requirements: List[ResourceRequirement],
                  loading_time: float,
                  transport_time: float,
                  unloading_time: float,
                  cooldown_time: float = 0.0,
+                 products_per_cycle: int = None,
                  failure_weight_machine: float = 1.0, 
                  failure_weight_worker: float = 1.0):
         """
@@ -39,8 +40,8 @@ class TransportProcess(BaseProcess):
         :param env: SimPy 환경 객체 (필수)
         :param machines: 운송에 사용될 기계 목록 (machine 또는 worker 중 하나는 필수)
         :param workers: 운송 작업을 수행할 작업자 목록 (machine 또는 worker 중 하나는 필수)
-        :param input_resources: 입력 자원 목록 (필수)
-        :param output_resources: 출력 자원 목록 (필수)
+        :param input_resources: 입력 자원 (List[Resource] 또는 Dict[str, float]로 자원량 지정, 예: {"화물": 10})
+        :param output_resources: 출력 자원 (List[Resource] 또는 Dict[str, float]로 자원량 지정, 예: {"배송완료": 10})
         :param resource_requirements: 자원 요구사항 목록 (필수)
         :param process_id: 공정 고유 ID (필수)
         :param process_name: 공정 이름 (필수)
@@ -57,6 +58,7 @@ class TransportProcess(BaseProcess):
             - 하역 장비, 작업자 수에 따라 조정 가능
             - 예시: 0.5 = 30분, 1.0 = 1시간
         :param cooldown_time: 대기 시간 (시뮬레이션 시간 단위)
+        :param products_per_cycle: 한번 공정 실행 시 생산되는 제품 수 (None이면 batch_size와 동일)
         :param failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0)
         :param failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0)
         """
@@ -76,6 +78,7 @@ class TransportProcess(BaseProcess):
             machines=machines, 
             workers=workers, 
             processing_time=loading_time + transport_time + unloading_time,
+            products_per_cycle=products_per_cycle,
             failure_weight_machine=failure_weight_machine,
             failure_weight_worker=failure_weight_worker,
             input_resources=input_resources,
@@ -83,8 +86,8 @@ class TransportProcess(BaseProcess):
             resource_requirements=resource_requirements
         )
         
-        # 운송 대기열 및 시간 설정
-        self.transport_queue = []  # 운송 대기열 초기화
+        # BaseProcess의 배치 처리 기능 활용 (transport_queue 대신)
+        # self.transport_queue는 BaseProcess.current_batch로 대체됨
         
         # 운송 시간 구성 요소 (시뮬레이션 시간 단위)
         self.loading_time = loading_time      # 적재 시간: 출발지에서 운송 수단에 제품 적재
@@ -94,9 +97,14 @@ class TransportProcess(BaseProcess):
         
         # 운송 경로 및 상태
         self.route = None  # 운송 경로 (문자열로 설정 가능)
+        self.transport_status = "대기"  # 운송 상태: 대기, 적재중, 운송중, 하역중
         
         # 운송 공정 특화 자원 설정
         self._setup_transport_resources()
+        
+        # BaseProcess의 고급 기능들 활용
+        self.apply_failure_weight_to_machines()
+        self.apply_failure_weight_to_workers()
         
     def _setup_transport_resources(self):
         """운송 공정용 자원 요구사항을 설정하는 메서드"""
@@ -124,10 +132,144 @@ class TransportProcess(BaseProcess):
         self.add_resource_requirement(transport_vehicle_req)
         
     def add_to_transport_queue(self, item):
-        """운송 대기열에 아이템 추가"""
-        if item not in self.transport_queue:
-            self.transport_queue.append(item)
-            print(f"[{self.process_name}] 운송 대기열에 아이템 추가: {item}")
+        """
+        운송 대기열에 아이템 추가 (BaseProcess의 배치 기능 활용)
+        
+        Args:
+            item: 추가할 아이템
+            
+        Returns:
+            bool: 배치에 추가 성공 여부
+        """
+        success = self.add_to_batch(item)
+        if success:
+            print(f"[{self.process_name}] 운송 대기열에 아이템 추가: {item} (배치: {len(self.current_batch)}/{self.batch_size})")
+        else:
+            print(f"[{self.process_name}] 배치가 가득 참. 현재 배치를 먼저 운송하세요.")
+        return success
+    
+    def get_transport_queue_status(self):
+        """
+        운송 대기열 상태 조회 (BaseProcess의 배치 상태 활용)
+        
+        Returns:
+            Dict: 운송 대기열 상태 정보
+        """
+        return {
+            'items_in_queue': self.get_current_batch(),
+            'batch_status': self.get_batch_status(),
+            'is_batch_ready': self.is_batch_ready(),
+            'transport_status': self.transport_status,
+            'route': self.route,
+            'process_info': self.get_process_info()
+        }
+    
+    def set_transport_batch_size(self, batch_size: int):
+        """
+        운송 배치 크기 설정
+        
+        Args:
+            batch_size: 배치 크기 (1 이상)
+        """
+        self.batch_size = max(1, batch_size)
+        self.enable_batch_processing = batch_size > 1
+        print(f"[{self.process_name}] 운송 배치 크기 설정: {self.batch_size}")
+    
+    def set_transport_priority(self, priority: int):
+        """
+        운송 우선순위 설정 (BaseProcess 기능 활용)
+        
+        Args:
+            priority: 우선순위 (1-10)
+        """
+        return self.set_execution_priority(priority)
+    
+    def add_transport_condition(self, condition):
+        """
+        운송 실행 조건 추가 (BaseProcess 기능 활용)
+        
+        Args:
+            condition: 실행 조건 함수
+        """
+        return self.add_execution_condition(condition)
+    
+    def set_parallel_transport(self, safe: bool):
+        """
+        병렬 운송 안전성 설정 (BaseProcess 기능 활용)
+        
+        Args:
+            safe: 병렬 실행 안전 여부
+        """
+        return self.set_parallel_safe(safe)
+    
+    # ========== 운송 특화 출하품 Transport 관리 ==========
+    
+    def set_transport_batch_capacity(self, capacity: int) -> 'TransportProcess':
+        """
+        운송 배치 용량 설정 (BaseProcess 기능 활용)
+        
+        Args:
+            capacity: 운송 배치 용량
+            
+        Returns:
+            TransportProcess: 자기 자신 (메서드 체이닝용)
+        """
+        self.set_batch_size(capacity)
+        return self
+    
+    def execute_transport_delivery(self, count: int = None) -> int:
+        """
+        운송 배치의 제품들을 목적지로 배송 (BaseProcess 기능 활용)
+        
+        Args:
+            count: 배송할 제품 수 (None이면 모든 제품)
+            
+        Returns:
+            int: 실제로 배송된 제품 수
+        """
+        delivered = self.transport_output_items(count)
+        print(f"[{self.process_name}] 운송 배송 완료: {delivered}개")
+        return delivered
+    
+    def get_transport_buffer_status(self) -> Dict[str, Any]:
+        """
+        운송 버퍼 상태 조회 (BaseProcess 기능 활용)
+        
+        Returns:
+            Dict: 운송 버퍼 상태 정보
+        """
+        buffer_status = self.get_output_buffer_status()
+        return {
+            'transport_buffer': buffer_status,
+            'items_in_buffer': buffer_status['current_count'],
+            'buffer_capacity': buffer_status['capacity'],
+            'transport_blocked': buffer_status['waiting_for_transport'],
+            'batch_info': self.get_batch_status(),
+            'transport_status': self.transport_status,
+            'route': self.route
+        }
+    
+    def is_transport_blocked(self) -> bool:
+        """
+        운송이 배송 대기로 막혀있는지 확인 (BaseProcess 기능 활용)
+        
+        Returns:
+            bool: 운송이 막혀있으면 True
+        """
+        return self.waiting_for_transport or self.is_output_buffer_full()
+    
+    def enable_transport_blocking(self, enable: bool = True) -> 'TransportProcess':
+        """
+        운송 blocking 기능 활성화/비활성화 (BaseProcess 기능 활용)
+        
+        Args:
+            enable: blocking 활성화 여부
+            
+        Returns:
+            TransportProcess: 자기 자신 (메서드 체이닝용)
+        """
+        self.enable_output_blocking_feature(enable)
+        return self
         
     def set_route(self, route: str):
         """운송 경로 설정"""
@@ -139,9 +281,20 @@ class TransportProcess(BaseProcess):
         print(f"[{self.process_name}] 운송 시작")
         
     def clear_transport_queue(self):
-        """운송 대기열 정리"""
-        self.transport_queue.clear()
+        """
+        운송 대기열 정리 (BaseProcess의 배치 기능 활용)
+        """
+        self.current_batch.clear()
         print(f"[{self.process_name}] 운송 대기열 정리 완료")
+        
+    def get_transport_queue_count(self):
+        """
+        운송 대기열 개수 조회 (BaseProcess 기능 활용)
+        
+        Returns:
+            int: 현재 배치의 아이템 수
+        """
+        return len(self.current_batch)
         
     def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """

@@ -1,5 +1,5 @@
 from src.Processes.base_process import BaseProcess
-from typing import Any, List, Generator
+from typing import Any, List, Generator, Dict, Union
 import simpy
 from src.Resource.resource_base import Resource, ResourceRequirement, ResourceType
 
@@ -9,10 +9,11 @@ class AssemblyProcess(BaseProcess):
 
     def __init__(self, env: simpy.Environment, process_id: str, process_name: str,
                  machines, workers, 
-                 input_resources: List[Resource], 
-                 output_resources: List[Resource],
+                 input_resources: Union[List[Resource], Dict[str, float], None], 
+                 output_resources: Union[List[Resource], Dict[str, float], None],
                  resource_requirements: List[ResourceRequirement],
                  assembly_time: float = 3.0,
+                 products_per_cycle: int = None,
                  failure_weight_machine: float = 1.0, 
                  failure_weight_worker: float = 1.0):
         """
@@ -21,12 +22,13 @@ class AssemblyProcess(BaseProcess):
         :param env: SimPy 환경 객체 (필수)
         :param machines: 조립에 사용될 기계 목록 (machine 또는 worker 중 하나는 필수)
         :param workers: 조립 작업을 수행할 작업자 목록 (machine 또는 worker 중 하나는 필수)
-        :param input_resources: 입력 자원 목록 (필수)
-        :param output_resources: 출력 자원 목록 (필수)
+        :param input_resources: 입력 자원 (List[Resource] 또는 Dict[str, float]로 자원량 지정, 예: {"부품A": 2, "부품B": 1})
+        :param output_resources: 출력 자원 (List[Resource] 또는 Dict[str, float]로 자원량 지정, 예: {"완제품": 1})
         :param resource_requirements: 자원 요구사항 목록 (필수)
         :param process_id: 공정 고유 ID (필수)
         :param process_name: 공정 이름 (필수)
         :param assembly_time: 조립 처리 시간 (시뮬레이션 시간 단위)
+        :param products_per_cycle: 한번 공정 실행 시 생산되는 제품 수 (None이면 batch_size와 동일)
         :param failure_weight_machine: 기계 고장률 가중치 (기본값: 1.0)
         :param failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0)
         """
@@ -38,6 +40,7 @@ class AssemblyProcess(BaseProcess):
             machines=machines, 
             workers=workers, 
             processing_time=assembly_time,
+            products_per_cycle=products_per_cycle,
             failure_weight_machine=failure_weight_machine,
             failure_weight_worker=failure_weight_worker,
             input_resources=input_resources,
@@ -45,8 +48,15 @@ class AssemblyProcess(BaseProcess):
             resource_requirements=resource_requirements
         )
         
-        self.assembly_line = []   # 조립 라인 초기화
-        self.assembly_time = assembly_time  # 조립 처리 시간
+        # BaseProcess의 배치 처리 기능 활용 (assembly_line 대신)
+        # self.assembly_line은 BaseProcess.current_batch로 대체됨
+        
+        # 조립 공정 특화 자원 설정
+        self._setup_assembly_resources()
+        
+        # BaseProcess의 고급 기능들 활용
+        self.apply_failure_weight_to_machines()
+        self.apply_failure_weight_to_workers()
         
         # 조립 공정 특화 자원 설정
         self._setup_assembly_resources()
@@ -77,10 +87,140 @@ class AssemblyProcess(BaseProcess):
         self.add_resource_requirement(tool_req)
         
     def add_to_assembly_line(self, product):
-        """조립 라인에 제품 추가"""
-        if product not in self.assembly_line:
-            self.assembly_line.append(product)
-            print(f"[{self.process_name}] 조립 라인에 제품 추가: {product}")
+        """
+        조립 라인에 제품 추가 (BaseProcess의 배치 기능 활용)
+        
+        Args:
+            product: 추가할 제품
+            
+        Returns:
+            bool: 배치에 추가 성공 여부
+        """
+        success = self.add_to_batch(product)
+        if success:
+            print(f"[{self.process_name}] 조립 라인에 제품 추가: {product} (배치: {len(self.current_batch)}/{self.batch_size})")
+        else:
+            print(f"[{self.process_name}] 배치가 가득 참. 현재 배치를 먼저 처리하세요.")
+        return success
+    
+    def get_assembly_line_status(self):
+        """
+        조립 라인 상태 조회 (BaseProcess의 배치 상태 활용)
+        
+        Returns:
+            Dict: 조립 라인 상태 정보
+        """
+        return {
+            'products_in_line': self.get_current_batch(),
+            'batch_status': self.get_batch_status(),
+            'is_batch_ready': self.is_batch_ready(),
+            'process_info': self.get_process_info()
+        }
+    
+    def set_assembly_batch_size(self, batch_size: int):
+        """
+        조립 배치 크기 설정
+        
+        Args:
+            batch_size: 배치 크기 (1 이상)
+        """
+        self.batch_size = max(1, batch_size)
+        self.enable_batch_processing = batch_size > 1
+        print(f"[{self.process_name}] 조립 배치 크기 설정: {self.batch_size}")
+    
+    def set_assembly_priority(self, priority: int):
+        """
+        조립 우선순위 설정 (BaseProcess 기능 활용)
+        
+        Args:
+            priority: 우선순위 (1-10)
+        """
+        return self.set_execution_priority(priority)
+    
+    def add_assembly_condition(self, condition):
+        """
+        조립 실행 조건 추가 (BaseProcess 기능 활용)
+        
+        Args:
+            condition: 실행 조건 함수
+        """
+        return self.add_execution_condition(condition)
+    
+    def set_parallel_assembly(self, safe: bool):
+        """
+        병렬 조립 안전성 설정 (BaseProcess 기능 활용)
+        
+        Args:
+            safe: 병렬 실행 안전 여부
+        """
+        return self.set_parallel_safe(safe)
+    
+    # ========== 조립 특화 출하품 Transport 관리 ==========
+    
+    def set_assembly_output_buffer(self, capacity: int) -> 'AssemblyProcess':
+        """
+        조립 출력 버퍼 용량 설정 (BaseProcess 기능 활용)
+        
+        Args:
+            capacity: 출력 버퍼 용량
+            
+        Returns:
+            AssemblyProcess: 자기 자신 (메서드 체이닝용)
+        """
+        self.set_output_buffer_capacity(capacity)
+        return self
+    
+    def transport_assembled_products(self, count: int = None) -> int:
+        """
+        조립된 제품들을 운송 (BaseProcess 기능 활용)
+        
+        Args:
+            count: 운송할 제품 수 (None이면 모든 제품)
+            
+        Returns:
+            int: 실제로 운송된 제품 수
+        """
+        transported = self.transport_output_items(count)
+        print(f"[{self.process_name}] 조립품 운송 완료: {transported}개")
+        return transported
+    
+    def get_assembly_buffer_status(self) -> Dict[str, Any]:
+        """
+        조립 버퍼 상태 조회 (BaseProcess 기능 활용)
+        
+        Returns:
+            Dict: 조립 버퍼 상태 정보
+        """
+        buffer_status = self.get_output_buffer_status()
+        return {
+            'assembly_buffer': buffer_status,
+            'products_in_buffer': buffer_status['current_count'],
+            'buffer_capacity': buffer_status['capacity'],
+            'assembly_blocked': buffer_status['waiting_for_transport'],
+            'batch_info': self.get_batch_status()
+        }
+    
+    def is_assembly_blocked(self) -> bool:
+        """
+        조립이 출하 대기로 막혀있는지 확인 (BaseProcess 기능 활용)
+        
+        Returns:
+            bool: 조립이 막혀있으면 True
+        """
+        return self.waiting_for_transport or self.is_output_buffer_full()
+    
+    def enable_assembly_blocking(self, enable: bool = True) -> 'AssemblyProcess':
+        """
+        조립 blocking 기능 활성화/비활성화 (BaseProcess 기능 활용)
+        
+        Args:
+            enable: blocking 활성화 여부
+            
+        Returns:
+            AssemblyProcess: 자기 자신 (메서드 체이닝용)
+        """
+        self.enable_output_blocking_feature(enable)
+        return self
         
     def start_assembly(self):
         """조립 공정 시작"""
@@ -91,9 +231,20 @@ class AssemblyProcess(BaseProcess):
         print(f"[{self.process_name}] 제품 조립 중: {product}")
         
     def clear_assembly_line(self):
-        """조립 라인 정리"""
-        self.assembly_line.clear()
+        """
+        조립 라인 정리 (BaseProcess의 배치 기능 활용)
+        """
+        self.current_batch.clear()
         print(f"[{self.process_name}] 조립 라인 정리 완료")
+        
+    def get_assembly_queue_count(self):
+        """
+        조립 대기열 개수 조회 (BaseProcess 기능 활용)
+        
+        Returns:
+            int: 현재 배치의 아이템 수
+        """
+        return len(self.current_batch)
         
     def process_logic(self, input_data: Any = None) -> Generator[simpy.Event, None, Any]:
         """
