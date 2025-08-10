@@ -96,8 +96,6 @@ def validate_priority_sequence(processes_with_priorities: List[Tuple['BaseProces
             raise PriorityValidationError(error_msg)
 
 
-
-
 class MultiProcessGroup:
     """다중공정을 그룹으로 관리하여 병렬 실행을 지원하는 클래스 (우선순위 기반 실행 지원)"""
     
@@ -226,80 +224,9 @@ class MultiProcessGroup:
         self.process_name = self._generate_group_summary()
         return self
         
-    def execute_group(self, input_data: Any = None) -> List[Any]:
-        """
-        그룹 내 모든 공정을 실행 (우선순위 기반 또는 병렬)
-        
-        Args:
-            input_data: 각 공정에 전달할 입력 데이터
-            
-        Returns:
-            List[Any]: 각 공정의 실행 결과 리스트 (우선순위 순서로 정렬됨)
-        """
-        if not self.processes:
-            print(f"다중공정 그룹 {self.group_id}: 실행할 공정이 없습니다")
-            return []
-            
-        print(f"다중공정 그룹 실행 시작 (그룹 ID: {self.group_id})")
-        
-        # 우선순위 기반 실행이면 정렬된 순서로 실행
-        if self.priority_based_execution:
-            sorted_processes = self.sort_by_priority()
-            print(f"우선순위 기반 순차 실행: {', '.join([p.process_name for p in sorted_processes])}")
-            
-            results = []
-            for i, process in enumerate(sorted_processes, 1):
-                try:
-                    priority = self.priority_mapping.get(process.process_id, "없음")
-                    print(f"  [{i}/{len(sorted_processes)}] {process.process_name} (우선순위: {priority}) 실행 중...")
-                    result = process.execute(input_data)
-                    results.append(result)
-                    print(f"  [OK] {process.process_name} 완료")
-                except Exception as e:
-                    print(f"  [ERROR] {process.process_name} 실행 중 오류: {e}")
-                    results.append(None)
-                    
-            print(f"우선순위 기반 실행 완료 (그룹 ID: {self.group_id})")
-            return results
-        
-        else:
-            # 기존 병렬/순차 실행 로직
-            print(f"병렬 실행할 공정: {', '.join([p.process_name for p in self.processes])}")
-            
-            results = []
-            
-            if self.parallel_execution and all(p.parallel_safe for p in self.processes):
-                # 병렬 실행 (모든 공정이 병렬 안전한 경우)
-                print("병렬 실행 모드 사용")
-                # SimPy 환경에서는 실제 병렬 처리가 아닌 시뮬레이션 병렬 처리
-                # 각 공정을 순차적으로 실행하되, 시뮬레이션 시간상 병렬로 처리
-                for i, process in enumerate(self.processes, 1):
-                    try:
-                        print(f"  [{i}/{len(self.processes)}] {process.process_name} 실행 중...")
-                        result = process.execute(input_data)
-                        results.append(result)
-                        print(f"  [OK] {process.process_name} 완료")
-                    except Exception as e:
-                        print(f"  [ERROR] {process.process_name} 실행 중 오류: {e}")
-                        results.append(None)
-            else:
-                # 순차 실행 (병렬 안전하지 않은 공정이 있는 경우)
-                print("순차 실행 모드 사용")
-                for process in self.processes:
-                    try:
-                        result = process.execute(input_data)
-                        results.append(result)
-                        print(f"  [OK] {process.process_name} 완료")
-                    except Exception as e:
-                        print(f"  [ERROR] {process.process_name} 실행 중 오류: {e}")
-                        results.append(None)
-            
-            print(f"다중공정 그룹 실행 완료 (그룹 ID: {self.group_id})")
-            return results
-        
     def execute(self, input_data: Any = None) -> Generator[simpy.Event, None, List[Any]]:
         """
-        BaseProcess와 호환되는 SimPy generator 방식의 실행 메서드
+        BaseProcess와 호환되는 SimPy generator 방식의 실행 메서드 (병렬 실행 수정)
         
         Args:
             input_data: 각 공정에 전달할 입력 데이터
@@ -319,7 +246,7 @@ class MultiProcessGroup:
             
         print(f"[시간 {self.env.now:.1f}] 다중공정 그룹 실행 시작 (그룹 ID: {self.group_id})")
         
-        # 우선순위 기반 실행이면 정렬된 순서로 실행
+        # 우선순위 기반 실행이면 정렬된 순서로 순차 실행
         if self.priority_based_execution:
             sorted_processes = self.sort_by_priority()
             print(f"우선순위 기반 순차 실행: {', '.join([p.process_name for p in sorted_processes])}")
@@ -330,7 +257,6 @@ class MultiProcessGroup:
                     priority = self.priority_mapping.get(process.process_id, "없음")
                     print(f"  [시간 {self.env.now:.1f}] [{i}/{len(sorted_processes)}] {process.process_name} (우선순위: {priority}) 실행 중...")
                     
-                    # SimPy generator 방식으로 실행
                     if hasattr(process, 'execute') and callable(process.execute):
                         result = yield from process.execute(input_data)
                         results.append(result)
@@ -347,34 +273,27 @@ class MultiProcessGroup:
             return results
         
         else:
-            # 순차 실행 (SimPy에서는 진정한 병렬 실행이 어려우므로 순차로 처리)
-            print(f"순차 실행할 공정: {', '.join([p.process_name for p in self.processes])}")
+            # === 🛠️ 병렬 실행 로직 수정 ===
+            print(f"병렬 실행할 공정: {', '.join([p.process_name for p in self.processes])}")
             
-            results = []
-            for i, process in enumerate(self.processes, 1):
-                try:
-                    print(f"  [시간 {self.env.now:.1f}] [{i}/{len(self.processes)}] {process.process_name} 실행 중...")
-                    
-                    # SimPy generator 방식으로 실행
-                    if hasattr(process, 'execute') and callable(process.execute):
-                        result = yield from process.execute(input_data)
-                        results.append(result)
-                        print(f"  [시간 {self.env.now:.1f}] [OK] {process.process_name} 완료")
-                    else:
-                        print(f"  [경고] {process.process_name}에 execute 메서드가 없습니다. 건너뜀.")
-                        results.append(None)
-                        
-                except Exception as e:
-                    print(f"  [시간 {self.env.now:.1f}] [ERROR] {process.process_name} 실행 중 오류: {e}")
-                    results.append(None)
+            # 각 공정을 SimPy 프로세스로 만들어 동시에 시작
+            child_processes = []
+            for process in self.processes:
+                if hasattr(process, 'execute') and callable(process.execute):
+                    print(f"  [시간 {self.env.now:.1f}] {process.process_name} 병렬 실행 시작...")
+                    child_processes.append(self.env.process(process.execute(input_data)))
+                else:
+                    print(f"  [경고] {process.process_name}에 execute 메서드가 없어 병렬 실행에서 제외됩니다.")
+
+            # 모든 자식 프로세스가 완료될 때까지 대기
+            results = yield simpy.AllOf(self.env, child_processes)
             
-            print(f"[시간 {self.env.now:.1f}] 다중공정 그룹 실행 완료 (그룹 ID: {self.group_id})")
-            return results
-        
-    # __and__ 연산자는 operators.py에서 동적으로 추가됩니다
-    
-    # __rshift__ 연산자는 operators.py에서 동적으로 추가됩니다
-    
+            # 결과값 추출 (SimPy process의 value 속성)
+            final_results = [p.value for p in child_processes]
+            
+            print(f"[시간 {self.env.now:.1f}] 다중공정 그룹 병렬 실행 완료 (그룹 ID: {self.group_id})")
+            return final_results
+
     def __repr__(self) -> str:
         return f"MultiProcessGroup({self.process_name})"
 
@@ -396,9 +315,9 @@ class GroupWrapperProcess(BaseProcess):
             process_name=f"그룹래퍼({group.process_name})",
             machines=[],  # 그룹 래퍼는 직접적인 기계를 가지지 않음
             workers=[],   # 그룹 래퍼는 직접적인 작업자를 가지지 않음
-            input_resources=[],  # 필수 파라미터
-            output_resources=[],  # 필수 파라미터
-            resource_requirements=[]  # 필수 파라미터
+            input_resources=None,
+            output_resources=None,
+            resource_requirements=[]
         )
         self.group = group
     
@@ -426,4 +345,4 @@ class GroupWrapperProcess(BaseProcess):
         """
         # 그룹의 execute 메서드를 호출하여 SimPy generator 방식으로 실행
         results = yield from self.group.execute(input_data)
-        return results 
+        return results

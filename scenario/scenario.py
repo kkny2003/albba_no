@@ -2,9 +2,9 @@
 냉장고 제조공정 시뮬레이션 시나리오 (Full-featured)
 
 이 시나리오는 제공된 PPT를 기반으로 냉장고 제조공정의 완전한 시뮬레이션을 구현합니다:
-1. Unit 1, 2, 3에 따른 공정 단계 정의 
-2. 다양한 리소스(기계, 작업자, 운송수단, 버퍼) 정의 [cite: 354-356, 543]
-3. 병렬 공정 (4개의 프레스 라인, 4개의 최종 조립 라인) [cite: 533-536, 646]
+1. Unit 1, 2, 3에 따른 공정 단계 정의
+2. 다양한 리소스(기계, 작업자, 운송수단, 버퍼) 정의
+3. 병렬 공정 (4개의 프레스 라인, 4개의 최종 조립 라인)
 4. ResourceManager를 통한 자동화된 운송 시스템
 5. src 폴더의 시뮬레이션 프레임워크 전체 기능 활용
 """
@@ -42,49 +42,39 @@ def create_refrigerator_scenario():
     resource_manager = AdvancedResourceManager(env)
     
     # --- 1. 자원(Resource) 등록 ---
-    # ResourceManager에 Transport 자원 유형 등록 (AGV, 컨베이어 등)
     resource_manager.register_resource("transport", capacity=10, resource_type=ResourceType.TRANSPORT)
 
     # --- 2. 제품(Product) 및 부품(Resource) 정의 ---
-    # Unit 1 입력 자재
     side_panel_sheet = Resource('R_SIDE_S', 'SidePanelSheet', ResourceType.RAW_MATERIAL)
     back_sheet = Resource('R_BACK_S', 'BackSheet', ResourceType.RAW_MATERIAL)
     top_cover_sheet = Resource('R_TOP_S', 'TopCoverSheet', ResourceType.RAW_MATERIAL)
     top_support_sheet = Resource('R_SUPPORT_S', 'TopPanelSupportSheet', ResourceType.RAW_MATERIAL)
     
-    # Unit 1 결과물 (Unit 2 입력)
     side_panel = Resource('R_SIDE_P', 'SidePanel', ResourceType.SEMI_FINISHED)
     back_panel = Resource('R_BACK_P', 'BackPanel', ResourceType.SEMI_FINISHED)
     top_cover = Resource('R_TOP_P', 'TopCover', ResourceType.SEMI_FINISHED)
     top_support = Resource('R_SUPPORT_P', 'TopPanelSupport', ResourceType.SEMI_FINISHED)
 
-    # Unit 2 결과물 (Unit 3 입력)
     door_shell = Resource('R_DOOR_SHELL', 'DoorShellAssembly', ResourceType.SEMI_FINISHED)
     
-    # Unit 3 외부 공급 부품
     main_body = Resource('R_MAIN_BODY', 'RefrigeratorMainBody', ResourceType.SEMI_FINISHED)
     hinge = Resource('R_HINGE', 'Hinge', ResourceType.SEMI_FINISHED)
     functional_part = Resource('R_FUNC_PART', 'FunctionalPart', ResourceType.SEMI_FINISHED)
 
-    # 최종 제품
     final_refrigerator = Resource('R_FINAL', 'FinishedRefrigerator', ResourceType.FINISHED_PRODUCT)
 
     # --- 3. 설비(Machine) 및 작업자(Worker) 정의 ---
-    # Unit 1: Press Machines (4 lines)
     press_machines = [Machine(env, f'PRESS_M{i}', f'프레스기계{i}', capacity=1, processing_time=1) for i in range(1, 5)]
     press_workers = [Worker(env, f'PRESS_W{i}', f'프레스작업자{i}', skills=['blanking', 'drawing', 'piercing']) for i in range(1, 5)]
 
-    # Unit 2: Assembly Robots & Filling Machines
     assembly_robots = [Machine(env, f'ASSEMBLY_R{i}', f'도어조립로봇{i}', capacity=1, processing_time=25) for i in range(1, 5)]
     filling_machines = [Machine(env, f'FILLING_M{i}', f'발포충진기{i}', capacity=1, processing_time=50) for i in range(1, 5)]
     unit2_workers = [Worker(env, f'UNIT2_W{i}', f'Unit2작업자{i}', skills=['assembly', 'filling']) for i in range(1, 5)]
 
-    # Unit 3: Final Assembly Lines (4 lines)
     final_assembly_robots = [Machine(env, f'FINAL_R{i}', f'최종조립로봇{i}', capacity=1, processing_time=20) for i in range(1, 5)]
     inspection_machines = [Machine(env, f'INSPECT_M{i}', f'품질검사기{i}', capacity=1, processing_time=15) for i in range(1, 5)]
     unit3_workers = [Worker(env, f'UNIT3_W{i}', f'Unit3작업자{i}', skills=['final_assembly', 'inspection']) for i in range(1, 5)]
     
-    # 운송 수단 및 작업자
     agv = Transport(env, 'AGV_T', 'AGV', capacity=5, transport_speed=2.0)
     conveyor = Transport(env, 'CONVEYOR_T', '컨베이어', capacity=20, transport_speed=1.0)
     transport_worker = Worker(env, 'TRANSPORT_W', '운송작업자', skills=['transport'])
@@ -111,19 +101,24 @@ def create_refrigerator_scenario():
     # Unit 3: Final Assembly Lines (4 parallel lines)
     final_lines = []
     for i in range(4):
-        main_assy = AssemblyProcess(env, f'P_MAIN_ASSY_{i}', f'본체조립{i}', [final_assembly_robots[i]], [unit3_workers[i]], {door_shell.name:1, main_body.name:1}, {final_refrigerator.name:1}, [], 20)
-        hinge_inst = ManufacturingProcess(env, f'P_HINGE_{i}', f'힌지결합{i}', [final_assembly_robots[i]], [unit3_workers[i]], {final_refrigerator.name:1, hinge.name:1}, {final_refrigerator.name:1}, [], 15)
-        door_inst = ManufacturingProcess(env, f'P_DOOR_INST_{i}', f'도어결합{i}', [final_assembly_robots[i]], [unit3_workers[i]], {final_refrigerator.name:1}, {final_refrigerator.name:1}, [], 15)
-        func_inst = ManufacturingProcess(env, f'P_FUNC_{i}', f'기능부품결합{i}', [final_assembly_robots[i]], [unit3_workers[i]], {final_refrigerator.name:1, functional_part.name:1}, {final_refrigerator.name:1}, [], 20)
-        finishing = ManufacturingProcess(env, f'P_FINISH_{i}', f'최종마감{i}', [final_assembly_robots[i]], [unit3_workers[i]], {final_refrigerator.name:1}, {final_refrigerator.name:1}, [], 10)
+        main_assy = AssemblyProcess(env, f'P_MAIN_ASSY_{i}', f'본체조립{i}', [final_assembly_robots[i]], [unit3_workers[i]], {door_shell.name:1, main_body.name:1}, {final_refrigerator.name:1}, [], 20, resource_manager=None)
+        hinge_inst = ManufacturingProcess(env, f'P_HINGE_{i}', f'힌지결합{i}', [final_assembly_robots[i]], [unit3_workers[i]], {final_refrigerator.name:1, hinge.name:1}, {final_refrigerator.name:1}, [], 15, resource_manager=None)
+        door_inst = ManufacturingProcess(env, f'P_DOOR_INST_{i}', f'도어결합{i}', [final_assembly_robots[i]], [unit3_workers[i]], {final_refrigerator.name:1}, {final_refrigerator.name:1}, [], 15, resource_manager=None)
+        func_inst = ManufacturingProcess(env, f'P_FUNC_{i}', f'기능부품결합{i}', [final_assembly_robots[i]], [unit3_workers[i]], {final_refrigerator.name:1, functional_part.name:1}, {final_refrigerator.name:1}, [], 20, resource_manager=None)
+        finishing = ManufacturingProcess(env, f'P_FINISH_{i}', f'최종마감{i}', [final_assembly_robots[i]], [unit3_workers[i]], {final_refrigerator.name:1}, {final_refrigerator.name:1}, [], 10, resource_manager=None)
         inspection = QualityControlProcess(env, f'P_INSPECT_{i}', f'품질검사{i}', [inspection_machines[i]], [unit3_workers[i]], {final_refrigerator.name:1}, {final_refrigerator.name:1}, [], 20)
+        
+        # 교착 상태(Deadlock) 방지를 위해 연속 공정의 출력 버퍼 블로킹 기능 비활성화
+        process_chain_for_blocking_disable = [main_assy, hinge_inst, door_inst, func_inst, finishing, inspection]
+        for proc in process_chain_for_blocking_disable:
+            proc.enable_output_blocking_feature(False)
+
         final_lines.append(main_assy >> hinge_inst >> door_inst >> func_inst >> finishing >> inspection)
         
     # Transport Processes
     transport_to_unit2 = TransportProcess(env, 'T_U1_U2', 'Unit1->2운송', [agv], [transport_worker], {}, {}, [], 1, 5, 1, 1)
     transport_to_unit3 = TransportProcess(env, 'T_U2_U3', 'Unit2->3운송', [conveyor], [transport_worker], {}, {}, [], 1, 10, 1, 1)
     
-    # ResourceManager에 TransportProcess 등록
     resource_manager.register_transport_process("transport_u1_u2", transport_to_unit2)
     resource_manager.register_transport_process("transport_u2_u3", transport_to_unit3)
     
@@ -132,7 +127,6 @@ def create_refrigerator_scenario():
     unit2_workflow = door_assembly >> foam_filling
     unit3_workflow = MultiProcessGroup(final_lines)
 
-    # 전체 워크플로우 연결
     complete_workflow = unit1_workflow >> unit2_workflow >> unit3_workflow
 
     return {
@@ -145,15 +139,10 @@ def production_starter(env, workflow, num_orders=3):
     """시뮬레이션을 시작하고 정해진 수량만큼 생산 오더를 생성하는 프로세스"""
     for i in range(num_orders):
         print(f"\n--- [시간 {env.now:.2f}] 냉장고 생산 주문 {i+1} 시작 ---")
-        
-        # Unit 1의 입력은 각 프레스 라인에서 자체적으로 정의된 것을 사용
-        # workflow.execute()에는 초기 트리거를 위한 dummy 데이터를 전달할 수 있습니다.
         initial_product = Product(f'ORDER_{i+1}', '생산주문')
-        
         yield from workflow.execute(initial_product)
-        
         print(f"--- [시간 {env.now:.2f}] 냉장고 생산 주문 {i+1} 완료 ---")
-        yield env.timeout(10) # 다음 주문까지 10분 대기
+        yield env.timeout(10)
 
 def main():
     """메인 실행 함수"""
@@ -170,7 +159,7 @@ def main():
         workflow = scenario_data['workflow']
 
         print("\n### 시뮬레이션 실행 ###")
-        engine.add_process(production_starter, workflow, 3) # 3대의 냉장고 생산
+        engine.add_process(production_starter, workflow, 3)
         engine.run(until=1000)
         
     finally:
@@ -190,7 +179,6 @@ def save_output_to_md(output_text):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = os.path.join(log_dir, f"refrigerator_simulation_log_{timestamp}.md")
     
-    # f-string의 시작과 끝에 """가 올바르게 위치해야 합니다.
     md_content = f"""# 냉장고 제조공정 시뮬레이션 로그
 
 **시뮬레이션 실행 시간**: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
