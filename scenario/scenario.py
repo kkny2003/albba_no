@@ -78,7 +78,7 @@ def create_refrigerator_scenario():
     # 기존 Unit간 운송 수단
     agv = Transport(env, 'AGV_T', 'AGV', capacity=5, transport_speed=2.0, transport_type="agv")
     conveyor = Transport(env, 'CONVEYOR_T', '컨베이어', capacity=20, transport_speed=1.0, transport_type="conveyor")
-    transport_worker = Worker(env, 'TRANSPORT_W', '운송작업자', skills=['transport'])
+    # AGV는 무인운반차이므로 별도의 운송작업자가 필요하지 않음
     
     # Unit1 공정간 컨베이어 (각 라인당 2개씩, 총 8개)
     unit1_conveyors = []
@@ -87,7 +87,7 @@ def create_refrigerator_scenario():
         conv2 = Transport(env, f'CONV_U1_L{i}_2', f'Unit1-라인{i}-컨베이어2', capacity=10, transport_speed=1.5, transport_type="conveyor")
         unit1_conveyors.extend([conv1, conv2])
     
-    # Unit2 공정간 AGV (각 라인당 1개씩, 총 4개)
+    # Unit2 공정간 AGV (각 라인당 1개씩, 총 4개) - AGV는 무인운반차이므로 작업자 불필요
     unit2_agvs = []
     for i in range(4):
         agv_unit2 = Transport(env, f'AGV_U2_L{i}', f'Unit2-라인{i}-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
@@ -100,9 +100,9 @@ def create_refrigerator_scenario():
             conv = Transport(env, f'CONV_U3_L{i}_{j+1}', f'Unit3-라인{i}-컨베이어{j+1}', capacity=8, transport_speed=1.2, transport_type="conveyor")
             unit3_conveyors.append(conv)
     
-    # 공정간 운송 작업자들
+    # 공정간 운송 작업자들 (컨베이어용)
     unit1_transport_workers = [Worker(env, f'UNIT1_TRANSPORT_W{i}', f'Unit1운송작업자{i}', skills=['transport']) for i in range(1, 5)]
-    unit2_transport_workers = [Worker(env, f'UNIT2_TRANSPORT_W{i}', f'Unit2운송작업자{i}', skills=['transport']) for i in range(1, 5)]
+    # unit2는 AGV 사용으로 운송작업자 불필요
     unit3_transport_workers = [Worker(env, f'UNIT3_TRANSPORT_W{i}', f'Unit3운송작업자{i}', skills=['transport']) for i in range(1, 5)]
     
     # Buffer 정의 - Unit1->Unit2 버퍼 (각 라인당 하나씩, 총 4개)
@@ -166,9 +166,9 @@ def create_refrigerator_scenario():
         foam_filling = ManufacturingProcess(env, f'P_FOAM_{i}', f'발포충진{i}', [filling_machines[i]], [unit2_workers[i]], 
                                           {door_shell.name:1}, {door_shell.name:1}, [], 50, resource_manager=resource_manager)
         
-        # Unit2 공정간 운송 프로세스 생성 (AGV)
+        # Unit2 공정간 운송 프로세스 생성 (AGV - 무인운반차이므로 작업자 불필요)
         transport_assy_fill = TransportProcess(env, f'T_U2_L{i}_AF', f'Unit2-라인{i}-조립→충진운송', 
-                                             [unit2_agvs[i]], [unit2_transport_workers[i]], 
+                                             [unit2_agvs[i]], [], 
                                              {}, {}, [], 1.0, 3.0, 1.0, 0.5)
         
         # AGV로 연결된 공정 체인 생성
@@ -218,9 +218,9 @@ def create_refrigerator_scenario():
                           door_inst >> transport_door_func >> func_inst >> transport_func_finish >> 
                           finishing >> transport_finish_inspect >> inspection)
         
-    # Transport Processes (Unit간 운송)
-    transport_to_unit2 = TransportProcess(env, 'T_U1_U2', 'Unit1->2운송', [agv], [transport_worker], {}, {}, [], 1, 5, 1, 1)
-    transport_to_unit3 = TransportProcess(env, 'T_U2_U3', 'Unit2->3운송', [conveyor], [transport_worker], {}, {}, [], 0, 10, 0, 0)
+    # Transport Processes (Unit간 운송) - AGV는 무인운반차이므로 작업자 불필요
+    transport_to_unit2 = TransportProcess(env, 'T_U1_U2', 'Unit1->2운송', [agv], [], {}, {}, [], 1, 5, 1, 1)
+    transport_to_unit3 = TransportProcess(env, 'T_U2_U3', 'Unit2->3운송', [conveyor], [], {}, {}, [], 0, 10, 0, 0)
     
     # ResourceManager에 운송 프로세스 등록
     resource_manager.register_transport_process("transport_u1_u2", transport_to_unit2)
