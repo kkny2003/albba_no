@@ -22,7 +22,6 @@ import simpy
 from src.core.simulation_engine import SimulationEngine
 from src.core.resource_manager import AdvancedResourceManager
 from src.Resource.machine import Machine
-from src.Resource.worker import Worker
 from src.Resource.transport import Transport
 from src.Resource.buffer import Buffer
 from src.Resource.product import Product
@@ -72,21 +71,17 @@ def create_refrigerator_scenario():
     
     pallet_buffers = [side_panel_pallet_buffer, back_sheet_pallet_buffer, top_cover_pallet_buffer, lower_cover_pallet_buffer]
 
-    # --- 3. 설비(Machine) 및 작업자(Worker) 정의 ---
+    # --- 3. 설비(Machine) 정의 (완전 자동화 공정) ---
     press_machines = [Machine(env, f'PRESS_M{i}', f'프레스기계{i}', capacity=1, processing_time=1) for i in range(1, 5)]
-    press_workers = [Worker(env, f'PRESS_W{i}', f'프레스작업자{i}', skills=['blanking', 'drawing', 'piercing']) for i in range(1, 5)]
 
     assembly_robots = [Machine(env, f'ASSEMBLY_R{i}', f'도어조립로봇{i}', capacity=1, processing_time=25) for i in range(1, 5)]
     filling_machines = [Machine(env, f'FILLING_M{i}', f'발포충진기{i}', capacity=1, processing_time=50) for i in range(1, 5)]
-    unit2_workers = [Worker(env, f'UNIT2_W{i}', f'Unit2작업자{i}', skills=['assembly', 'filling']) for i in range(1, 5)]
 
     final_assembly_robots = [Machine(env, f'FINAL_R{i}', f'최종조립로봇{i}', capacity=1, processing_time=20) for i in range(1, 5)]
     inspection_machines = [Machine(env, f'INSPECT_M{i}', f'품질검사기{i}', capacity=1, processing_time=15) for i in range(1, 5)]
-    unit3_workers = [Worker(env, f'UNIT3_W{i}', f'Unit3작업자{i}', skills=['final_assembly', 'inspection']) for i in range(1, 5)]
     
-    # 자재창고 설비 및 작업자
+    # 자재창고 설비 (자동화)
     warehouse_equipment = [Machine(env, 'WAREHOUSE_M1', '자재창고장비', capacity=1, processing_time=2.0)]
-    warehouse_workers = [Worker(env, 'WAREHOUSE_W1', '자재창고작업자', skills=['material_handling', 'inventory'])]
     
     # 자재창고 -> 팰릿버퍼 보충용 AGV (각 버퍼당 1대씩, 총 4대)
     agv_warehouse_side = Transport(env, 'AGV_WH_SIDE', '창고→사이드팰릿-AGV', capacity=5, transport_speed=2.0, transport_type="agv")
@@ -146,24 +141,19 @@ def create_refrigerator_scenario():
     
     # AGV는 무인운반차이므로 별도의 운송작업자가 필요하지 않음
     
-    # Unit1 공정간 컨베이어 (각 라인당 2개씩, 총 8개)
+    # 공정간 운송수단들 (자동화된 컨베이어 및 AGV, 운송작업자 불필요)
     unit1_conveyors = []
     for i in range(4):
         conv1 = Transport(env, f'CONV_U1_L{i}_1', f'Unit1-라인{i}-컨베이어1', capacity=10, transport_speed=1.5, transport_type="conveyor")
         conv2 = Transport(env, f'CONV_U1_L{i}_2', f'Unit1-라인{i}-컨베이어2', capacity=10, transport_speed=1.5, transport_type="conveyor")
         unit1_conveyors.extend([conv1, conv2])
     
-    # Unit3 공정간 컨베이어 (각 라인당 5개씩, 총 20개)
+    # Unit3 공정간 컨베이어 (각 라인당 5개씩, 총 20개) - 자동화
     unit3_conveyors = []
     for i in range(4):
         for j in range(5):
             conv = Transport(env, f'CONV_U3_L{i}_{j+1}', f'Unit3-라인{i}-컨베이어{j+1}', capacity=8, transport_speed=1.2, transport_type="conveyor")
             unit3_conveyors.append(conv)
-    
-    # 공정간 운송 작업자들 (컨베이어용)
-    unit1_transport_workers = [Worker(env, f'UNIT1_TRANSPORT_W{i}', f'Unit1운송작업자{i}', skills=['transport']) for i in range(1, 5)]
-    # unit2는 AGV 사용으로 운송작업자 불필요
-    unit3_transport_workers = [Worker(env, f'UNIT3_TRANSPORT_W{i}', f'Unit3운송작업자{i}', skills=['transport']) for i in range(1, 5)]
     
     # Buffer 정의 - Unit1->Unit2 버퍼 (각 라인당 하나씩, 총 4개)
     buffer1_line1 = Buffer(env, 'BUFFER1_L1', 'Unit1->Unit2 Buffer Line1', 'intermediate', capacity=25)
@@ -235,25 +225,25 @@ def create_refrigerator_scenario():
     for i in range(4):
         p_name, p_in, p_out = part_info[i]
         
-        # 팰릿버퍼에서 Unit1 공정으로의 운송 프로세스 생성
+        # 팰릿버퍼에서 Unit1 공정으로의 운송 프로세스 생성 (자동화된 컨베이어)
         transport_pallet_to_blank = TransportProcess(env, f'T_PALLET_BLANK_{i}', f'{p_name}-팰릿→Blanking운송', 
-                                                   [pallet_to_unit1_conveyors[i]], [unit1_transport_workers[i]], 
+                                                   [pallet_to_unit1_conveyors[i]], [], 
                                                    {}, {}, [], 0, 1.5, 0, 0)
         
-        # 공정들 생성 - blanking은 팰릿버퍼에서 운송으로 자재를 받음
-        blanking = ManufacturingProcess(env, f'P_BLANK_{i}', f'{p_name}-Blanking', [press_machines[i]], [press_workers[i]], 
+        # 공정들 생성 - blanking은 팰릿버퍼에서 운송으로 자재를 받음 (완전 자동화)
+        blanking = ManufacturingProcess(env, f'P_BLANK_{i}', f'{p_name}-Blanking', [press_machines[i]], [], 
                                       {p_in.name:1}, {p_out.name:1}, [], 10, resource_manager=resource_manager)
-        drawing = ManufacturingProcess(env, f'P_DRAW_{i}', f'{p_name}-Drawing', [press_machines[i]], [press_workers[i]], 
+        drawing = ManufacturingProcess(env, f'P_DRAW_{i}', f'{p_name}-Drawing', [press_machines[i]], [], 
                                      {p_out.name:1}, {p_out.name:1}, [], 15, resource_manager=resource_manager)
-        piercing = ManufacturingProcess(env, f'P_PIERCE_{i}', f'{p_name}-Piercing', [press_machines[i]], [press_workers[i]], 
+        piercing = ManufacturingProcess(env, f'P_PIERCE_{i}', f'{p_name}-Piercing', [press_machines[i]], [], 
                                       {p_out.name:1}, {p_out.name:1}, [], 5, resource_manager=resource_manager)
         
-        # Unit1 공정간 운송 프로세스들 생성
+        # Unit1 공정간 운송 프로세스들 생성 (자동화된 컨베이어)
         transport_blank_draw = TransportProcess(env, f'T_U1_L{i}_BD', f'Unit1-라인{i}-Blanking→Drawing운송', 
-                                              [unit1_conveyors[i*2]], [unit1_transport_workers[i]], 
+                                              [unit1_conveyors[i*2]], [], 
                                               {}, {}, [], 0, 2.0, 0, 0)
         transport_draw_pierce = TransportProcess(env, f'T_U1_L{i}_DP', f'Unit1-라인{i}-Drawing→Piercing운송', 
-                                               [unit1_conveyors[i*2+1]], [unit1_transport_workers[i]], 
+                                               [unit1_conveyors[i*2+1]], [], 
                                                {}, {}, [], 0, 2.0, 0, 0)
         
         # 팰릿버퍼에서 시작하여 컨베이어로 연결된 공정 체인 생성
@@ -272,8 +262,8 @@ def create_refrigerator_scenario():
                                            [agvs_b1_assy[i]], [], 
                                            {}, {}, [], 1.0, 3.0, 1.0, 0.5)
         
-        # 공정들 생성
-        door_assembly = AssemblyProcess(env, f'P_DOOR_ASSY_{i}', f'도어쉘조립{i}', [assembly_robots[i]], [unit2_workers[i]], 
+        # 공정들 생성 (완전 자동화)
+        door_assembly = AssemblyProcess(env, f'P_DOOR_ASSY_{i}', f'도어쉘조립{i}', [assembly_robots[i]], [], 
                                       {side_panel.name:1, back_panel.name:1, top_cover.name:1, top_support.name:1}, 
                                       {door_shell.name:1}, [], 25, resource_manager=resource_manager)
         
@@ -287,7 +277,7 @@ def create_refrigerator_scenario():
                                            [agvs_b2_fill[i]], [], 
                                            {}, {}, [], 1.0, 3.0, 1.0, 0.5)
         
-        foam_filling = ManufacturingProcess(env, f'P_FOAM_{i}', f'발포충진{i}', [filling_machines[i]], [unit2_workers[i]], 
+        foam_filling = ManufacturingProcess(env, f'P_FOAM_{i}', f'발포충진{i}', [filling_machines[i]], [], 
                                           {door_shell.name:1}, {door_shell.name:1}, [], 50, resource_manager=resource_manager)
         
         # Filling -> Buffer3 운송 프로세스
@@ -307,35 +297,35 @@ def create_refrigerator_scenario():
                                          [agvs_b3_u3[i]], [], 
                                          {}, {}, [], 1.0, 3.0, 1.0, 0.5)
         
-        # 공정들 생성
-        main_assy = AssemblyProcess(env, f'P_MAIN_ASSY_{i}', f'본체조립{i}', [final_assembly_robots[i]], [unit3_workers[i]], 
+        # 공정들 생성 (완전 자동화)
+        main_assy = AssemblyProcess(env, f'P_MAIN_ASSY_{i}', f'본체조립{i}', [final_assembly_robots[i]], [], 
                                   {door_shell.name:1, main_body.name:1}, {final_refrigerator.name:1}, [], 20, resource_manager=None)
-        hinge_inst = ManufacturingProcess(env, f'P_HINGE_{i}', f'힌지결합{i}', [final_assembly_robots[i]], [unit3_workers[i]], 
+        hinge_inst = ManufacturingProcess(env, f'P_HINGE_{i}', f'힌지결합{i}', [final_assembly_robots[i]], [], 
                                         {final_refrigerator.name:1, hinge.name:1}, {final_refrigerator.name:1}, [], 15, resource_manager=None)
-        door_inst = ManufacturingProcess(env, f'P_DOOR_INST_{i}', f'도어결합{i}', [final_assembly_robots[i]], [unit3_workers[i]], 
+        door_inst = ManufacturingProcess(env, f'P_DOOR_INST_{i}', f'도어결합{i}', [final_assembly_robots[i]], [], 
                                        {final_refrigerator.name:1}, {final_refrigerator.name:1}, [], 15, resource_manager=None)
-        func_inst = ManufacturingProcess(env, f'P_FUNC_{i}', f'기능부품결합{i}', [final_assembly_robots[i]], [unit3_workers[i]], 
+        func_inst = ManufacturingProcess(env, f'P_FUNC_{i}', f'기능부품결합{i}', [final_assembly_robots[i]], [], 
                                        {final_refrigerator.name:1, functional_part.name:1}, {final_refrigerator.name:1}, [], 20, resource_manager=None)
-        finishing = ManufacturingProcess(env, f'P_FINISH_{i}', f'최종마감{i}', [final_assembly_robots[i]], [unit3_workers[i]], 
+        finishing = ManufacturingProcess(env, f'P_FINISH_{i}', f'최종마감{i}', [final_assembly_robots[i]], [], 
                                        {final_refrigerator.name:1}, {final_refrigerator.name:1}, [], 10, resource_manager=None)
-        inspection = QualityControlProcess(env, f'P_INSPECT_{i}', f'품질검사{i}', [inspection_machines[i]], [unit3_workers[i]], 
+        inspection = QualityControlProcess(env, f'P_INSPECT_{i}', f'품질검사{i}', [inspection_machines[i]], [], 
                                          {final_refrigerator.name:1}, {final_refrigerator.name:1}, [], 20)
         
-        # Unit3 공정간 운송 프로세스들 생성 (컨베이어)
+        # Unit3 공정간 운송 프로세스들 생성 (자동화된 컨베이어)
         transport_main_hinge = TransportProcess(env, f'T_U3_L{i}_MH', f'Unit3-라인{i}-본체조립→힌지결합운송', 
-                                              [unit3_conveyors[i*5]], [unit3_transport_workers[i]], 
+                                              [unit3_conveyors[i*5]], [], 
                                               {}, {}, [], 0, 1.5, 0, 0)
         transport_hinge_door = TransportProcess(env, f'T_U3_L{i}_HD', f'Unit3-라인{i}-힌지결합→도어결합운송', 
-                                              [unit3_conveyors[i*5+1]], [unit3_transport_workers[i]], 
+                                              [unit3_conveyors[i*5+1]], [], 
                                               {}, {}, [], 0, 1.5, 0, 0)
         transport_door_func = TransportProcess(env, f'T_U3_L{i}_DF', f'Unit3-라인{i}-도어결합→기능부품결합운송', 
-                                             [unit3_conveyors[i*5+2]], [unit3_transport_workers[i]], 
+                                             [unit3_conveyors[i*5+2]], [], 
                                              {}, {}, [], 0, 1.5, 0, 0)
         transport_func_finish = TransportProcess(env, f'T_U3_L{i}_FF', f'Unit3-라인{i}-기능부품결합→최종마감운송', 
-                                               [unit3_conveyors[i*5+3]], [unit3_transport_workers[i]], 
+                                               [unit3_conveyors[i*5+3]], [], 
                                                {}, {}, [], 0, 1.5, 0, 0)
         transport_finish_inspect = TransportProcess(env, f'T_U3_L{i}_FI', f'Unit3-라인{i}-최종마감→품질검사운송', 
-                                                  [unit3_conveyors[i*5+4]], [unit3_transport_workers[i]], 
+                                                  [unit3_conveyors[i*5+4]], [], 
                                                   {}, {}, [], 0, 1.5, 0, 0)
         
         # 교착 상태(Deadlock) 방지를 위해 연속 공정의 출력 버퍼 블로킹 기능 비활성화
@@ -390,17 +380,18 @@ def create_refrigerator_scenario():
     
     # Unit내 공정간 운송 프로세스들도 등록 (필요시)
     print(f"운송 시스템 구성 완료:")
-    print(f"   - Unit1 컨베이어: {len(unit1_conveyors)}대")
+    print(f"   - Unit1 컨베이어: {len(unit1_conveyors)}대 (자동화)")
     print(f"   - Unit1→Buffer1 AGV: {len(agvs_u1_b1)}대") 
     print(f"   - Buffer1→조립 AGV: {len(agvs_b1_assy)}대")
     print(f"   - 조립→Buffer2 AGV: {len(agvs_assy_b2)}대")
     print(f"   - Buffer2→충진 AGV: {len(agvs_b2_fill)}대")
     print(f"   - 충진→Buffer3 AGV: {len(agvs_fill_b3)}대")
     print(f"   - Buffer3→Unit3 AGV: {len(agvs_b3_u3)}대")
-    print(f"   - Unit3 컨베이어: {len(unit3_conveyors)}대")
+    print(f"   - Unit3 컨베이어: {len(unit3_conveyors)}대 (자동화)")
     print(f"   - 총 AGV 수: {len(agv_transport_processes)}대")
     print(f"   - 자재창고→팰릿버퍼 보충 AGV: {len(warehouse_agvs)}대")
-    print(f"   - 팰릿버퍼→Unit1 컨베이어: {len(pallet_to_unit1_conveyors)}대")
+    print(f"   - 팰릿버퍼→Unit1 컨베이어: {len(pallet_to_unit1_conveyors)}대 (자동화)")
+    print(f"   - 완전 자동화 공정: 모든 제조 및 운송 작업이 기계에 의해 수행됨")
     
     # 버퍼 모니터링 및 자동 보충 프로세스 정의 함수들
     def buffer_monitor(env, buffer, material_name, transport_process, threshold=20, replenish_quantity=30):

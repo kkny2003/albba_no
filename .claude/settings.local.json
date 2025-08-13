@@ -7,6 +7,6 @@
     ],
     "deny": [],
     "ask": [],
-    "defaultMode": "plan"
+    "defaultMode": "acceptEdits"
   }
 }
