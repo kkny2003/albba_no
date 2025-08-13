@@ -7,7 +7,7 @@ class Transport(Resource):
     """SimPy 기반 운송 모델 클래스입니다. 제품의 이동을 시뮬레이션합니다."""
 
     def __init__(self, env: simpy.Environment, resource_id: str, name: str, capacity: int = 10, 
-                 transport_speed: float = 1.0):
+                 transport_speed: float = 1.0, transport_type: str = "general"):
         """
         초기화 메서드입니다 (SimPy 환경 필수).
         
@@ -16,7 +16,14 @@ class Transport(Resource):
             resource_id (str): 운송 수단의 ID (필수)
             name (str): 운송 수단의 이름 (필수)
             capacity (int): 운송 수단의 수용 능력 (선택적, 기본값: 10)
+                - conveyor: 동시에 위에 존재할 수 있는 product 개수
+                - 기타: 운송 수단의 적재 용량
             transport_speed (float): 운송 속도 (단위: 거리/시간, 선택적, 기본값: 1.0)
+            transport_type (str): 운송 수단 타입 (선택적, 기본값: "general")
+                - "conveyor": 컨베이어 벨트 (transport_time만 사용)
+                - "agv": 자동 운반 차량
+                - "truck": 트럭
+                - "general": 일반 운송 수단
         """
         # Resource 기본 클래스 초기화
         super().__init__(
@@ -28,6 +35,7 @@ class Transport(Resource):
         # 운송수단별 특성을 직접 어트리뷰트로 설정
         self.capacity = capacity
         self.transport_speed = transport_speed
+        self.transport_type = transport_type  # 운송 수단 타입 추가
         self.current_load = 0
         self.cargo = []
         self.total_distance_traveled = 0.0
@@ -35,7 +43,15 @@ class Transport(Resource):
         
         # SimPy 관련 속성
         self.env = env  # SimPy 환경
-        self.simpy_resource = simpy.Resource(env, capacity=1)  # 운송 수단은 한 번에 하나의 작업만 수행
+        # conveyor의 경우 capacity만큼 동시에 제품을 운송할 수 있음
+        if transport_type == "conveyor":
+            self.simpy_resource = simpy.Resource(env, capacity=capacity)
+        else:
+            self.simpy_resource = simpy.Resource(env, capacity=1)  # 기타 운송 수단은 한 번에 하나의 작업만 수행
+
+    def is_conveyor(self) -> bool:
+        """컨베이어 타입인지 확인합니다."""
+        return self.transport_type == "conveyor"
 
     def transport(self, product, distance: float) -> Generator[simpy.Event, None, bool]:
         """
@@ -57,26 +73,41 @@ class Transport(Resource):
             
             print(f"[시간 {self.env.now:.1f}] {self.resource_id} 운송 시작: {getattr(product, 'resource_id', 'Unknown')} (거리: {distance})")
             
-            # 적재
-            if not self.load_product(product):
-                print(f"[시간 {self.env.now:.1f}] {self.resource_id} 적재 실패: 용량 초과")
-                return False
-            
-            # 운송 시간 계산 (거리 / 속도)
-            transport_time = distance / self.transport_speed
-            
-            # 운송 시간만큼 대기
-            yield self.env.timeout(transport_time)
-            
-            # 하역
-            self.unload_product()
-            
-            # 통계 업데이트
-            self.total_distance_traveled += distance
-            self.total_transport_time += transport_time
-            
-            print(f"[시간 {self.env.now:.1f}] {self.resource_id} 운송 완료: {getattr(product, 'resource_id', 'Unknown')}")
-            return True
+            # conveyor의 경우 간소화된 운송 프로세스
+            if self.is_conveyor():
+                # conveyor는 적재/하역 없이 transport_time만 사용
+                transport_time = distance / self.transport_speed
+                print(f"[시간 {self.env.now:.1f}] {self.resource_id} (컨베이어) 운송 중... (소요시간: {transport_time:.1f})")
+                yield self.env.timeout(transport_time)
+                
+                # 통계 업데이트
+                self.total_distance_traveled += distance
+                self.total_transport_time += transport_time
+                
+                print(f"[시간 {self.env.now:.1f}] {self.resource_id} (컨베이어) 운송 완료: {getattr(product, 'resource_id', 'Unknown')}")
+                return True
+            else:
+                # 일반 운송 수단의 경우 기존 로직 유지
+                # 적재
+                if not self.load_product(product):
+                    print(f"[시간 {self.env.now:.1f}] {self.resource_id} 적재 실패: 용량 초과")
+                    return False
+                
+                # 운송 시간 계산 (거리 / 속도)
+                transport_time = distance / self.transport_speed
+                
+                # 운송 시간만큼 대기
+                yield self.env.timeout(transport_time)
+                
+                # 하역
+                self.unload_product()
+                
+                # 통계 업데이트
+                self.total_distance_traveled += distance
+                self.total_transport_time += transport_time
+                
+                print(f"[시간 {self.env.now:.1f}] {self.resource_id} 운송 완료: {getattr(product, 'resource_id', 'Unknown')}")
+                return True
 
     def load_product(self, product) -> bool:
         """
@@ -142,9 +173,11 @@ class Transport(Resource):
         """
         return {
             'resource_id': self.resource_id,
+            'transport_type': self.transport_type,
             'current_load': self.current_load,
             'capacity': self.capacity,
             'is_full': self.is_full(),
+            'is_conveyor': self.is_conveyor(),
             'total_distance_traveled': self.total_distance_traveled,
             'total_transport_time': self.total_transport_time,
             'utilization': self.get_utilization(),

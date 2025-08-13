@@ -61,12 +61,12 @@ class TransportProcess(BaseProcess):
         :param failure_weight_worker: 작업자 실수율 가중치 (기본값: 1.0)
         """
         # 필수 시간 매개변수 유효성 검사
-        if loading_time <= 0:
-            raise ValueError(f"loading_time은 0보다 큰 양수여야 합니다. 입력값: {loading_time}")
+        if loading_time < 0:
+            raise ValueError(f"loading_time은 0 이상이어야 합니다. 입력값: {loading_time}")
         if transport_time <= 0:
             raise ValueError(f"transport_time은 0보다 큰 양수여야 합니다. 입력값: {transport_time}")
-        if unloading_time <= 0:
-            raise ValueError(f"unloading_time은 0보다 큰 양수여야 합니다. 입력값: {unloading_time}")
+        if unloading_time < 0:
+            raise ValueError(f"unloading_time은 0 이상이어야 합니다. 입력값: {unloading_time}")
         
         # BaseProcess 초기화 (자원 정보 포함)
         super().__init__(
@@ -123,6 +123,31 @@ class TransportProcess(BaseProcess):
         # BaseProcess의 고급 기능들 활용
         self.apply_failure_weight_to_machines()
         self.apply_failure_weight_to_workers()
+        
+        # 운송 수단 타입 확인 및 최적화
+        self._optimize_for_transport_type()
+        
+    def _optimize_for_transport_type(self):
+        """운송 수단 타입에 따른 최적화 설정"""
+        # 첫 번째 운송 수단의 타입 확인
+        if self.machines and hasattr(self.machines[0], 'transport_type'):
+            if self.machines[0].transport_type == "conveyor":
+                print(f"[{self.process_name}] 컨베이어 타입 감지 - 최적화된 운송 프로세스 적용")
+                # conveyor의 경우 loading과 unloading 시간을 0으로 설정
+                original_loading = self.loading_time
+                original_unloading = self.unloading_time
+                self.loading_time = 0.0
+                self.unloading_time = 0.0
+                # 총 처리 시간 재계산
+                self.processing_time = self.loading_time + self.transport_time + self.unloading_time
+                print(f"[{self.process_name}] 컨베이어 최적화: 적재시간 {original_loading}→0, 하역시간 {original_unloading}→0")
+                print(f"[{self.process_name}] 운송시간만 사용: {self.transport_time}, 총 사이클 시간: {self.processing_time}")
+    
+    def is_using_conveyor(self) -> bool:
+        """현재 사용 중인 운송 수단이 컨베이어인지 확인"""
+        if self.machines and hasattr(self.machines[0], 'transport_type'):
+            return self.machines[0].transport_type == "conveyor"
+        return False
         
     def add_to_transport_queue(self, item):
         """
@@ -305,29 +330,51 @@ class TransportProcess(BaseProcess):
             original_allocation_id = input_data.get('original_allocation_id')
             requester_id = input_data.get('requester_id')
         
-        # 1. 적재 단계 (loading_time)
-        print(f"[시간 {self.env.now:.1f}] {self.process_name} 적재 중... (소요시간: {self.loading_time:.1f})")
-        yield self.env.timeout(self.loading_time)
-        
-        # 🚛 적재 완료 시점에 ResourceManager에게 알림 전송
-        print(f"[시간 {self.env.now:.1f}] {self.process_name} ✅ 적재 완료! ResourceManager에게 알림 전송")
-        if resource_manager and original_allocation_id and requester_id:
-            print(f"[시간 {self.env.now:.1f}] {self.process_name} → ResourceManager: 적재 완료 알림 (요청자: {requester_id})")
-            resource_manager._notify_transport_completion(original_allocation_id, requester_id, success=True)
+        # 컨베이어 타입인지 확인
+        if self.is_using_conveyor():
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} 컨베이어 운송 모드 - transport_time만 사용")
+            
+            # 컨베이어의 경우 transport_time만 사용
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} 컨베이어 운송 중... (소요시간: {self.transport_time:.1f})")
+            yield self.env.timeout(self.transport_time)
+            
+            # 🚛 운송 완료 시점에 ResourceManager에게 알림 전송
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} ✅ 컨베이어 운송 완료! ResourceManager에게 알림 전송")
+            if resource_manager and original_allocation_id and requester_id:
+                print(f"[시간 {self.env.now:.1f}] {self.process_name} → ResourceManager: 운송 완료 알림 (요청자: {requester_id})")
+                resource_manager._notify_transport_completion(original_allocation_id, requester_id, success=True)
+            else:
+                print(f"[시간 {self.env.now:.1f}] {self.process_name} ⚠️ 운송 완료 알림 생략 (필요한 정보 부족)")
+                
         else:
-            print(f"[시간 {self.env.now:.1f}] {self.process_name} ⚠️ 적재 완료 알림 생략 (필요한 정보 부족)")
-        
-        # 2. 운송 단계 (transport_time) - 백그라운드에서 계속 진행
-        print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 중... (소요시간: {self.transport_time:.1f})")
-        yield self.env.timeout(self.transport_time)
-        
-        # 3. 하역 단계 (unloading_time)
-        print(f"[시간 {self.env.now:.1f}] {self.process_name} 하역 중... (소요시간: {self.unloading_time:.1f})")
-        yield self.env.timeout(self.unloading_time)
-        
-        # 4. 대기 단계 (cooldown_time) - 다음 운송 준비
-        print(f"[시간 {self.env.now:.1f}] {self.process_name} 대기 중... (소요시간: {self.cooldown_time:.1f})")
-        yield self.env.timeout(self.cooldown_time)
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} 일반 운송 모드 - 전체 프로세스 사용")
+            
+            # 1. 적재 단계 (loading_time)
+            if self.loading_time > 0:
+                print(f"[시간 {self.env.now:.1f}] {self.process_name} 적재 중... (소요시간: {self.loading_time:.1f})")
+                yield self.env.timeout(self.loading_time)
+            
+            # 🚛 적재 완료 시점에 ResourceManager에게 알림 전송
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} ✅ 적재 완료! ResourceManager에게 알림 전송")
+            if resource_manager and original_allocation_id and requester_id:
+                print(f"[시간 {self.env.now:.1f}] {self.process_name} → ResourceManager: 적재 완료 알림 (요청자: {requester_id})")
+                resource_manager._notify_transport_completion(original_allocation_id, requester_id, success=True)
+            else:
+                print(f"[시간 {self.env.now:.1f}] {self.process_name} ⚠️ 적재 완료 알림 생략 (필요한 정보 부족)")
+            
+            # 2. 운송 단계 (transport_time) - 백그라운드에서 계속 진행
+            print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 중... (소요시간: {self.transport_time:.1f})")
+            yield self.env.timeout(self.transport_time)
+            
+            # 3. 하역 단계 (unloading_time)
+            if self.unloading_time > 0:
+                print(f"[시간 {self.env.now:.1f}] {self.process_name} 하역 중... (소요시간: {self.unloading_time:.1f})")
+                yield self.env.timeout(self.unloading_time)
+            
+            # 4. 대기 단계 (cooldown_time) - 다음 운송 준비
+            if self.cooldown_time > 0:
+                print(f"[시간 {self.env.now:.1f}] {self.process_name} 대기 중... (소요시간: {self.cooldown_time:.1f})")
+                yield self.env.timeout(self.cooldown_time)
         
         print(f"[시간 {self.env.now:.1f}] {self.process_name} 운송 로직 완료")
         
@@ -361,12 +408,16 @@ class TransportProcess(BaseProcess):
         # 자동 운송 활성화 상태
         auto_enabled = getattr(self, 'auto_transport_enabled', True)
         
+        # 컨베이어 사용 여부
+        is_conveyor = self.is_using_conveyor()
+        
         return {
             'process_id': self.process_id,
             'process_name': self.process_name,
             'auto_transport_enabled': auto_enabled,
             'transport_status': self.transport_status,
             'route': self.route,
+            'is_conveyor': is_conveyor,
             'timing': {
                 'loading_time': self.loading_time,
                 'transport_time': self.transport_time,
@@ -379,7 +430,7 @@ class TransportProcess(BaseProcess):
                 'batch_ready': queue_status['is_batch_ready'],
                 'batch_status': queue_status['batch_status']
             },
-            'transport_mode': 'full_process'  # 완전한 운송 프로세스 담당
+            'transport_mode': 'conveyor_optimized' if is_conveyor else 'full_process'
         }
     
     def set_transport_settings(self, loading_time: float = None, transport_time: float = None, 
