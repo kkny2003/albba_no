@@ -277,3 +277,191 @@ class VisualizationManager:
             
         plt.show()
         plt.close()
+    
+    def plot_bar_chart(self, categories, values, title="Bar Chart", x_label="Categories", 
+                      y_label="Values", save_path=None, color='skyblue', horizontal=False):
+        """
+        막대 차트 생성
+        
+        Args:
+            categories: 카테고리 레이블 리스트
+            values: 각 카테고리에 대응하는 값 리스트
+            title: 차트 제목
+            x_label: X축 레이블
+            y_label: Y축 레이블
+            save_path: 저장 경로
+            color: 막대 색상
+            horizontal: 수평 막대 차트 여부
+        """
+        plt.figure(figsize=(10, 6))
+        
+        if horizontal:
+            plt.barh(categories, values, color=color, alpha=0.8, edgecolor='black', linewidth=0.5)
+            plt.xlabel(y_label)
+            plt.ylabel(x_label)
+        else:
+            plt.bar(categories, values, color=color, alpha=0.8, edgecolor='black', linewidth=0.5)
+            plt.xlabel(x_label)
+            plt.ylabel(y_label)
+            plt.xticks(rotation=45, ha='right')
+        
+        plt.title(title, fontsize=14, fontweight='bold')
+        plt.grid(True, alpha=0.3, axis='y' if not horizontal else 'x')
+        plt.tight_layout()
+        
+        if save_path:
+            full_path = os.path.join(self.output_dir, save_path)
+            plt.savefig(full_path, dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def plot_pie_chart(self, labels, sizes, title="Pie Chart", save_path=None, 
+                      colors=None, explode=None, autopct='%1.1f%%'):
+        """
+        원형 차트 생성
+        
+        Args:
+            labels: 각 섹션의 레이블 리스트
+            sizes: 각 섹션의 크기 리스트
+            title: 차트 제목
+            save_path: 저장 경로
+            colors: 각 섹션의 색상 리스트 (선택적)
+            explode: 분리할 섹션 리스트 (선택적)
+            autopct: 퍼센트 표시 형식
+        """
+        plt.figure(figsize=(8, 8))
+        
+        if colors is None:
+            colors = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#ff99cc', 
+                     '#c2c2f0', '#ffb3e6', '#c4e17f', '#f0e68c', '#dda0dd']
+        
+        wedges, texts, autotexts = plt.pie(sizes, explode=explode, labels=labels, 
+                                          colors=colors, autopct=autopct, 
+                                          shadow=True, startangle=90)
+        
+        # 텍스트 스타일 설정
+        for autotext in autotexts:
+            autotext.set_color('white')
+            autotext.set_fontweight('bold')
+            autotext.set_fontsize(10)
+        
+        plt.title(title, fontsize=14, fontweight='bold')
+        plt.axis('equal')  # 원형 모양 유지
+        plt.tight_layout()
+        
+        if save_path:
+            full_path = os.path.join(self.output_dir, save_path)
+            plt.savefig(full_path, dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def plot_area_chart(self, x_data, y_data, title="Area Chart", x_label="X", y_label="Y", 
+                       save_path=None, alpha=0.7, color='skyblue'):
+        """
+        영역 차트 생성
+        
+        Args:
+            x_data: X축 데이터
+            y_data: Y축 데이터 (단일 시리즈) 또는 딕셔너리 (다중 시리즈)
+            title: 차트 제목
+            x_label: X축 레이블
+            y_label: Y축 레이블
+            save_path: 저장 경로
+            alpha: 투명도
+            color: 영역 색상 (단일 시리즈일 때)
+        """
+        plt.figure(figsize=(12, 8))
+        
+        if isinstance(y_data, dict):
+            # 다중 시리즈 영역 차트
+            colors = ['skyblue', 'lightgreen', 'salmon', 'gold', 'plum']
+            bottom_values = [0] * len(x_data)
+            
+            for i, (label, values) in enumerate(y_data.items()):
+                color = colors[i % len(colors)]
+                plt.fill_between(x_data, bottom_values, 
+                               [bottom_values[j] + values[j] for j in range(len(values))],
+                               alpha=alpha, color=color, label=label, edgecolor='black', linewidth=0.5)
+                bottom_values = [bottom_values[j] + values[j] for j in range(len(values))]
+            
+            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        else:
+            # 단일 시리즈 영역 차트
+            plt.fill_between(x_data, y_data, alpha=alpha, color=color, edgecolor='black', linewidth=1)
+            plt.plot(x_data, y_data, color='darkblue', linewidth=2)
+        
+        plt.title(title, fontsize=14, fontweight='bold')
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        
+        if save_path:
+            full_path = os.path.join(self.output_dir, save_path)
+            plt.savefig(full_path, dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def plot_gauge_chart(self, value, max_value, title="Gauge Chart", save_path=None,
+                        color_zones=None, unit="%", show_value=True):
+        """
+        게이지 차트 생성 (반원형)
+        
+        Args:
+            value: 현재 값
+            max_value: 최대 값
+            title: 차트 제목
+            save_path: 저장 경로
+            color_zones: 색상 구간 [(임계값, 색상), ...] 형식
+            unit: 단위 표시
+            show_value: 값 표시 여부
+        """
+        import numpy as np
+        
+        fig, ax = plt.subplots(figsize=(8, 6), subplot_kw={'projection': 'polar'})
+        
+        # 게이지 설정
+        theta = np.linspace(0, np.pi, 100)  # 반원 (0 to π)
+        
+        # 배경 반원
+        ax.fill_between(theta, 0, 1, alpha=0.2, color='lightgray')
+        
+        # 값에 따른 각도 계산
+        value_angle = (value / max_value) * np.pi
+        
+        # 색상 구간 설정
+        if color_zones is None:
+            color_zones = [(0.3, 'red'), (0.7, 'yellow'), (1.0, 'green')]
+        
+        # 색상 구간별로 채우기
+        prev_threshold = 0
+        for threshold, color in color_zones:
+            zone_start = prev_threshold * np.pi
+            zone_end = threshold * np.pi
+            zone_theta = np.linspace(zone_start, zone_end, 50)
+            ax.fill_between(zone_theta, 0, 1, alpha=0.6, color=color)
+            prev_threshold = threshold
+        
+        # 현재 값 표시 (바늘)
+        ax.plot([value_angle, value_angle], [0, 0.9], color='black', linewidth=3)
+        ax.plot(value_angle, 0.9, 'ko', markersize=8)
+        
+        # 설정
+        ax.set_ylim(0, 1)
+        ax.set_theta_zero_location('W')  # 0도를 왼쪽에 설정
+        ax.set_theta_direction(1)  # 시계방향
+        ax.set_thetagrids([0, 30, 60, 90, 120, 150, 180], 
+                         labels=[f'{max_value}', '', '', f'{max_value/2}', '', '', '0'])
+        ax.set_rgrids([])  # r축 눈금 제거
+        ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+        
+        # 값 표시
+        if show_value:
+            plt.figtext(0.5, 0.25, f'{value:.1f}{unit}', ha='center', va='center',
+                       fontsize=20, fontweight='bold')
+            plt.figtext(0.5, 0.15, f'/ {max_value}{unit}', ha='center', va='center',
+                       fontsize=12, alpha=0.7)
+        
+        plt.tight_layout()
+        
+        if save_path:
+            full_path = os.path.join(self.output_dir, save_path)
+            plt.savefig(full_path, dpi=300, bbox_inches='tight')
+        plt.close()
