@@ -86,8 +86,8 @@
 
 <owl:ObjectProperty rdf:about="#hasInput">
   <rdfs:domain rdf:resource="#Component"/>
-  <rdfs:range rdf:resource="#Material"/>
   <rdfs:range rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Material"/>
 </owl:ObjectProperty>
 
 <owl:ObjectProperty rdf:about="#hasInputQuantity">
@@ -97,8 +97,8 @@
 
 <owl:ObjectProperty rdf:about="#hasOutput">
   <rdfs:domain rdf:resource="#Component"/>
-  <rdfs:range rdf:resource="#Material"/>
   <rdfs:range rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Material"/>
 </owl:ObjectProperty>
 
 <owl:ObjectProperty rdf:about="#hasOutputQuantity">
@@ -118,8 +118,8 @@
 
 <owl:ObjectProperty rdf:about="#isStorageOf">
   <rdfs:domain rdf:resource="#Storage"/>
-  <rdfs:range rdf:resource="#Material"/>
   <rdfs:range rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Material"/>
 </owl:ObjectProperty>
 
 <owl:ObjectProperty rdf:about="#hasProcessTypeSim">
@@ -450,10 +450,20 @@
   <rdf:type rdf:resource="#Material"/>
 </owl:NamedIndividual>
 
-<owl:NamedIndividual rdf:about="#PURFoam">
+<owl:NamedIndividual rdf:about="#PURFoam_out">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#1"/>
+  <hasQuantity rdf:resource="#1"/>
+  <hasProcessingTime rdf:resource="#50"/>
+  <hasCost rdf:resource="#50"/>
+  <hasCarbonFootprint rdf:resource="#50"/>
   <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#50">
+  <rdf:type rdf:resource="#ProcessingTime"/>
+  <rdf:type rdf:resource="#Cost"/>
+  <rdf:type rdf:resource="#CarbonFootprint"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#P1">
@@ -488,8 +498,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Aluminum"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_1"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -512,8 +522,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Aluminum"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_2"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -536,8 +546,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Aluminum"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_3"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -560,8 +570,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Aluminum"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_4"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -584,8 +594,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Aluminum"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_5"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -608,8 +618,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Aluminum"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_6"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -637,8 +647,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Steel"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_7"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -661,8 +671,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Steel"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_8"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -685,8 +695,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Steel"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_9"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -709,8 +719,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Steel"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_10"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -733,8 +743,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Steel"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_11"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -757,8 +767,8 @@
   <hasCarbonFootprintSim rdf:resource="#10"/>
   <hasCostSim rdf:resource="#10"/>
   <hasInput rdf:resource="#Steel"/>
-  <hasProcessTypeSim rdf:resource="#Press"/>
   <connectedTo rdf:resource="#I_Storage_12"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
   <hasProcessingTimeSim rdf:resource="#10"/>
 </owl:NamedIndividual>
 
@@ -767,10 +777,17 @@
   <hasProcessType rdf:resource="#Foaming"/>
   <hasMaterial rdf:resource="#PURFoam"/>
   <hasPrecedingProcess rdf:resource="#P1-P12"/>
+  <hasProductName rdf:resource="#PURFoam_out"/>
+  <result rdf:resource="#PURFoam_out"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#Foaming">
   <rdf:type rdf:resource="#ProcessType"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#PURFoam">
+  <rdf:type rdf:resource="#Material"/>
+  <rdf:type rdf:resource="#EBoM"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#P1-P12">
@@ -781,8 +798,15 @@
   <rdf:type rdf:resource="#ProcessDetail"/>
   <isMachineOf rdf:resource="#P13"/>
   <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#1"/>
+  <hasInputQuantity rdf:resource="#1"/>
+  <hasOutput rdf:resource="#PURFoam_out"/>
+  <hasCarbonFootprintSim rdf:resource="#50"/>
+  <hasCostSim rdf:resource="#50"/>
   <hasInput rdf:resource="#PURFoam"/>
+  <connectedTo rdf:resource="#I_Storage_23"/>
   <hasProcessTypeSim rdf:resource="#Foaming"/>
+  <hasProcessingTimeSim rdf:resource="#50"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#A1">
@@ -826,8 +850,8 @@
   <hasInput rdf:resource="#BackSheet1"/>
   <hasInput rdf:resource="#BackSheet2"/>
   <hasInput rdf:resource="#TopCover1"/>
-  <hasProcessTypeSim rdf:resource="#Assemble"/>
   <connectedTo rdf:resource="#I_Storage_0"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#A2">
@@ -845,8 +869,8 @@
   <rdf:type rdf:resource="#Machine"/>
   <hasOutput rdf:resource="#SubRefrigerator1"/>
   <hasInput rdf:resource="#EntityAssy"/>
-  <hasProcessTypeSim rdf:resource="#Assemble"/>
   <connectedTo rdf:resource="#I_Storage_13"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#A3">
@@ -864,8 +888,8 @@
   <rdf:type rdf:resource="#Machine"/>
   <hasOutput rdf:resource="#SubRefrigerator2"/>
   <hasInput rdf:resource="#HingeAssy"/>
-  <hasProcessTypeSim rdf:resource="#Assemble"/>
   <connectedTo rdf:resource="#I_Storage_15"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#A4">
@@ -883,8 +907,8 @@
   <rdf:type rdf:resource="#Machine"/>
   <hasOutput rdf:resource="#SubRefrigerator3"/>
   <hasInput rdf:resource="#Handle"/>
-  <hasProcessTypeSim rdf:resource="#Assemble"/>
   <connectedTo rdf:resource="#I_Storage_17"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#A5">
@@ -902,8 +926,8 @@
   <rdf:type rdf:resource="#Machine"/>
   <hasOutput rdf:resource="#SubRefrigerator4"/>
   <hasInput rdf:resource="#Magnet"/>
-  <hasProcessTypeSim rdf:resource="#Assemble"/>
   <connectedTo rdf:resource="#I_Storage_19"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#A6">
@@ -921,8 +945,8 @@
   <rdf:type rdf:resource="#Machine"/>
   <hasOutput rdf:resource="#SubRefrigerator5"/>
   <hasInput rdf:resource="#Gasket"/>
-  <hasProcessTypeSim rdf:resource="#Assemble"/>
   <connectedTo rdf:resource="#I_Storage_21"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#I_Storage_0">
@@ -1105,10 +1129,9 @@
 
 <owl:NamedIndividual rdf:about="#I_Storage_23">
   <rdf:type rdf:resource="#Storage"/>
-  <isStorageOf rdf:resource="#PURFoam"/>
-  <hasOutput rdf:resource="#PURFoam"/>
-  <hasInput rdf:resource="#PURFoam"/>
-  <connectedTo rdf:resource="#HighPressure_FoamInjection"/>
+  <isStorageOf rdf:resource="#PURFoam_out"/>
+  <hasOutput rdf:resource="#PURFoam_out"/>
+  <hasInput rdf:resource="#PURFoam_out"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#R_Storage_0">

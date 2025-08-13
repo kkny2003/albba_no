@@ -85,8 +85,8 @@
 
 <owl:ObjectProperty rdf:about="#hasInput">
   <rdfs:domain rdf:resource="#Component"/>
-  <rdfs:range rdf:resource="#Material"/>
   <rdfs:range rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Material"/>
 </owl:ObjectProperty>
 
 <owl:ObjectProperty rdf:about="#hasInputQuantity">
@@ -96,8 +96,8 @@
 
 <owl:ObjectProperty rdf:about="#hasOutput">
   <rdfs:domain rdf:resource="#Component"/>
-  <rdfs:range rdf:resource="#Material"/>
   <rdfs:range rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Material"/>
 </owl:ObjectProperty>
 
 <owl:ObjectProperty rdf:about="#hasOutputQuantity">
@@ -117,8 +117,8 @@
 
 <owl:ObjectProperty rdf:about="#isStorageOf">
   <rdfs:domain rdf:resource="#Storage"/>
-  <rdfs:range rdf:resource="#Material"/>
   <rdfs:range rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Material"/>
 </owl:ObjectProperty>
 
 <owl:ObjectProperty rdf:about="#hasProcessTypeSim">
@@ -412,10 +412,13 @@
   <hasCarbonFootprint rdf:resource="#10"/>
 </owl:NamedIndividual>
 
-<owl:NamedIndividual rdf:about="#PURFoam">
+<owl:NamedIndividual rdf:about="#PURFoam_out">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#1"/>
-  <rdf:type rdf:resource="#Material"/>
+  <hasQuantity rdf:resource="#1"/>
+  <hasProcessingTime rdf:resource="#50"/>
+  <hasCost rdf:resource="#50"/>
+  <hasCarbonFootprint rdf:resource="#50"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#P1">
@@ -595,6 +598,7 @@
   <hasProcessType rdf:resource="#Foaming"/>
   <hasMaterial rdf:resource="#PURFoam"/>
   <hasPrecedingProcess rdf:resource="#P1-P12"/>
+  <hasProductName rdf:resource="#PURFoam_out"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#Foaming">
@@ -604,6 +608,10 @@
 <owl:NamedIndividual rdf:about="#HighPressure_FoamInjection">
   <rdf:type rdf:resource="#ProcessDetail"/>
   <isMachineOf rdf:resource="#P13"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#PURFoam">
+  <rdf:type rdf:resource="#Material"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#P1-P12">
@@ -704,6 +712,12 @@
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#10">
+  <rdf:type rdf:resource="#ProcessingTime"/>
+  <rdf:type rdf:resource="#Cost"/>
+  <rdf:type rdf:resource="#CarbonFootprint"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#50">
   <rdf:type rdf:resource="#ProcessingTime"/>
   <rdf:type rdf:resource="#Cost"/>
   <rdf:type rdf:resource="#CarbonFootprint"/>
@@ -832,7 +846,7 @@
 
 <owl:NamedIndividual rdf:about="#I_Storage_23">
   <rdf:type rdf:resource="#Storage"/>
-  <isStorageOf rdf:resource="#PURFoam"/>
+  <isStorageOf rdf:resource="#PURFoam_out"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#R_Storage_0">

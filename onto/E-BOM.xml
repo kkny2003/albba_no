@@ -96,7 +96,7 @@
 			</Part>
 		</Part>
 		<Part>
-			<Name>PURFoam</Name>
+			<Name>PURFoam_out</Name>
 			<Level>1</Level>
 		</Part>
 	</Assembly>
