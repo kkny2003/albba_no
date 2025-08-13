@@ -75,9 +75,48 @@ def create_refrigerator_scenario():
     inspection_machines = [Machine(env, f'INSPECT_M{i}', f'품질검사기{i}', capacity=1, processing_time=15) for i in range(1, 5)]
     unit3_workers = [Worker(env, f'UNIT3_W{i}', f'Unit3작업자{i}', skills=['final_assembly', 'inspection']) for i in range(1, 5)]
     
-    # 기존 Unit간 운송 수단
-    agv = Transport(env, 'AGV_T', 'AGV', capacity=5, transport_speed=2.0, transport_type="agv")
-    conveyor = Transport(env, 'CONVEYOR_T', '컨베이어', capacity=20, transport_speed=1.0, transport_type="conveyor")
+    # Unit1 -> Buffer1 AGV (각 라인당 1대씩, 총 4대)
+    agv_u1_b1_l1 = Transport(env, 'AGV_U1_B1_L1', 'Unit1→Buffer1-라인1-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_u1_b1_l2 = Transport(env, 'AGV_U1_B1_L2', 'Unit1→Buffer1-라인2-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_u1_b1_l3 = Transport(env, 'AGV_U1_B1_L3', 'Unit1→Buffer1-라인3-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_u1_b1_l4 = Transport(env, 'AGV_U1_B1_L4', 'Unit1→Buffer1-라인4-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agvs_u1_b1 = [agv_u1_b1_l1, agv_u1_b1_l2, agv_u1_b1_l3, agv_u1_b1_l4]
+    
+    # Buffer1 -> Assembly AGV (각 라인당 1대씩, 총 4대)
+    agv_b1_assy_l1 = Transport(env, 'AGV_B1_ASSY_L1', 'Buffer1→조립-라인1-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_b1_assy_l2 = Transport(env, 'AGV_B1_ASSY_L2', 'Buffer1→조립-라인2-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_b1_assy_l3 = Transport(env, 'AGV_B1_ASSY_L3', 'Buffer1→조립-라인3-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_b1_assy_l4 = Transport(env, 'AGV_B1_ASSY_L4', 'Buffer1→조립-라인4-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agvs_b1_assy = [agv_b1_assy_l1, agv_b1_assy_l2, agv_b1_assy_l3, agv_b1_assy_l4]
+    
+    # Assembly -> Buffer2 AGV (각 라인당 1대씩, 총 4대)
+    agv_assy_b2_l1 = Transport(env, 'AGV_ASSY_B2_L1', '조립→Buffer2-라인1-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_assy_b2_l2 = Transport(env, 'AGV_ASSY_B2_L2', '조립→Buffer2-라인2-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_assy_b2_l3 = Transport(env, 'AGV_ASSY_B2_L3', '조립→Buffer2-라인3-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_assy_b2_l4 = Transport(env, 'AGV_ASSY_B2_L4', '조립→Buffer2-라인4-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agvs_assy_b2 = [agv_assy_b2_l1, agv_assy_b2_l2, agv_assy_b2_l3, agv_assy_b2_l4]
+    
+    # Buffer2 -> Filling AGV (각 라인당 1대씩, 총 4대)
+    agv_b2_fill_l1 = Transport(env, 'AGV_B2_FILL_L1', 'Buffer2→충진-라인1-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_b2_fill_l2 = Transport(env, 'AGV_B2_FILL_L2', 'Buffer2→충진-라인2-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_b2_fill_l3 = Transport(env, 'AGV_B2_FILL_L3', 'Buffer2→충진-라인3-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_b2_fill_l4 = Transport(env, 'AGV_B2_FILL_L4', 'Buffer2→충진-라인4-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agvs_b2_fill = [agv_b2_fill_l1, agv_b2_fill_l2, agv_b2_fill_l3, agv_b2_fill_l4]
+    
+    # Filling -> Buffer3 AGV (각 라인당 1대씩, 총 4대)
+    agv_fill_b3_l1 = Transport(env, 'AGV_FILL_B3_L1', '충진→Buffer3-라인1-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_fill_b3_l2 = Transport(env, 'AGV_FILL_B3_L2', '충진→Buffer3-라인2-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_fill_b3_l3 = Transport(env, 'AGV_FILL_B3_L3', '충진→Buffer3-라인3-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_fill_b3_l4 = Transport(env, 'AGV_FILL_B3_L4', '충진→Buffer3-라인4-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agvs_fill_b3 = [agv_fill_b3_l1, agv_fill_b3_l2, agv_fill_b3_l3, agv_fill_b3_l4]
+    
+    # Buffer3 -> Unit3 AGV (각 라인당 1대씩, 총 4대)
+    agv_b3_u3_l1 = Transport(env, 'AGV_B3_U3_L1', 'Buffer3→Unit3-라인1-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_b3_u3_l2 = Transport(env, 'AGV_B3_U3_L2', 'Buffer3→Unit3-라인2-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_b3_u3_l3 = Transport(env, 'AGV_B3_U3_L3', 'Buffer3→Unit3-라인3-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agv_b3_u3_l4 = Transport(env, 'AGV_B3_U3_L4', 'Buffer3→Unit3-라인4-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
+    agvs_b3_u3 = [agv_b3_u3_l1, agv_b3_u3_l2, agv_b3_u3_l3, agv_b3_u3_l4]
+    
     # AGV는 무인운반차이므로 별도의 운송작업자가 필요하지 않음
     
     # Unit1 공정간 컨베이어 (각 라인당 2개씩, 총 8개)
@@ -86,12 +125,6 @@ def create_refrigerator_scenario():
         conv1 = Transport(env, f'CONV_U1_L{i}_1', f'Unit1-라인{i}-컨베이어1', capacity=10, transport_speed=1.5, transport_type="conveyor")
         conv2 = Transport(env, f'CONV_U1_L{i}_2', f'Unit1-라인{i}-컨베이어2', capacity=10, transport_speed=1.5, transport_type="conveyor")
         unit1_conveyors.extend([conv1, conv2])
-    
-    # Unit2 공정간 AGV (각 라인당 1개씩, 총 4개) - AGV는 무인운반차이므로 작업자 불필요
-    unit2_agvs = []
-    for i in range(4):
-        agv_unit2 = Transport(env, f'AGV_U2_L{i}', f'Unit2-라인{i}-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
-        unit2_agvs.append(agv_unit2)
     
     # Unit3 공정간 컨베이어 (각 라인당 5개씩, 총 20개)
     unit3_conveyors = []
@@ -159,24 +192,51 @@ def create_refrigerator_scenario():
     # Unit 2: Door Shell Assembly and Filling (4 parallel lines with AGV connections)
     unit2_lines = []
     for i in range(4):
+        # Unit1 -> Buffer1 운송 프로세스
+        transport_u1_b1 = TransportProcess(env, f'T_U1_B1_L{i}', f'Unit1→Buffer1-라인{i}-운송', 
+                                          [agvs_u1_b1[i]], [], 
+                                          {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        
+        # Buffer1 -> Assembly 운송 프로세스  
+        transport_b1_assy = TransportProcess(env, f'T_B1_ASSY_L{i}', f'Buffer1→조립-라인{i}-운송', 
+                                           [agvs_b1_assy[i]], [], 
+                                           {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        
         # 공정들 생성
         door_assembly = AssemblyProcess(env, f'P_DOOR_ASSY_{i}', f'도어쉘조립{i}', [assembly_robots[i]], [unit2_workers[i]], 
                                       {side_panel.name:1, back_panel.name:1, top_cover.name:1, top_support.name:1}, 
                                       {door_shell.name:1}, [], 25, resource_manager=resource_manager)
+        
+        # Assembly -> Buffer2 운송 프로세스
+        transport_assy_b2 = TransportProcess(env, f'T_ASSY_B2_L{i}', f'조립→Buffer2-라인{i}-운송', 
+                                           [agvs_assy_b2[i]], [], 
+                                           {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        
+        # Buffer2 -> Filling 운송 프로세스
+        transport_b2_fill = TransportProcess(env, f'T_B2_FILL_L{i}', f'Buffer2→충진-라인{i}-운송', 
+                                           [agvs_b2_fill[i]], [], 
+                                           {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        
         foam_filling = ManufacturingProcess(env, f'P_FOAM_{i}', f'발포충진{i}', [filling_machines[i]], [unit2_workers[i]], 
                                           {door_shell.name:1}, {door_shell.name:1}, [], 50, resource_manager=resource_manager)
         
-        # Unit2 공정간 운송 프로세스 생성 (AGV - 무인운반차이므로 작업자 불필요)
-        transport_assy_fill = TransportProcess(env, f'T_U2_L{i}_AF', f'Unit2-라인{i}-조립→충진운송', 
-                                             [unit2_agvs[i]], [], 
-                                             {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        # Filling -> Buffer3 운송 프로세스
+        transport_fill_b3 = TransportProcess(env, f'T_FILL_B3_L{i}', f'충진→Buffer3-라인{i}-운송', 
+                                           [agvs_fill_b3[i]], [], 
+                                           {}, {}, [], 1.0, 3.0, 1.0, 0.5)
         
-        # AGV로 연결된 공정 체인 생성
-        unit2_lines.append(door_assembly >> transport_assy_fill >> foam_filling)
+        # AGV로 연결된 전체 Unit2 공정 체인 생성
+        unit2_lines.append(transport_u1_b1 >> transport_b1_assy >> door_assembly >> transport_assy_b2 >> 
+                          transport_b2_fill >> foam_filling >> transport_fill_b3)
 
-    # Unit 3: Final Assembly Lines (4 parallel lines with conveyor connections)
+    # Unit 3: Final Assembly Lines (4 parallel lines with conveyor connections and AGV input)
     final_lines = []
     for i in range(4):
+        # Buffer3 -> Unit3 운송 프로세스
+        transport_b3_u3 = TransportProcess(env, f'T_B3_U3_L{i}', f'Buffer3→Unit3-라인{i}-운송', 
+                                         [agvs_b3_u3[i]], [], 
+                                         {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        
         # 공정들 생성
         main_assy = AssemblyProcess(env, f'P_MAIN_ASSY_{i}', f'본체조립{i}', [final_assembly_robots[i]], [unit3_workers[i]], 
                                   {door_shell.name:1, main_body.name:1}, {final_refrigerator.name:1}, [], 20, resource_manager=None)
@@ -213,25 +273,62 @@ def create_refrigerator_scenario():
         for proc in process_chain_for_blocking_disable:
             proc.enable_output_blocking_feature(False)
 
-        # 컨베이어로 연결된 공정 체인 생성
-        final_lines.append(main_assy >> transport_main_hinge >> hinge_inst >> transport_hinge_door >> 
+        # AGV + 컨베이어로 연결된 공정 체인 생성
+        final_lines.append(transport_b3_u3 >> main_assy >> transport_main_hinge >> hinge_inst >> transport_hinge_door >> 
                           door_inst >> transport_door_func >> func_inst >> transport_func_finish >> 
                           finishing >> transport_finish_inspect >> inspection)
         
-    # Transport Processes (Unit간 운송) - AGV는 무인운반차이므로 작업자 불필요
-    transport_to_unit2 = TransportProcess(env, 'T_U1_U2', 'Unit1->2운송', [agv], [], {}, {}, [], 1, 5, 1, 1)
-    transport_to_unit3 = TransportProcess(env, 'T_U2_U3', 'Unit2->3운송', [conveyor], [], {}, {}, [], 0, 10, 0, 0)
+    # AGV 운송 프로세스들을 ResourceManager에 등록
+    agv_transport_processes = []
+    for i in range(4):
+        # Unit1->Buffer1 AGV 운송 프로세스들
+        transport_u1_b1 = TransportProcess(env, f'T_U1_B1_L{i}_RM', f'Unit1→Buffer1-라인{i}-RM운송', 
+                                          [agvs_u1_b1[i]], [], {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        agv_transport_processes.append(transport_u1_b1)
+        resource_manager.register_transport_process(f"transport_u1_b1_l{i}", transport_u1_b1)
+        
+        # Buffer1->Assembly AGV 운송 프로세스들
+        transport_b1_assy = TransportProcess(env, f'T_B1_ASSY_L{i}_RM', f'Buffer1→조립-라인{i}-RM운송', 
+                                           [agvs_b1_assy[i]], [], {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        agv_transport_processes.append(transport_b1_assy)
+        resource_manager.register_transport_process(f"transport_b1_assy_l{i}", transport_b1_assy)
+        
+        # Assembly->Buffer2 AGV 운송 프로세스들
+        transport_assy_b2 = TransportProcess(env, f'T_ASSY_B2_L{i}_RM', f'조립→Buffer2-라인{i}-RM운송', 
+                                           [agvs_assy_b2[i]], [], {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        agv_transport_processes.append(transport_assy_b2)
+        resource_manager.register_transport_process(f"transport_assy_b2_l{i}", transport_assy_b2)
+        
+        # Buffer2->Filling AGV 운송 프로세스들
+        transport_b2_fill = TransportProcess(env, f'T_B2_FILL_L{i}_RM', f'Buffer2→충진-라인{i}-RM운송', 
+                                           [agvs_b2_fill[i]], [], {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        agv_transport_processes.append(transport_b2_fill)
+        resource_manager.register_transport_process(f"transport_b2_fill_l{i}", transport_b2_fill)
+        
+        # Filling->Buffer3 AGV 운송 프로세스들
+        transport_fill_b3 = TransportProcess(env, f'T_FILL_B3_L{i}_RM', f'충진→Buffer3-라인{i}-RM운송', 
+                                           [agvs_fill_b3[i]], [], {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        agv_transport_processes.append(transport_fill_b3)
+        resource_manager.register_transport_process(f"transport_fill_b3_l{i}", transport_fill_b3)
+        
+        # Buffer3->Unit3 AGV 운송 프로세스들
+        transport_b3_u3 = TransportProcess(env, f'T_B3_U3_L{i}_RM', f'Buffer3→Unit3-라인{i}-RM운송', 
+                                         [agvs_b3_u3[i]], [], {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+        agv_transport_processes.append(transport_b3_u3)
+        resource_manager.register_transport_process(f"transport_b3_u3_l{i}", transport_b3_u3)
     
-    # ResourceManager에 운송 프로세스 등록
-    resource_manager.register_transport_process("transport_u1_u2", transport_to_unit2)
-    resource_manager.register_transport_process("transport_u2_u3", transport_to_unit3)
     
     # Unit내 공정간 운송 프로세스들도 등록 (필요시)
     print(f"✅ 운송 시스템 구성 완료:")
     print(f"   - Unit1 컨베이어: {len(unit1_conveyors)}대")
-    print(f"   - Unit2 AGV: {len(unit2_agvs)}대") 
+    print(f"   - Unit1→Buffer1 AGV: {len(agvs_u1_b1)}대") 
+    print(f"   - Buffer1→조립 AGV: {len(agvs_b1_assy)}대")
+    print(f"   - 조립→Buffer2 AGV: {len(agvs_assy_b2)}대")
+    print(f"   - Buffer2→충진 AGV: {len(agvs_b2_fill)}대")
+    print(f"   - 충진→Buffer3 AGV: {len(agvs_fill_b3)}대")
+    print(f"   - Buffer3→Unit3 AGV: {len(agvs_b3_u3)}대")
     print(f"   - Unit3 컨베이어: {len(unit3_conveyors)}대")
-    print(f"   - Unit간 운송: AGV 1대, 컨베이어 1대")
+    print(f"   - 총 AGV 수: {len(agv_transport_processes)}대")
     
     # --- 5. 워크플로우(Workflow) 구성 ---
     unit1_workflow = MultiProcessGroup(press_lines)
