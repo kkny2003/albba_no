@@ -1,8 +1,12 @@
 # /manufacturing-simulation-framework/manufacturing-simulation-framework/src/utils/statistics.py
 
 # 통계 관련 유틸리티 함수를 포함하는 파일입니다.
+# 
+# ⚠️ NOTICE: 기본 통계 함수들은 유지되지만,
+# 통합된 통계 시스템을 위해서는 UnifiedStatisticsManager 사용을 권장합니다.
 
 import numpy as np
+import warnings
 from scipy import stats
 import pandas as pd
 

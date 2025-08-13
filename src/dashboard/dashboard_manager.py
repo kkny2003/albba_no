@@ -16,14 +16,13 @@ import threading
 from datetime import datetime
 import json
 
-from src.core.centralized_statistics import CentralizedStatisticsManager
 from src.utils.visualization import VisualizationManager
 
 
 class DashboardManager:
     """실시간 대시보드 관리 클래스"""
     
-    def __init__(self, stats_manager: Optional[CentralizedStatisticsManager] = None):
+    def __init__(self, stats_manager: Optional[Any] = None):
         """
         DashboardManager 초기화
         
@@ -37,7 +36,7 @@ class DashboardManager:
         self.auto_refresh = True
         self.refresh_interval = 5  # 5초마다 갱신
         
-    def set_stats_manager(self, stats_manager: CentralizedStatisticsManager):
+    def set_stats_manager(self, stats_manager: Any):
         """통계 관리자 설정"""
         self.stats_manager = stats_manager
         

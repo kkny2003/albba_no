@@ -23,11 +23,23 @@ from enum import Enum
 import warnings
 from collections import defaultdict, deque
 
-from src.core.centralized_statistics import (
-    CentralizedStatisticsManager, StatisticsInterface, 
-    AlertSeverity, ThresholdAlert, MetricType
-)
 from src.utils.visualization import VisualizationManager
+
+
+class AlertSeverity(Enum):
+    """알림 심각도 정의"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class MetricType(Enum):
+    """메트릭 타입 정의"""
+    GAUGE = "gauge"
+    COUNTER = "counter"
+    HISTOGRAM = "histogram"
+    TIMER = "timer"
 
 
 class ReportType(Enum):
@@ -444,17 +456,14 @@ class AlertSystem:
 class ReportManager:
     """모든 리포트 기능의 중앙 관리자"""
     
-    def __init__(self, env: simpy.Environment, 
-                 stats_manager: Optional[CentralizedStatisticsManager] = None):
+    def __init__(self, env: simpy.Environment):
         """
         ReportManager 초기화
         
         Args:
             env: SimPy 환경
-            stats_manager: 중앙 통계 관리자 (선택적)
         """
         self.env = env
-        self.stats_manager = stats_manager or CentralizedStatisticsManager(env)
         
         # 서브 컴포넌트 초기화
         self.resource_tracker = ResourceStateTracker(env)
@@ -463,13 +472,6 @@ class ReportManager:
         
         # 시각화 관리자 초기화
         self.visualization_manager = VisualizationManager()
-        
-        # 통계 인터페이스
-        self.stats_interface = StatisticsInterface(
-            component_id="report_manager",
-            component_type="report_manager",
-            stats_manager=self.stats_manager
-        )
         
         # 기본 임계값 설정
         self._setup_default_thresholds()
@@ -1378,19 +1380,17 @@ class ReportManager:
 
 # === 편의를 위한 팩토리 함수 ===
 
-def create_report_manager(env: simpy.Environment, 
-                         stats_manager: Optional[CentralizedStatisticsManager] = None) -> ReportManager:
+def create_report_manager(env: simpy.Environment) -> ReportManager:
     """
     ReportManager 생성 팩토리 함수
     
     Args:
         env: SimPy 환경
-        stats_manager: 중앙 통계 관리자 (선택적)
         
     Returns:
         ReportManager: 설정된 리포트 관리자
     """
-    return ReportManager(env, stats_manager)
+    return ReportManager(env)
     
 
 def setup_default_alert_callbacks(report_manager: ReportManager):

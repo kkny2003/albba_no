@@ -31,7 +31,6 @@ try:
     from src.dashboard.dashboard_manager import DashboardManager
     from src.dashboard.components import KPICard, GaugeWidget, DashboardGrid
     from src.dashboard.layouts import DashboardLayout, LayoutType
-    from src.core.centralized_statistics import CentralizedStatisticsManager
 except ImportError as e:
     st.error(f"모듈 가져오기 오류: {e}")
     st.info("Streamlit과 Plotly가 설치되어 있는지 확인하세요.")

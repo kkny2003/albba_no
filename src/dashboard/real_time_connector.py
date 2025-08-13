@@ -15,13 +15,10 @@ import pickle
 import os
 
 try:
-    from src.core.centralized_statistics import CentralizedStatisticsManager
     from src.dashboard.kpi_widgets import KPIManager, KPIData, KPIThreshold, AlertLevel
 except ImportError:
     # 테스트 환경에서는 Mock 클래스 사용
-    class MockStatisticsManager:
-        pass
-    CentralizedStatisticsManager = MockStatisticsManager
+    pass
 
 
 @dataclass
@@ -69,7 +66,7 @@ class DataBridge:
             update_interval: 업데이트 간격 (초)
         """
         self.update_interval = update_interval
-        self.stats_manager: Optional[CentralizedStatisticsManager] = None
+        self.stats_manager: Optional[Any] = None
         self.kpi_manager = KPIManager()
         
         # 데이터 저장
@@ -86,7 +83,7 @@ class DataBridge:
         self.max_history_size = 1000
         self.data_cache_file = "dashboard_cache.json"
         
-    def connect_simulation(self, stats_manager: CentralizedStatisticsManager):
+    def connect_simulation(self, stats_manager: Any):
         """시뮬레이션 연결"""
         self.stats_manager = stats_manager
         self._initialize_kpis()
@@ -536,7 +533,7 @@ def get_data_bridge() -> DataBridge:
         _global_data_bridge = DataBridge()
     return _global_data_bridge
 
-def initialize_real_time_system(stats_manager: Optional[CentralizedStatisticsManager] = None,
+def initialize_real_time_system(stats_manager: Optional[Any] = None,
                                update_interval: float = 1.0) -> DataBridge:
     """실시간 시스템 초기화"""
     bridge = get_data_bridge()

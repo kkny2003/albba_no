@@ -10,7 +10,6 @@ from enum import Enum
 import uuid
 
 from src.Resource.resource_base import Resource, ResourceType, ResourceRequirement
-from src.core.centralized_statistics import CentralizedStatisticsManager, StatisticsInterface
 
 
 class ResourceStatus(Enum):
@@ -69,15 +68,13 @@ class ResourceMetrics:
 class AdvancedResourceManager:
     """SimPy 기반 고급 자원 관리자 클래스"""
     
-    def __init__(self, env: simpy.Environment, strategy: AllocationStrategy = AllocationStrategy.FIFO,
-                 stats_manager: Optional[CentralizedStatisticsManager] = None):
+    def __init__(self, env: simpy.Environment, strategy: AllocationStrategy = AllocationStrategy.FIFO):
         """
         고급 자원 관리자 초기화
         
         Args:
             env: SimPy 환경 객체
             strategy: 자원 할당 전략
-            stats_manager: 중앙 통계 관리자 (선택적)
         """
         self.env = env
         self.strategy = strategy
@@ -97,17 +94,6 @@ class AdvancedResourceManager:
         self.allocation_history: List[ResourceAllocation] = []
         self.total_requests = 0
         self.successful_allocations = 0
-        
-        # 중앙 집중식 통계 관리
-        self.stats_manager = stats_manager
-        self.stats_interface = None
-        
-        if stats_manager:
-            self.stats_interface = StatisticsInterface(
-                component_id="advanced_resource_manager",
-                component_type="resource_manager", 
-                stats_manager=stats_manager
-            )
         
         # Transport 완료 이벤트 관리 시스템
         self.transport_completion_events: Dict[str, simpy.Event] = {}  # allocation_id -> Event 매핑

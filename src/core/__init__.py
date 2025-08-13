@@ -5,6 +5,5 @@
 
 from src.core.simulation_engine import SimulationEngine  # 시뮬레이션 엔진 클래스 임포트
 from src.core.resource_manager import AdvancedResourceManager    # 자원 관리 클래스 임포트
-from src.core.data_collector import DataCollector        # 데이터 수집 클래스 임포트
 
-__all__ = ['SimulationEngine', 'ResourceManager', 'DataCollector']  # 공개 API 정의
+__all__ = ['SimulationEngine', 'ResourceManager']  # 공개 API 정의
