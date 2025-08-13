@@ -63,6 +63,15 @@ def create_refrigerator_scenario():
 
     final_refrigerator = Resource('R_FINAL', 'FinishedRefrigerator', ResourceType.FINISHED_PRODUCT)
 
+    # --- 자재창고 및 팰릿 스택 버퍼 정의 ---
+    # Unit1 앞단에 설치할 4개의 팰릿 스택 버퍼 (50개 용량)
+    side_panel_pallet_buffer = Buffer(env, 'PALLET_SIDE', 'Side Panel Pallet Stack', 'raw_material', capacity=50)
+    back_sheet_pallet_buffer = Buffer(env, 'PALLET_BACK', 'Back Sheet Pallet Stack', 'raw_material', capacity=50)
+    top_cover_pallet_buffer = Buffer(env, 'PALLET_TOP', 'Top Cover Pallet Stack', 'raw_material', capacity=50)
+    lower_cover_pallet_buffer = Buffer(env, 'PALLET_LOWER', 'Lower Cover Pallet Stack', 'raw_material', capacity=50)
+    
+    pallet_buffers = [side_panel_pallet_buffer, back_sheet_pallet_buffer, top_cover_pallet_buffer, lower_cover_pallet_buffer]
+
     # --- 3. 설비(Machine) 및 작업자(Worker) 정의 ---
     press_machines = [Machine(env, f'PRESS_M{i}', f'프레스기계{i}', capacity=1, processing_time=1) for i in range(1, 5)]
     press_workers = [Worker(env, f'PRESS_W{i}', f'프레스작업자{i}', skills=['blanking', 'drawing', 'piercing']) for i in range(1, 5)]
@@ -74,6 +83,24 @@ def create_refrigerator_scenario():
     final_assembly_robots = [Machine(env, f'FINAL_R{i}', f'최종조립로봇{i}', capacity=1, processing_time=20) for i in range(1, 5)]
     inspection_machines = [Machine(env, f'INSPECT_M{i}', f'품질검사기{i}', capacity=1, processing_time=15) for i in range(1, 5)]
     unit3_workers = [Worker(env, f'UNIT3_W{i}', f'Unit3작업자{i}', skills=['final_assembly', 'inspection']) for i in range(1, 5)]
+    
+    # 자재창고 설비 및 작업자
+    warehouse_equipment = [Machine(env, 'WAREHOUSE_M1', '자재창고장비', capacity=1, processing_time=2.0)]
+    warehouse_workers = [Worker(env, 'WAREHOUSE_W1', '자재창고작업자', skills=['material_handling', 'inventory'])]
+    
+    # 자재창고 -> 팰릿버퍼 보충용 AGV (각 버퍼당 1대씩, 총 4대)
+    agv_warehouse_side = Transport(env, 'AGV_WH_SIDE', '창고→사이드팰릿-AGV', capacity=5, transport_speed=2.0, transport_type="agv")
+    agv_warehouse_back = Transport(env, 'AGV_WH_BACK', '창고→백시트팰릿-AGV', capacity=5, transport_speed=2.0, transport_type="agv")
+    agv_warehouse_top = Transport(env, 'AGV_WH_TOP', '창고→탑커버팰릿-AGV', capacity=5, transport_speed=2.0, transport_type="agv")
+    agv_warehouse_lower = Transport(env, 'AGV_WH_LOWER', '창고→로워커버팰릿-AGV', capacity=5, transport_speed=2.0, transport_type="agv")
+    warehouse_agvs = [agv_warehouse_side, agv_warehouse_back, agv_warehouse_top, agv_warehouse_lower]
+    
+    # 팰릿버퍼 -> Unit1공정 연결용 컨베이어 (각 버퍼당 1대씩, 총 4대)
+    conv_pallet_to_unit1_side = Transport(env, 'CONV_PALLET_SIDE', '사이드팰릿→Unit1-컨베이어', capacity=10, transport_speed=1.5, transport_type="conveyor")
+    conv_pallet_to_unit1_back = Transport(env, 'CONV_PALLET_BACK', '백시트팰릿→Unit1-컨베이어', capacity=10, transport_speed=1.5, transport_type="conveyor")
+    conv_pallet_to_unit1_top = Transport(env, 'CONV_PALLET_TOP', '탑커버팰릿→Unit1-컨베이어', capacity=10, transport_speed=1.5, transport_type="conveyor")
+    conv_pallet_to_unit1_lower = Transport(env, 'CONV_PALLET_LOWER', '로워커버팰릿→Unit1-컨베이어', capacity=10, transport_speed=1.5, transport_type="conveyor")
+    pallet_to_unit1_conveyors = [conv_pallet_to_unit1_side, conv_pallet_to_unit1_back, conv_pallet_to_unit1_top, conv_pallet_to_unit1_lower]
     
     # Unit1 -> Buffer1 AGV (각 라인당 1대씩, 총 4대)
     agv_u1_b1_l1 = Transport(env, 'AGV_U1_B1_L1', 'Unit1→Buffer1-라인1-AGV', capacity=3, transport_speed=2.0, transport_type="agv")
@@ -161,16 +188,59 @@ def create_refrigerator_scenario():
 
     # --- 4. 프로세스(Process) 정의 ---
     
+    # 자재창고 함수 정의 (간단한 함수 기반 접근법)
+    material_supply_counter = {'count': 0}  # 자재 공급 카운터
+    
+    def create_materials(env, material_name, quantity=30):
+        """자재창고에서 자재를 생성하는 함수"""
+        material_supply_counter['count'] += 1
+        request_id = material_supply_counter['count']
+        
+        print(f"[시간 {env.now:.1f}] 자재창고: {material_name} {quantity}개 공급 요청 #{request_id} 접수")
+        
+        # 자재 준비 시간 대기
+        yield env.timeout(2.0)
+        
+        # 자재 생성
+        materials = []
+        for i in range(quantity):
+            material = Product(f'{material_name}_{request_id}_{i+1}', f'{material_name}_자재_{request_id}_{i+1}')
+            materials.append(material)
+        
+        print(f"[시간 {env.now:.1f}] 자재창고: {material_name} {quantity}개 공급 완료 (요청 #{request_id})")
+        return materials
+    
+    # 버퍼 보충 운송 프로세스들 정의
+    replenish_transport_side = TransportProcess(env, 'T_REPLENISH_SIDE', '창고→사이드팰릿보충운송', 
+                                              [agv_warehouse_side], [], 
+                                              {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+    replenish_transport_back = TransportProcess(env, 'T_REPLENISH_BACK', '창고→백시트팰릿보충운송', 
+                                              [agv_warehouse_back], [], 
+                                              {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+    replenish_transport_top = TransportProcess(env, 'T_REPLENISH_TOP', '창고→탑커버팰릿보충운송', 
+                                             [agv_warehouse_top], [], 
+                                             {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+    replenish_transport_lower = TransportProcess(env, 'T_REPLENISH_LOWER', '창고→로워커버팰릿보충운송', 
+                                               [agv_warehouse_lower], [], 
+                                               {}, {}, [], 1.0, 3.0, 1.0, 0.5)
+    
     # Unit 1: Pressing Processes (4 parallel lines with conveyor connections)
     press_lines = []
     part_info = [
         ("SidePanel", side_panel_sheet, side_panel), ("BackSheet", back_sheet, back_panel),
         ("TopCover", top_cover_sheet, top_cover), ("TopSupport", top_support_sheet, top_support)
     ]
+    buffer_info = [side_panel_pallet_buffer, back_sheet_pallet_buffer, top_cover_pallet_buffer, lower_cover_pallet_buffer]
+    
     for i in range(4):
         p_name, p_in, p_out = part_info[i]
         
-        # 공정들 생성
+        # 팰릿버퍼에서 Unit1 공정으로의 운송 프로세스 생성
+        transport_pallet_to_blank = TransportProcess(env, f'T_PALLET_BLANK_{i}', f'{p_name}-팰릿→Blanking운송', 
+                                                   [pallet_to_unit1_conveyors[i]], [unit1_transport_workers[i]], 
+                                                   {}, {}, [], 0, 1.5, 0, 0)
+        
+        # 공정들 생성 - blanking은 팰릿버퍼에서 운송으로 자재를 받음
         blanking = ManufacturingProcess(env, f'P_BLANK_{i}', f'{p_name}-Blanking', [press_machines[i]], [press_workers[i]], 
                                       {p_in.name:1}, {p_out.name:1}, [], 10, resource_manager=resource_manager)
         drawing = ManufacturingProcess(env, f'P_DRAW_{i}', f'{p_name}-Drawing', [press_machines[i]], [press_workers[i]], 
@@ -186,8 +256,8 @@ def create_refrigerator_scenario():
                                                [unit1_conveyors[i*2+1]], [unit1_transport_workers[i]], 
                                                {}, {}, [], 0, 2.0, 0, 0)
         
-        # 컨베이어로 연결된 공정 체인 생성
-        press_lines.append(blanking >> transport_blank_draw >> drawing >> transport_draw_pierce >> piercing)
+        # 팰릿버퍼에서 시작하여 컨베이어로 연결된 공정 체인 생성
+        press_lines.append(transport_pallet_to_blank >> blanking >> transport_blank_draw >> drawing >> transport_draw_pierce >> piercing)
 
     # Unit 2: Door Shell Assembly and Filling (4 parallel lines with AGV connections)
     unit2_lines = []
@@ -319,7 +389,7 @@ def create_refrigerator_scenario():
     
     
     # Unit내 공정간 운송 프로세스들도 등록 (필요시)
-    print(f"✅ 운송 시스템 구성 완료:")
+    print(f"운송 시스템 구성 완료:")
     print(f"   - Unit1 컨베이어: {len(unit1_conveyors)}대")
     print(f"   - Unit1→Buffer1 AGV: {len(agvs_u1_b1)}대") 
     print(f"   - Buffer1→조립 AGV: {len(agvs_b1_assy)}대")
@@ -329,27 +399,93 @@ def create_refrigerator_scenario():
     print(f"   - Buffer3→Unit3 AGV: {len(agvs_b3_u3)}대")
     print(f"   - Unit3 컨베이어: {len(unit3_conveyors)}대")
     print(f"   - 총 AGV 수: {len(agv_transport_processes)}대")
+    print(f"   - 자재창고→팰릿버퍼 보충 AGV: {len(warehouse_agvs)}대")
+    print(f"   - 팰릿버퍼→Unit1 컨베이어: {len(pallet_to_unit1_conveyors)}대")
+    
+    # 버퍼 모니터링 및 자동 보충 프로세스 정의 함수들
+    def buffer_monitor(env, buffer, material_name, transport_process, threshold=20, replenish_quantity=30):
+        """팰릿 버퍼 모니터링 및 자동 보충 프로세스"""
+        while True:
+            current_level = buffer.get_current_level()
+            
+            if current_level < threshold:
+                print(f"[시간 {env.now:.1f}] {buffer.name} 재고 부족 감지 (현재: {current_level}개 < 임계값: {threshold}개)")
+                print(f"   자재창고에서 {material_name} {replenish_quantity}개 보충 시작")
+                
+                # 창고에서 자재 공급 요청 (함수 기반)
+                supplied_materials = yield from create_materials(env, material_name, replenish_quantity)
+                
+                # AGV로 운송하여 버퍼에 저장
+                for material in supplied_materials:
+                    yield from transport_process.execute(material)
+                    yield from buffer.put(material)
+                
+                print(f"[시간 {env.now:.1f}] {buffer.name} 보충 완료 (현재 저장량: {buffer.get_current_level()}개)")
+            
+            # 5시간마다 모니터링
+            yield env.timeout(5)
+    
+    # 각 팰릿 버퍼에 대한 모니터링 프로세스들 생성
+    buffer_monitor_processes = [
+        env.process(buffer_monitor(env, side_panel_pallet_buffer, 'SidePanelSheet', replenish_transport_side)),
+        env.process(buffer_monitor(env, back_sheet_pallet_buffer, 'BackSheet', replenish_transport_back)),
+        env.process(buffer_monitor(env, top_cover_pallet_buffer, 'TopCoverSheet', replenish_transport_top)),
+        env.process(buffer_monitor(env, lower_cover_pallet_buffer, 'TopPanelSupportSheet', replenish_transport_lower))
+    ]
+    
+    # 팰릿 버퍼 초기 재고 채우기 (시뮬레이션 시작시 각 버퍼에 30개씩 초기 재고)
+    def populate_initial_inventory(env):
+        """시뮬레이션 시작시 팰릿 버퍼에 초기 재고를 채우는 프로세스"""
+        buffer_material_map = [
+            (side_panel_pallet_buffer, 'SidePanelSheet'),
+            (back_sheet_pallet_buffer, 'BackSheet'),
+            (top_cover_pallet_buffer, 'TopCoverSheet'),
+            (lower_cover_pallet_buffer, 'TopPanelSupportSheet')
+        ]
+        
+        for buffer, material_name in buffer_material_map:
+            print(f"[시간 {env.now:.1f}] {buffer.name} 초기 재고 채우기 시작...")
+            
+            # 창고에서 초기 재고용 자재 공급 (함수 기반)
+            initial_materials = yield from create_materials(env, material_name, 30)
+            
+            # 버퍼에 초기 자재 저장
+            for material in initial_materials:
+                yield from buffer.put(material)
+            
+            print(f"[시간 {env.now:.1f}] {buffer.name} 초기 재고 30개 저장 완료")
+    
+    # 초기 재고 채우기 프로세스 등록
+    initial_inventory_process = env.process(populate_initial_inventory(env))
     
     # --- 5. 워크플로우(Workflow) 구성 ---
     unit1_workflow = MultiProcessGroup(press_lines)
     unit2_workflow = MultiProcessGroup(unit2_lines)
     unit3_workflow = MultiProcessGroup(final_lines)
 
-    complete_workflow = unit1_workflow >> unit2_workflow >> unit3_workflow
+    # Unit1, Unit2, Unit3을 동시에 작동하도록 병렬 워크플로우 구성
+    complete_workflow = MultiProcessGroup([unit1_workflow, unit2_workflow, unit3_workflow])
 
     return {
         'env': env,
         'engine': engine,
-        'workflow': complete_workflow
+        'workflow': complete_workflow,
+        'pallet_buffers': pallet_buffers,
+        'buffer_monitors': buffer_monitor_processes,
+        'material_supply_counter': material_supply_counter
     }
 
-def production_starter(env, workflow, num_orders=3):
+def production_starter(env, workflow, pallet_buffers, num_orders=3):
     """시뮬레이션을 시작하고 정해진 수량만큼 생산 오더를 생성하는 프로세스"""
     for i in range(num_orders):
         print(f"\n--- [시간 {env.now:.2f}] 냉장고 생산 주문 {i+1} 시작 ---")
+        
+        # 기존 방식과 동일하게 초기 제품으로 생산 시작
+        # 팰릿 버퍼의 자재는 버퍼 모니터링 프로세스와 운송 프로세스를 통해 자동으로 Unit1 공정에 공급됨
         initial_product = Product(f'ORDER_{i+1}', '생산주문')
         yield from workflow.execute(initial_product)
         print(f"--- [시간 {env.now:.2f}] 냉장고 생산 주문 {i+1} 완료 ---")
+        
         yield env.timeout(10)
 
 def main():
@@ -365,9 +501,10 @@ def main():
         env = scenario_data['env']
         engine = scenario_data['engine']
         workflow = scenario_data['workflow']
+        pallet_buffers = scenario_data['pallet_buffers']
 
         print("\n### 시뮬레이션 실행 ###")
-        engine.add_process(production_starter, workflow, 3)
+        engine.add_process(production_starter, workflow, pallet_buffers, 3)
         engine.run(until=1000)
         
     finally:
@@ -397,9 +534,9 @@ def save_output_to_md(output_text):
     try:
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(md_content)
-        print(f"\n✅ 시뮬레이션 로그가 '{filename}' 파일로 저장되었습니다.")
+        print(f"\n시뮬레이션 로그가 '{filename}' 파일로 저장되었습니다.")
     except Exception as e:
-        print(f"\n❌ 파일 저장 중 오류 발생: {e}")
+        print(f"\n파일 저장 중 오류 발생: {e}")
 
 if __name__ == "__main__":
     main()
