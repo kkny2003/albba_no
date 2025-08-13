@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__smithery-ai-server-sequential-thinking__sequentialthinking",
+      "Bash",
+      "Bash(python:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "defaultMode": "plan"
+  }
+}

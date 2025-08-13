@@ -1,0 +1,413 @@
+{
+  "report_metadata": {
+    "generated_at": 1755063847.5957499,
+    "simulation_time": 200,
+    "report_type": "comprehensive_report",
+    "version": "1.0"
+  },
+  "executive_summary": {
+    "simulation_duration": 200,
+    "system_status": "critical",
+    "overall_performance": {
+      "throughput": 0.0,
+      "efficiency": 0.0,
+      "quality": 0.0
+    },
+    "critical_issues": 10,
+    "recommendations_count": 3
+  },
+  "resource_analysis": {
+    "resource_count": 19,
+    "utilization_analysis": {
+      "PRESS_M1": 0.0,
+      "PRESS_M2": 0.0,
+      "ASSEMBLY_R1": 0.0,
+      "ASSEMBLY_R2": 0.0,
+      "FILLING_M1": 0.0,
+      "FILLING_M2": 0.0,
+      "FINAL_R1": 0.0,
+      "FINAL_R2": 0.0,
+      "INSPECT_M1": 0.0,
+      "INSPECT_M2": 0.0,
+      "PRESS_W1": 0.0,
+      "PRESS_W2": 0.0,
+      "UNIT2_W1": 0.0,
+      "UNIT2_W2": 0.0,
+      "UNIT3_W1": 0.0,
+      "UNIT3_W2": 0.0,
+      "TRANSPORT_W": 0.0,
+      "AGV_T": 0.0,
+      "CONVEYOR_T": 0.0
+    },
+    "performance_ranking": [
+      [
+        "PRESS_M1",
+        0.0
+      ],
+      [
+        "PRESS_M2",
+        0.0
+      ],
+      [
+        "ASSEMBLY_R1",
+        0.0
+      ],
+      [
+        "ASSEMBLY_R2",
+        0.0
+      ],
+      [
+        "FILLING_M1",
+        0.0
+      ],
+      [
+        "FILLING_M2",
+        0.0
+      ],
+      [
+        "FINAL_R1",
+        0.0
+      ],
+      [
+        "FINAL_R2",
+        0.0
+      ],
+      [
+        "INSPECT_M1",
+        0.0
+      ],
+      [
+        "INSPECT_M2",
+        0.0
+      ],
+      [
+        "PRESS_W1",
+        0.0
+      ],
+      [
+        "PRESS_W2",
+        0.0
+      ],
+      [
+        "UNIT2_W1",
+        0.0
+      ],
+      [
+        "UNIT2_W2",
+        0.0
+      ],
+      [
+        "UNIT3_W1",
+        0.0
+      ],
+      [
+        "UNIT3_W2",
+        0.0
+      ],
+      [
+        "TRANSPORT_W",
+        0.0
+      ],
+      [
+        "AGV_T",
+        0.0
+      ],
+      [
+        "CONVEYOR_T",
+        0.0
+      ]
+    ],
+    "underutilized_resources": {
+      "PRESS_M1": 0.0,
+      "PRESS_M2": 0.0,
+      "ASSEMBLY_R1": 0.0,
+      "ASSEMBLY_R2": 0.0,
+      "FILLING_M1": 0.0,
+      "FILLING_M2": 0.0,
+      "FINAL_R1": 0.0,
+      "FINAL_R2": 0.0,
+      "INSPECT_M1": 0.0,
+      "INSPECT_M2": 0.0,
+      "PRESS_W1": 0.0,
+      "PRESS_W2": 0.0,
+      "UNIT2_W1": 0.0,
+      "UNIT2_W2": 0.0,
+      "UNIT3_W1": 0.0,
+      "UNIT3_W2": 0.0,
+      "TRANSPORT_W": 0.0,
+      "AGV_T": 0.0,
+      "CONVEYOR_T": 0.0
+    },
+    "overutilized_resources": {}
+  },
+  "process_analysis": {
+    "process_count": 6,
+    "throughput_analysis": {
+      "P_BLANK_0": 0.0,
+      "P_BLANK_1": 0.0,
+      "P_DOOR_ASSY": 0.0,
+      "P_FOAM": 0.0,
+      "P_MAIN_ASSY": 0.0,
+      "P_INSPECT": 0.0
+    },
+    "cycle_time_analysis": {
+      "P_BLANK_0": 2.0,
+      "P_BLANK_1": 2.0,
+      "P_DOOR_ASSY": 25,
+      "P_FOAM": 30,
+      "P_MAIN_ASSY": 20,
+      "P_INSPECT": 15
+    },
+    "bottleneck_processes": [],
+    "idle_processes": [
+      "P_BLANK_0",
+      "P_BLANK_1",
+      "P_DOOR_ASSY",
+      "P_FOAM",
+      "P_MAIN_ASSY",
+      "P_INSPECT"
+    ]
+  },
+  "performance_metrics": {
+    "resource_utilization": {
+      "PRESS_M1": 0.0,
+      "PRESS_M2": 0.0,
+      "ASSEMBLY_R1": 0.0,
+      "ASSEMBLY_R2": 0.0,
+      "FILLING_M1": 0.0,
+      "FILLING_M2": 0.0,
+      "FINAL_R1": 0.0,
+      "FINAL_R2": 0.0,
+      "INSPECT_M1": 0.0,
+      "INSPECT_M2": 0.0,
+      "PRESS_W1": 0.0,
+      "PRESS_W2": 0.0,
+      "UNIT2_W1": 0.0,
+      "UNIT2_W2": 0.0,
+      "UNIT3_W1": 0.0,
+      "UNIT3_W2": 0.0,
+      "TRANSPORT_W": 0.0,
+      "AGV_T": 0.0,
+      "CONVEYOR_T": 0.0
+    },
+    "throughput": 0.0,
+    "average_waiting_time": 0.0,
+    "completion_rate": 0.0,
+    "oee": 0.0
+  },
+  "anomaly_analysis": [
+    {
+      "process_id": "P_BLANK_0",
+      "type": "low_throughput",
+      "severity": "warning",
+      "message": "처리량이 매우 낮습니다: 0.000",
+      "timestamp": 200
+    },
+    {
+      "process_id": "P_BLANK_1",
+      "type": "low_throughput",
+      "severity": "warning",
+      "message": "처리량이 매우 낮습니다: 0.000",
+      "timestamp": 200
+    },
+    {
+      "process_id": "P_DOOR_ASSY",
+      "type": "low_throughput",
+      "severity": "warning",
+      "message": "처리량이 매우 낮습니다: 0.000",
+      "timestamp": 200
+    },
+    {
+      "process_id": "P_FOAM",
+      "type": "low_throughput",
+      "severity": "warning",
+      "message": "처리량이 매우 낮습니다: 0.000",
+      "timestamp": 200
+    },
+    {
+      "process_id": "P_MAIN_ASSY",
+      "type": "low_throughput",
+      "severity": "warning",
+      "message": "처리량이 매우 낮습니다: 0.000",
+      "timestamp": 200
+    },
+    {
+      "process_id": "P_INSPECT",
+      "type": "low_throughput",
+      "severity": "warning",
+      "message": "처리량이 매우 낮습니다: 0.000",
+      "timestamp": 200
+    },
+    {
+      "type": "throughput_drop",
+      "component_id": "system",
+      "severity": "critical",
+      "message": "시스템 처리량이 매우 낮습니다: 0.000",
+      "timestamp": 200
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "PRESS_M1",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "PRESS_M2",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "ASSEMBLY_R1",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "ASSEMBLY_R2",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "FILLING_M1",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "FILLING_M2",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "FINAL_R1",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "FINAL_R2",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "INSPECT_M1",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "INSPECT_M2",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "PRESS_W1",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "PRESS_W2",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "UNIT2_W1",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "UNIT2_W2",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "UNIT3_W1",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "UNIT3_W2",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "TRANSPORT_W",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "AGV_T",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    },
+    {
+      "type": "resource_optimization",
+      "priority": "medium",
+      "target": "CONVEYOR_T",
+      "issue": "낮은 가동률 (0.0%)",
+      "recommendation": "작업 스케줄링 최적화 또는 다른 프로세스로 재할당 검토"
+    }
+  ],
+  "detailed_statistics": {
+    "simulation_time": 200,
+    "total_components": 3,
+    "component_types": {
+      "data_collector": 1,
+      "simulation_engine": 1,
+      "report_manager": 1
+    },
+    "aggregated_metrics": {
+      "total_processes": {
+        "total": 1,
+        "average": 1.0,
+        "count": 1
+      }
+    },
+    "system_health": {
+      "total_alerts": 0,
+      "critical_alerts": 0,
+      "components_with_alerts": 0
+    },
+    "manufacturing_summary": {
+      "overall_oee": 0.0,
+      "average_availability": 0.0,
+      "average_quality_rate": 0.0,
+      "total_production": 0,
+      "total_defects": 0,
+      "global_defect_rate": 0.0
+    }
+  }
+}
