@@ -85,8 +85,8 @@
 
 <owl:ObjectProperty rdf:about="#hasInput">
   <rdfs:domain rdf:resource="#Component"/>
-  <rdfs:range rdf:resource="#EBoM"/>
   <rdfs:range rdf:resource="#Material"/>
+  <rdfs:range rdf:resource="#EBoM"/>
 </owl:ObjectProperty>
 
 <owl:ObjectProperty rdf:about="#hasInputQuantity">
@@ -96,8 +96,8 @@
 
 <owl:ObjectProperty rdf:about="#hasOutput">
   <rdfs:domain rdf:resource="#Component"/>
-  <rdfs:range rdf:resource="#EBoM"/>
   <rdfs:range rdf:resource="#Material"/>
+  <rdfs:range rdf:resource="#EBoM"/>
 </owl:ObjectProperty>
 
 <owl:ObjectProperty rdf:about="#hasOutputQuantity">
@@ -117,8 +117,8 @@
 
 <owl:ObjectProperty rdf:about="#isStorageOf">
   <rdfs:domain rdf:resource="#Storage"/>
-  <rdfs:range rdf:resource="#EBoM"/>
   <rdfs:range rdf:resource="#Material"/>
+  <rdfs:range rdf:resource="#EBoM"/>
 </owl:ObjectProperty>
 
 <owl:ObjectProperty rdf:about="#hasProcessTypeSim">
@@ -227,13 +227,12 @@
 
 <owl:NamedIndividual rdf:about="#2">
   <rdf:type rdf:resource="#Level"/>
-  <rdf:type rdf:resource="#Quantity"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#SidePanel1">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -242,7 +241,7 @@
 <owl:NamedIndividual rdf:about="#SidePanel2">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -251,7 +250,7 @@
 <owl:NamedIndividual rdf:about="#SidePanel3">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -260,7 +259,7 @@
 <owl:NamedIndividual rdf:about="#BackSheet1">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -287,7 +286,7 @@
 <owl:NamedIndividual rdf:about="#TopCover1">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -296,7 +295,7 @@
 <owl:NamedIndividual rdf:about="#TopCover2">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -305,7 +304,7 @@
 <owl:NamedIndividual rdf:about="#TopCover3">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -314,7 +313,7 @@
 <owl:NamedIndividual rdf:about="#LowerCover1">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -323,7 +322,7 @@
 <owl:NamedIndividual rdf:about="#LowerCover2">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -332,7 +331,7 @@
 <owl:NamedIndividual rdf:about="#LowerCover3">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -362,7 +361,7 @@
 <owl:NamedIndividual rdf:about="#HingeAssy">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -377,7 +376,7 @@
 <owl:NamedIndividual rdf:about="#Handle">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -392,7 +391,7 @@
 <owl:NamedIndividual rdf:about="#Magnet">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -407,7 +406,7 @@
 <owl:NamedIndividual rdf:about="#Gasket">
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#2"/>
-  <hasQuantity rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
   <hasProcessingTime rdf:resource="#10"/>
   <hasCost rdf:resource="#10"/>
   <hasCarbonFootprint rdf:resource="#10"/>
@@ -417,10 +416,6 @@
   <rdf:type rdf:resource="#EBoM"/>
   <hasLevel rdf:resource="#1"/>
   <rdf:type rdf:resource="#Material"/>
-  <hasQuantity rdf:resource="#1"/>
-  <hasProcessingTime rdf:resource="#50"/>
-  <hasCost rdf:resource="#50"/>
-  <hasCarbonFootprint rdf:resource="#50"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#P1">
@@ -600,7 +595,6 @@
   <hasProcessType rdf:resource="#Foaming"/>
   <hasMaterial rdf:resource="#PURFoam"/>
   <hasPrecedingProcess rdf:resource="#P1-P12"/>
-  <hasProductName rdf:resource="#PURFoam"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#Foaming">
@@ -710,12 +704,6 @@
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#10">
-  <rdf:type rdf:resource="#ProcessingTime"/>
-  <rdf:type rdf:resource="#Cost"/>
-  <rdf:type rdf:resource="#CarbonFootprint"/>
-</owl:NamedIndividual>
-
-<owl:NamedIndividual rdf:about="#50">
   <rdf:type rdf:resource="#ProcessingTime"/>
   <rdf:type rdf:resource="#Cost"/>
   <rdf:type rdf:resource="#CarbonFootprint"/>

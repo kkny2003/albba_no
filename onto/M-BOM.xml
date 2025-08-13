@@ -14,7 +14,7 @@
 		<Part>
 			<Name>SidePanel1</Name>
 			<ID>SidePanel_1</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Aluminum</Material>
 			<ProcessType>Press</ProcessType>
 			<ProcessDetail>Blanking_Press_SidePanel</ProcessDetail>
@@ -25,7 +25,7 @@
 		<Part>
 			<Name>SidePanel2</Name>
 			<ID>SidePanel_2</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Aluminum</Material>
 			<ProcessType>Press</ProcessType>
 			<ProcessDetail>Drawing_Press_SidePanel</ProcessDetail>
@@ -36,7 +36,7 @@
 		<Part>
 			<Name>SidePanel3</Name>
 			<ID>SidePanel_3</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Aluminum</Material>
 			<ProcessType>Press</ProcessType>
 			<ProcessDetail>Piercing_Press_SidePanel</ProcessDetail>
@@ -49,7 +49,7 @@
 		<Part>
 			<Name>BackSheet1</Name>
 			<ID>BackSheet_1</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Aluminum</Material>
 			<ProcessType>Press</ProcessType>
 			<ProcessDetail>Blanking_Press_BackSheet</ProcessDetail>
@@ -84,7 +84,7 @@
 		<Part>
 			<Name>TopCover1</Name>
 			<ID>TopCover_1</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Steel</Material>
 			<ProcessType>Press</ProcessType>
 			<ProcessDetail>Blanking_Press_TopCover</ProcessDetail>
@@ -95,7 +95,7 @@
 		<Part>
 			<Name>TopCover2</Name>
 			<ID>TopCover_2</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Steel</Material>
 			<ProcessType>Press</ProcessType>
 			<ProcessDetail>Drawing_Press_TopCover</ProcessDetail>
@@ -106,7 +106,7 @@
 		<Part>
 			<Name>TopCover3</Name>
 			<ID>TopCover_3</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Steel</Material>
 			<ProcessType>Press</ProcessType>
 			<ProcessDetail>Piercing_Press_TopCover</ProcessDetail>
@@ -119,7 +119,7 @@
 		<Part>
 			<Name>LowerCover1</Name>
 			<ID>LowerCover_1</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Steel</Material>
 			<ProcessType>Press</ProcessType>
 			<ProcessDetail>Blanking_Press_LowerCover</ProcessDetail>
@@ -130,7 +130,7 @@
 		<Part>
 			<Name>LowerCover2</Name>
 			<ID>LowerCover_2</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Steel</Material>
 			<ProcessType>Press</ProcessType>
 			<ProcessDetail>Drawing_Press_LowerCover</ProcessDetail>
@@ -141,7 +141,7 @@
 		<Part>
 			<Name>LowerCover3</Name>
 			<ID>LowerCover_3</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Steel</Material>
 			<ProcessType>Press</ProcessType>
 			<ProcessDetail>Piercing_Press_LowerCover</ProcessDetail>
@@ -154,7 +154,7 @@
 		<Part>
 			<Name>Handle</Name>
 			<ID>Handle_1</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>ABS</Material>
 			<ProcessType>Assembly</ProcessType>
 			<ProcessDetail>Robot_Assembly_A4</ProcessDetail>
@@ -165,7 +165,7 @@
 		<Part>
 			<Name>Magnet</Name>
 			<ID>Magnet_1</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Ferrite</Material>
 			<ProcessType>Assembly</ProcessType>
 			<ProcessDetail>Robot_Assembly_A5</ProcessDetail>
@@ -176,7 +176,7 @@
 		<Part>
 			<Name>Gasket</Name>
 			<ID>Gasket_1</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Rubber</Material>
 			<ProcessType>Assembly</ProcessType>
 			<ProcessDetail>Robot_Assembly_A6</ProcessDetail>
@@ -185,8 +185,8 @@
 			<CarbonFootprint>10gCO2</CarbonFootprint>
 		</Part>
 		<Part>
-			<Name>PURFoam</Name>
-			<ID>PURFoam_1</ID>
+			<Name>PURFoam_out</Name>
+			<ID>PURFoam_out_1</ID>
 			<Quantity>1</Quantity>
 			<Material>PURFoam</Material>
 			<ProcessType>Foaming</ProcessType>
@@ -198,7 +198,7 @@
 		<Part>
 			<Name>HingeAssy</Name>
 			<ID>HingeAssy_1</ID>
-			<Quantity>2</Quantity>
+			<Quantity>1</Quantity>
 			<Material>Multi_Material</Material>
 			<ProcessType>Assembly</ProcessType>
 			<ProcessDetail>Robot_Assembly_A3</ProcessDetail>
@@ -356,8 +356,8 @@
 			<ProcessType>Foaming</ProcessType>
 			<ProcessDetail>HighPressure_FoamInjection</ProcessDetail>
 			<Material>PURFoam</Material>
-			<PartName>PURFoam</PartName>
-			<PartID>PURFoam_1</PartID>
+			<PartName>PURFoam_out</PartName>
+			<PartID>PURFoam_out_1</PartID>
 			<PrecedingProcesses>
 				<ProcessRef>P1-P12</ProcessRef>
 			</PrecedingProcesses>
