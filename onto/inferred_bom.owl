@@ -1,0 +1,2094 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:owl="http://www.w3.org/2002/07/owl#"
+         xml:base="http://example.org/bom.owl"
+         xmlns="http://example.org/bom.owl#"
+         xmlns:swrl="http://www.w3.org/2003/11/swrl#">
+
+<owl:Ontology rdf:about="http://example.org/bom.owl"/>
+
+<owl:ObjectProperty rdf:about="#hasChildren">
+  <rdfs:domain rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#EBoM"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasLevel">
+  <rdfs:domain rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Level"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasProcessType">
+  <rdfs:domain rdf:resource="#ProcessID"/>
+  <rdfs:range rdf:resource="#ProcessType"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasMaterial">
+  <rdfs:domain rdf:resource="#ProcessID"/>
+  <rdfs:range rdf:resource="#Material"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasProductName">
+  <rdfs:domain rdf:resource="#ProcessID"/>
+  <rdfs:range rdf:resource="#EBoM"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasPrecedingProcess">
+  <rdfs:domain rdf:resource="#ProcessID"/>
+  <rdfs:range rdf:resource="#ProcessID"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasComponents">
+  <rdfs:domain rdf:resource="#ProcessID"/>
+  <rdfs:range rdf:resource="#EBoM"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasQuantity">
+  <rdfs:domain rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Quantity"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasProcessingTime">
+  <rdfs:domain rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#ProcessingTime"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasCost">
+  <rdfs:domain rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Cost"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasCarbonFootprint">
+  <rdfs:domain rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#CarbonFootprint"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#result">
+  <rdfs:domain rdf:resource="#ProcessID"/>
+  <rdfs:range rdf:resource="#EBoM"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#connectedTo">
+  <rdfs:domain rdf:resource="#Component"/>
+  <rdfs:range rdf:resource="#Component"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasCarbonFootprintSim">
+  <rdfs:domain rdf:resource="#Machine"/>
+  <rdfs:range rdf:resource="#CarbonFootprint"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasCostSim">
+  <rdfs:domain rdf:resource="#Machine"/>
+  <rdfs:range rdf:resource="#Cost"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasInput">
+  <rdfs:domain rdf:resource="#Component"/>
+  <rdfs:range rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Material"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasInputQuantity">
+  <rdfs:domain rdf:resource="#Machine"/>
+  <rdfs:range rdf:resource="#Quantity"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasOutput">
+  <rdfs:domain rdf:resource="#Component"/>
+  <rdfs:range rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Material"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasOutputQuantity">
+  <rdfs:domain rdf:resource="#Machine"/>
+  <rdfs:range rdf:resource="#Quantity"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasProcessingTimeSim">
+  <rdfs:domain rdf:resource="#Machine"/>
+  <rdfs:range rdf:resource="#ProcessingTime"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#isMachineOf">
+  <rdfs:domain rdf:resource="#Machine"/>
+  <rdfs:range rdf:resource="#ProcessID"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#isStorageOf">
+  <rdfs:domain rdf:resource="#Storage"/>
+  <rdfs:range rdf:resource="#EBoM"/>
+  <rdfs:range rdf:resource="#Material"/>
+</owl:ObjectProperty>
+
+<owl:ObjectProperty rdf:about="#hasProcessTypeSim">
+  <rdfs:domain rdf:resource="#Machine"/>
+  <rdfs:range rdf:resource="#ProcessType"/>
+</owl:ObjectProperty>
+
+<owl:Class rdf:about="#EBoM">
+  <rdfs:subClassOf rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+</owl:Class>
+
+<owl:Class rdf:about="#Level">
+  <rdfs:subClassOf rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+</owl:Class>
+
+<owl:Class rdf:about="#ProcessID">
+  <rdfs:subClassOf rdf:resource="#MBoM"/>
+</owl:Class>
+
+<owl:Class rdf:about="#ProcessType">
+  <rdfs:subClassOf rdf:resource="#MBoM"/>
+</owl:Class>
+
+<owl:Class rdf:about="#Material">
+  <rdfs:subClassOf rdf:resource="#MBoM"/>
+</owl:Class>
+
+<owl:Class rdf:about="#Quantity">
+  <rdfs:subClassOf rdf:resource="#MBoM"/>
+</owl:Class>
+
+<owl:Class rdf:about="#ProcessingTime">
+  <rdfs:subClassOf rdf:resource="#MBoM"/>
+</owl:Class>
+
+<owl:Class rdf:about="#Cost">
+  <rdfs:subClassOf rdf:resource="#MBoM"/>
+</owl:Class>
+
+<owl:Class rdf:about="#CarbonFootprint">
+  <rdfs:subClassOf rdf:resource="#MBoM"/>
+</owl:Class>
+
+<owl:Class rdf:about="#Component">
+  <rdfs:subClassOf rdf:resource="#Simulation"/>
+</owl:Class>
+
+<owl:Class rdf:about="#Machine">
+  <rdfs:subClassOf rdf:resource="#Component"/>
+</owl:Class>
+
+<owl:Class rdf:about="#Storage">
+  <rdfs:subClassOf rdf:resource="#Component"/>
+</owl:Class>
+
+<owl:Class rdf:about="#Module">
+  <rdfs:subClassOf rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+</owl:Class>
+
+<owl:Class rdf:about="#MBoM">
+  <rdfs:subClassOf rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+</owl:Class>
+
+<owl:Class rdf:about="#ProcessDetail">
+  <rdfs:subClassOf rdf:resource="#MBoM"/>
+</owl:Class>
+
+<owl:Class rdf:about="#Simulation">
+  <rdfs:subClassOf rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+</owl:Class>
+
+<owl:Class rdf:about="#Connection">
+  <rdfs:subClassOf rdf:resource="#Simulation"/>
+</owl:Class>
+
+<owl:NamedIndividual rdf:about="#0">
+  <rdf:type rdf:resource="#Level"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Refrigerator">
+  <rdf:type rdf:resource="#Module"/>
+  <hasLevel rdf:resource="#0"/>
+  <rdf:type rdf:resource="#EBoM"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#1">
+  <rdf:type rdf:resource="#Level"/>
+  <rdf:type rdf:resource="#Quantity"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#SubDoor1">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#1"/>
+  <hasChildren rdf:resource="#SidePanel1"/>
+  <hasChildren rdf:resource="#SidePanel2"/>
+  <hasChildren rdf:resource="#SidePanel3"/>
+  <hasChildren rdf:resource="#BackSheet1"/>
+  <hasChildren rdf:resource="#BackSheet2"/>
+  <hasChildren rdf:resource="#BackSheet3"/>
+  <hasChildren rdf:resource="#TopCover1"/>
+  <hasChildren rdf:resource="#TopCover2"/>
+  <hasChildren rdf:resource="#TopCover3"/>
+  <hasChildren rdf:resource="#LowerCover1"/>
+  <hasChildren rdf:resource="#LowerCover2"/>
+  <hasChildren rdf:resource="#LowerCover3"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#SidePanel1">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#SidePanel2">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#SidePanel3">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#BackSheet1">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#BackSheet2">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#BackSheet3">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#TopCover1">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#TopCover2">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#TopCover3">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#LowerCover1">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#LowerCover2">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#LowerCover3">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#2">
+  <rdf:type rdf:resource="#Level"/>
+  <rdf:type rdf:resource="#Quantity"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#10">
+  <rdf:type rdf:resource="#ProcessingTime"/>
+  <rdf:type rdf:resource="#Cost"/>
+  <rdf:type rdf:resource="#CarbonFootprint"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#SubRefrigerator1">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#1"/>
+  <hasChildren rdf:resource="#EntityAssy"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#EntityAssy">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#1"/>
+  <hasProcessingTime rdf:resource="#30"/>
+  <hasCost rdf:resource="#30"/>
+  <hasCarbonFootprint rdf:resource="#30"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#30">
+  <rdf:type rdf:resource="#ProcessingTime"/>
+  <rdf:type rdf:resource="#Cost"/>
+  <rdf:type rdf:resource="#CarbonFootprint"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#SubRefrigerator2">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#1"/>
+  <hasChildren rdf:resource="#HingeAssy"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#HingeAssy">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#SubRefrigerator3">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#1"/>
+  <hasChildren rdf:resource="#Handle"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Handle">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#SubRefrigerator4">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#1"/>
+  <hasChildren rdf:resource="#Magnet"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Magnet">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#SubRefrigerator5">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#1"/>
+  <hasChildren rdf:resource="#Gasket"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Gasket">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#2"/>
+  <hasQuantity rdf:resource="#2"/>
+  <hasProcessingTime rdf:resource="#10"/>
+  <hasCost rdf:resource="#10"/>
+  <hasCarbonFootprint rdf:resource="#10"/>
+  <rdf:type rdf:resource="#Material"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#PURFoam">
+  <rdf:type rdf:resource="#EBoM"/>
+  <hasLevel rdf:resource="#1"/>
+  <rdf:type rdf:resource="#Material"/>
+  <hasQuantity rdf:resource="#1"/>
+  <hasProcessingTime rdf:resource="#50"/>
+  <hasCost rdf:resource="#50"/>
+  <hasCarbonFootprint rdf:resource="#50"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#50">
+  <rdf:type rdf:resource="#ProcessingTime"/>
+  <rdf:type rdf:resource="#Cost"/>
+  <rdf:type rdf:resource="#CarbonFootprint"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P1">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Aluminum"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#SidePanel1"/>
+  <result rdf:resource="#SidePanel1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Press">
+  <rdf:type rdf:resource="#ProcessType"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Aluminum">
+  <rdf:type rdf:resource="#Material"/>
+  <rdf:type rdf:resource="#EBoM"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#N/A">
+  <rdf:type rdf:resource="#ProcessID"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Blanking_Press_SidePanel">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P1"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#2"/>
+  <hasInputQuantity rdf:resource="#2"/>
+  <hasOutput rdf:resource="#SidePanel1"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Aluminum"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_1"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P2">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Aluminum"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#SidePanel2"/>
+  <result rdf:resource="#SidePanel2"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Drawing_Press_SidePanel">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P2"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#2"/>
+  <hasInputQuantity rdf:resource="#2"/>
+  <hasOutput rdf:resource="#SidePanel2"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Aluminum"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_2"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P3">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Aluminum"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#SidePanel3"/>
+  <result rdf:resource="#SidePanel3"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Piercing_Press_SidePanel">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P3"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#2"/>
+  <hasInputQuantity rdf:resource="#2"/>
+  <hasOutput rdf:resource="#SidePanel3"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Aluminum"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_3"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P4">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Aluminum"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#BackSheet1"/>
+  <result rdf:resource="#BackSheet1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Blanking_Press_BackSheet">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P4"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#2"/>
+  <hasInputQuantity rdf:resource="#2"/>
+  <hasOutput rdf:resource="#BackSheet1"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Aluminum"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_4"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P5">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Aluminum"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#BackSheet2"/>
+  <result rdf:resource="#BackSheet2"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Drawing_Press_BackSheet">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P5"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#1"/>
+  <hasInputQuantity rdf:resource="#1"/>
+  <hasOutput rdf:resource="#BackSheet2"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Aluminum"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_5"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P6">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Aluminum"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#BackSheet3"/>
+  <result rdf:resource="#BackSheet3"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Piercing_Press_BackSheet">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P6"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#1"/>
+  <hasInputQuantity rdf:resource="#1"/>
+  <hasOutput rdf:resource="#BackSheet3"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Aluminum"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_6"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P7">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Steel"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#TopCover1"/>
+  <result rdf:resource="#TopCover1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Steel">
+  <rdf:type rdf:resource="#Material"/>
+  <rdf:type rdf:resource="#EBoM"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Blanking_Press_TopCover">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P7"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#2"/>
+  <hasInputQuantity rdf:resource="#2"/>
+  <hasOutput rdf:resource="#TopCover1"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Steel"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_7"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P8">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Steel"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#TopCover2"/>
+  <result rdf:resource="#TopCover2"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Drawing_Press_TopCover">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P8"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#2"/>
+  <hasInputQuantity rdf:resource="#2"/>
+  <hasOutput rdf:resource="#TopCover2"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Steel"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_8"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P9">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Steel"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#TopCover3"/>
+  <result rdf:resource="#TopCover3"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Piercing_Press_TopCover">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P9"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#2"/>
+  <hasInputQuantity rdf:resource="#2"/>
+  <hasOutput rdf:resource="#TopCover3"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Steel"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_9"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P10">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Steel"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#LowerCover1"/>
+  <result rdf:resource="#LowerCover1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Blanking_Press_LowerCover">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P10"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#2"/>
+  <hasInputQuantity rdf:resource="#2"/>
+  <hasOutput rdf:resource="#LowerCover1"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Steel"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_10"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P11">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Steel"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#LowerCover2"/>
+  <result rdf:resource="#LowerCover2"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Drawing_Press_LowerCover">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P11"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#2"/>
+  <hasInputQuantity rdf:resource="#2"/>
+  <hasOutput rdf:resource="#LowerCover2"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Steel"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_11"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P12">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Press"/>
+  <hasMaterial rdf:resource="#Steel"/>
+  <hasPrecedingProcess rdf:resource="#N/A"/>
+  <hasProductName rdf:resource="#LowerCover3"/>
+  <result rdf:resource="#LowerCover3"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Piercing_Press_LowerCover">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P12"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#2"/>
+  <hasInputQuantity rdf:resource="#2"/>
+  <hasOutput rdf:resource="#LowerCover3"/>
+  <hasCarbonFootprintSim rdf:resource="#10"/>
+  <hasCostSim rdf:resource="#10"/>
+  <hasInput rdf:resource="#Steel"/>
+  <hasProcessTypeSim rdf:resource="#Press"/>
+  <connectedTo rdf:resource="#I_Storage_12"/>
+  <hasProcessingTimeSim rdf:resource="#10"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P13">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Foaming"/>
+  <hasMaterial rdf:resource="#PURFoam"/>
+  <hasPrecedingProcess rdf:resource="#P1-P12"/>
+  <hasProductName rdf:resource="#PURFoam"/>
+  <result rdf:resource="#PURFoam"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Foaming">
+  <rdf:type rdf:resource="#ProcessType"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#P1-P12">
+  <rdf:type rdf:resource="#ProcessID"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#HighPressure_FoamInjection">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#P13"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutputQuantity rdf:resource="#1"/>
+  <hasInputQuantity rdf:resource="#1"/>
+  <hasOutput rdf:resource="#PURFoam"/>
+  <hasCarbonFootprintSim rdf:resource="#50"/>
+  <hasCostSim rdf:resource="#50"/>
+  <hasInput rdf:resource="#PURFoam"/>
+  <hasProcessTypeSim rdf:resource="#Foaming"/>
+  <connectedTo rdf:resource="#I_Storage_23"/>
+  <connectedTo rdf:resource="#R_Storage_2"/>
+  <hasProcessingTimeSim rdf:resource="#50"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#A1">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Assemble"/>
+  <hasComponents rdf:resource="#SidePanel1"/>
+  <hasComponents rdf:resource="#SidePanel2"/>
+  <hasComponents rdf:resource="#SidePanel3"/>
+  <hasComponents rdf:resource="#BackSheet1"/>
+  <hasComponents rdf:resource="#BackSheet2"/>
+  <hasComponents rdf:resource="#BackSheet3"/>
+  <hasComponents rdf:resource="#TopCover1"/>
+  <hasComponents rdf:resource="#TopCover2"/>
+  <hasComponents rdf:resource="#TopCover3"/>
+  <hasComponents rdf:resource="#LowerCover1"/>
+  <hasComponents rdf:resource="#LowerCover2"/>
+  <hasComponents rdf:resource="#LowerCover3"/>
+  <hasPrecedingProcess rdf:resource="#P1-P12"/>
+  <hasProductName rdf:resource="#SubDoor1"/>
+  <result rdf:resource="#SubDoor1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Assemble">
+  <rdf:type rdf:resource="#ProcessType"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Robot_Assembly_A1">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#A1"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutput rdf:resource="#SubDoor1"/>
+  <hasInput rdf:resource="#LowerCover1"/>
+  <hasInput rdf:resource="#SidePanel1"/>
+  <hasInput rdf:resource="#TopCover3"/>
+  <hasInput rdf:resource="#LowerCover3"/>
+  <hasInput rdf:resource="#LowerCover2"/>
+  <hasInput rdf:resource="#BackSheet3"/>
+  <hasInput rdf:resource="#SidePanel2"/>
+  <hasInput rdf:resource="#TopCover2"/>
+  <hasInput rdf:resource="#SidePanel3"/>
+  <hasInput rdf:resource="#BackSheet1"/>
+  <hasInput rdf:resource="#BackSheet2"/>
+  <hasInput rdf:resource="#TopCover1"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
+  <connectedTo rdf:resource="#I_Storage_0"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#A2">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Assemble"/>
+  <hasComponents rdf:resource="#EntityAssy"/>
+  <hasPrecedingProcess rdf:resource="#A1"/>
+  <hasProductName rdf:resource="#SubRefrigerator1"/>
+  <result rdf:resource="#SubRefrigerator1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Robot_Assembly_A2">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#A2"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutput rdf:resource="#SubRefrigerator1"/>
+  <hasInput rdf:resource="#EntityAssy"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
+  <connectedTo rdf:resource="#I_Storage_13"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#A3">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Assemble"/>
+  <hasComponents rdf:resource="#HingeAssy"/>
+  <hasPrecedingProcess rdf:resource="#A2"/>
+  <hasProductName rdf:resource="#SubRefrigerator2"/>
+  <result rdf:resource="#SubRefrigerator2"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Robot_Assembly_A3">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#A3"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutput rdf:resource="#SubRefrigerator2"/>
+  <hasInput rdf:resource="#HingeAssy"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
+  <connectedTo rdf:resource="#I_Storage_15"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#A4">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Assemble"/>
+  <hasComponents rdf:resource="#Handle"/>
+  <hasPrecedingProcess rdf:resource="#A3"/>
+  <hasProductName rdf:resource="#SubRefrigerator3"/>
+  <result rdf:resource="#SubRefrigerator3"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Robot_Assembly_A4">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#A4"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutput rdf:resource="#SubRefrigerator3"/>
+  <hasInput rdf:resource="#Handle"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
+  <connectedTo rdf:resource="#I_Storage_17"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#A5">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Assemble"/>
+  <hasComponents rdf:resource="#Magnet"/>
+  <hasPrecedingProcess rdf:resource="#A4"/>
+  <hasProductName rdf:resource="#SubRefrigerator4"/>
+  <result rdf:resource="#SubRefrigerator4"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Robot_Assembly_A5">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#A5"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutput rdf:resource="#SubRefrigerator4"/>
+  <hasInput rdf:resource="#Magnet"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
+  <connectedTo rdf:resource="#I_Storage_19"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#A6">
+  <rdf:type rdf:resource="#ProcessID"/>
+  <hasProcessType rdf:resource="#Assemble"/>
+  <hasComponents rdf:resource="#Gasket"/>
+  <hasPrecedingProcess rdf:resource="#A5"/>
+  <hasProductName rdf:resource="#SubRefrigerator5"/>
+  <result rdf:resource="#SubRefrigerator5"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Robot_Assembly_A6">
+  <rdf:type rdf:resource="#ProcessDetail"/>
+  <isMachineOf rdf:resource="#A6"/>
+  <rdf:type rdf:resource="#Machine"/>
+  <hasOutput rdf:resource="#SubRefrigerator5"/>
+  <hasInput rdf:resource="#Gasket"/>
+  <hasProcessTypeSim rdf:resource="#Assemble"/>
+  <connectedTo rdf:resource="#I_Storage_21"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_0">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#SubDoor1"/>
+  <hasOutput rdf:resource="#SubDoor1"/>
+  <hasInput rdf:resource="#SubDoor1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_1">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#SidePanel1"/>
+  <hasOutput rdf:resource="#SidePanel1"/>
+  <hasInput rdf:resource="#SidePanel1"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_2">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#SidePanel2"/>
+  <hasOutput rdf:resource="#SidePanel2"/>
+  <hasInput rdf:resource="#SidePanel2"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_3">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#SidePanel3"/>
+  <hasOutput rdf:resource="#SidePanel3"/>
+  <hasInput rdf:resource="#SidePanel3"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_4">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#BackSheet1"/>
+  <hasOutput rdf:resource="#BackSheet1"/>
+  <hasInput rdf:resource="#BackSheet1"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_5">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#BackSheet2"/>
+  <hasOutput rdf:resource="#BackSheet2"/>
+  <hasInput rdf:resource="#BackSheet2"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_6">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#BackSheet3"/>
+  <hasOutput rdf:resource="#BackSheet3"/>
+  <hasInput rdf:resource="#BackSheet3"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_7">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#TopCover1"/>
+  <hasOutput rdf:resource="#TopCover1"/>
+  <hasInput rdf:resource="#TopCover1"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_8">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#TopCover2"/>
+  <hasOutput rdf:resource="#TopCover2"/>
+  <hasInput rdf:resource="#TopCover2"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_9">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#TopCover3"/>
+  <hasOutput rdf:resource="#TopCover3"/>
+  <hasInput rdf:resource="#TopCover3"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_10">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#LowerCover1"/>
+  <hasOutput rdf:resource="#LowerCover1"/>
+  <hasInput rdf:resource="#LowerCover1"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_11">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#LowerCover2"/>
+  <hasOutput rdf:resource="#LowerCover2"/>
+  <hasInput rdf:resource="#LowerCover2"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_12">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#LowerCover3"/>
+  <hasOutput rdf:resource="#LowerCover3"/>
+  <hasInput rdf:resource="#LowerCover3"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_13">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#SubRefrigerator1"/>
+  <hasOutput rdf:resource="#SubRefrigerator1"/>
+  <hasInput rdf:resource="#SubRefrigerator1"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_14">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#EntityAssy"/>
+  <hasOutput rdf:resource="#EntityAssy"/>
+  <hasInput rdf:resource="#EntityAssy"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A2"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_15">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#SubRefrigerator2"/>
+  <hasOutput rdf:resource="#SubRefrigerator2"/>
+  <hasInput rdf:resource="#SubRefrigerator2"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_16">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#HingeAssy"/>
+  <hasOutput rdf:resource="#HingeAssy"/>
+  <hasInput rdf:resource="#HingeAssy"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A3"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_17">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#SubRefrigerator3"/>
+  <hasOutput rdf:resource="#SubRefrigerator3"/>
+  <hasInput rdf:resource="#SubRefrigerator3"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_18">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#Handle"/>
+  <hasOutput rdf:resource="#Handle"/>
+  <hasInput rdf:resource="#Handle"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A4"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_19">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#SubRefrigerator4"/>
+  <hasOutput rdf:resource="#SubRefrigerator4"/>
+  <hasInput rdf:resource="#SubRefrigerator4"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_20">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#Magnet"/>
+  <hasOutput rdf:resource="#Magnet"/>
+  <hasInput rdf:resource="#Magnet"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A5"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_21">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#SubRefrigerator5"/>
+  <hasOutput rdf:resource="#SubRefrigerator5"/>
+  <hasInput rdf:resource="#SubRefrigerator5"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_22">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#Gasket"/>
+  <hasOutput rdf:resource="#Gasket"/>
+  <hasInput rdf:resource="#Gasket"/>
+  <connectedTo rdf:resource="#Robot_Assembly_A6"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#I_Storage_23">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#PURFoam"/>
+  <hasOutput rdf:resource="#PURFoam"/>
+  <hasInput rdf:resource="#PURFoam"/>
+  <connectedTo rdf:resource="#HighPressure_FoamInjection"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#R_Storage_0">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#Aluminum"/>
+  <hasOutput rdf:resource="#Aluminum"/>
+  <hasInput rdf:resource="#Aluminum"/>
+  <connectedTo rdf:resource="#Drawing_Press_SidePanel"/>
+  <connectedTo rdf:resource="#Drawing_Press_BackSheet"/>
+  <connectedTo rdf:resource="#Piercing_Press_BackSheet"/>
+  <connectedTo rdf:resource="#Blanking_Press_BackSheet"/>
+  <connectedTo rdf:resource="#Piercing_Press_SidePanel"/>
+  <connectedTo rdf:resource="#Blanking_Press_SidePanel"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#R_Storage_1">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#Steel"/>
+  <hasOutput rdf:resource="#Steel"/>
+  <hasInput rdf:resource="#Steel"/>
+  <connectedTo rdf:resource="#Blanking_Press_LowerCover"/>
+  <connectedTo rdf:resource="#Piercing_Press_TopCover"/>
+  <connectedTo rdf:resource="#Blanking_Press_TopCover"/>
+  <connectedTo rdf:resource="#Drawing_Press_TopCover"/>
+  <connectedTo rdf:resource="#Piercing_Press_LowerCover"/>
+  <connectedTo rdf:resource="#Drawing_Press_LowerCover"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#R_Storage_2">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#PURFoam"/>
+  <hasOutput rdf:resource="#PURFoam"/>
+  <hasInput rdf:resource="#PURFoam"/>
+  <connectedTo rdf:resource="#HighPressure_FoamInjection"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#F_Storage_0">
+  <rdf:type rdf:resource="#Storage"/>
+  <isStorageOf rdf:resource="#Refrigerator"/>
+  <hasOutput rdf:resource="#Refrigerator"/>
+  <hasInput rdf:resource="#Refrigerator"/>
+</owl:NamedIndividual>
+
+<swrl:Variable rdf:about="urn:swrl#s"/>
+
+<swrl:Variable rdf:about="urn:swrl#m"/>
+
+<swrl:Variable rdf:about="urn:swrl#p"/>
+
+<swrl:Variable rdf:about="urn:swrl#e"/>
+
+<swrl:Variable rdf:about="urn:swrl#pt"/>
+
+<swrl:Variable rdf:about="urn:swrl#mat"/>
+
+<swrl:Variable rdf:about="urn:swrl#comp"/>
+
+<swrl:Variable rdf:about="urn:swrl#prod"/>
+
+<swrl:Variable rdf:about="urn:swrl#q"/>
+
+<swrl:Variable rdf:about="urn:swrl#cf"/>
+
+<swrl:Variable rdf:about="urn:swrl#c"/>
+
+<swrl:Variable rdf:about="urn:swrl#pty"/>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#Machine"/>
+          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:ClassAtom>
+              <swrl:classPredicate rdf:resource="#ProcessID"/>
+              <swrl:argument1 rdf:resource="urn:swrl#p"/>
+            </swrl:ClassAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#hasProcessType"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#p"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#pt"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest>
+                <rdf:Description>
+                  <rdf:first>
+                    <swrl:IndividualPropertyAtom>
+                      <swrl:propertyPredicate rdf:resource="#isMachineOf"/>
+                      <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                      <swrl:argument2 rdf:resource="urn:swrl#p"/>
+                    </swrl:IndividualPropertyAtom>
+                  </rdf:first>
+                  <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                </rdf:Description>
+              </rdf:rest>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#hasProcessTypeSim"/>
+          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+          <swrl:argument2 rdf:resource="urn:swrl#pt"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#hasQuantity"/>
+          <swrl:argument1 rdf:resource="urn:swrl#prod"/>
+          <swrl:argument2 rdf:resource="urn:swrl#q"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:IndividualPropertyAtom>
+              <swrl:propertyPredicate rdf:resource="#hasProductName"/>
+              <swrl:argument1 rdf:resource="urn:swrl#p"/>
+              <swrl:argument2 rdf:resource="urn:swrl#prod"/>
+            </swrl:IndividualPropertyAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:ClassAtom>
+                  <swrl:classPredicate rdf:resource="#ProcessID"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#p"/>
+                </swrl:ClassAtom>
+              </rdf:first>
+              <rdf:rest>
+                <rdf:Description>
+                  <rdf:first>
+                    <swrl:IndividualPropertyAtom>
+                      <swrl:propertyPredicate rdf:resource="#hasCarbonFootprint"/>
+                      <swrl:argument1 rdf:resource="urn:swrl#prod"/>
+                      <swrl:argument2 rdf:resource="urn:swrl#cf"/>
+                    </swrl:IndividualPropertyAtom>
+                  </rdf:first>
+                  <rdf:rest>
+                    <rdf:Description>
+                      <rdf:first>
+                        <swrl:IndividualPropertyAtom>
+                          <swrl:propertyPredicate rdf:resource="#isMachineOf"/>
+                          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                          <swrl:argument2 rdf:resource="urn:swrl#p"/>
+                        </swrl:IndividualPropertyAtom>
+                      </rdf:first>
+                      <rdf:rest>
+                        <rdf:Description>
+                          <rdf:first>
+                            <swrl:IndividualPropertyAtom>
+                              <swrl:propertyPredicate rdf:resource="#hasProcessingTime"/>
+                              <swrl:argument1 rdf:resource="urn:swrl#prod"/>
+                              <swrl:argument2 rdf:resource="urn:swrl#pt"/>
+                            </swrl:IndividualPropertyAtom>
+                          </rdf:first>
+                          <rdf:rest>
+                            <rdf:Description>
+                              <rdf:first>
+                                <swrl:IndividualPropertyAtom>
+                                  <swrl:propertyPredicate rdf:resource="#hasCost"/>
+                                  <swrl:argument1 rdf:resource="urn:swrl#prod"/>
+                                  <swrl:argument2 rdf:resource="urn:swrl#c"/>
+                                </swrl:IndividualPropertyAtom>
+                              </rdf:first>
+                              <rdf:rest>
+                                <rdf:Description>
+                                  <rdf:first>
+                                    <swrl:IndividualPropertyAtom>
+                                      <swrl:propertyPredicate rdf:resource="#hasProcessType"/>
+                                      <swrl:argument1 rdf:resource="urn:swrl#p"/>
+                                      <swrl:argument2 rdf:resource="urn:swrl#pty"/>
+                                    </swrl:IndividualPropertyAtom>
+                                  </rdf:first>
+                                  <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                                </rdf:Description>
+                              </rdf:rest>
+                            </rdf:Description>
+                          </rdf:rest>
+                        </rdf:Description>
+                      </rdf:rest>
+                    </rdf:Description>
+                  </rdf:rest>
+                </rdf:Description>
+              </rdf:rest>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#hasCarbonFootprintSim"/>
+          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+          <swrl:argument2 rdf:resource="urn:swrl#cf"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:IndividualPropertyAtom>
+              <swrl:propertyPredicate rdf:resource="#hasCostSim"/>
+              <swrl:argument1 rdf:resource="urn:swrl#m"/>
+              <swrl:argument2 rdf:resource="urn:swrl#c"/>
+            </swrl:IndividualPropertyAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#hasProcessingTimeSim"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#pt"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest>
+                <rdf:Description>
+                  <rdf:first>
+                    <swrl:IndividualPropertyAtom>
+                      <swrl:propertyPredicate rdf:resource="#hasOutputQuantity"/>
+                      <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                      <swrl:argument2 rdf:resource="urn:swrl#q"/>
+                    </swrl:IndividualPropertyAtom>
+                  </rdf:first>
+                  <rdf:rest>
+                    <rdf:Description>
+                      <rdf:first>
+                        <swrl:IndividualPropertyAtom>
+                          <swrl:propertyPredicate rdf:resource="#hasInputQuantity"/>
+                          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                          <swrl:argument2 rdf:resource="urn:swrl#q"/>
+                        </swrl:IndividualPropertyAtom>
+                      </rdf:first>
+                      <rdf:rest>
+                        <rdf:Description>
+                          <rdf:first>
+                            <swrl:IndividualPropertyAtom>
+                              <swrl:propertyPredicate rdf:resource="#hasProcessTypeSim"/>
+                              <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                              <swrl:argument2 rdf:resource="urn:swrl#pty"/>
+                            </swrl:IndividualPropertyAtom>
+                          </rdf:first>
+                          <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                        </rdf:Description>
+                      </rdf:rest>
+                    </rdf:Description>
+                  </rdf:rest>
+                </rdf:Description>
+              </rdf:rest>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#Machine"/>
+          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:ClassAtom>
+              <swrl:classPredicate rdf:resource="#Storage"/>
+              <swrl:argument1 rdf:resource="urn:swrl#s"/>
+            </swrl:ClassAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#hasOutput"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#mat"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest>
+                <rdf:Description>
+                  <rdf:first>
+                    <swrl:IndividualPropertyAtom>
+                      <swrl:propertyPredicate rdf:resource="#hasInput"/>
+                      <swrl:argument1 rdf:resource="urn:swrl#s"/>
+                      <swrl:argument2 rdf:resource="urn:swrl#mat"/>
+                    </swrl:IndividualPropertyAtom>
+                  </rdf:first>
+                  <rdf:rest>
+                    <rdf:Description>
+                      <rdf:first>
+                        <swrl:IndividualPropertyAtom>
+                          <swrl:propertyPredicate rdf:resource="#isMachineOf"/>
+                          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                          <swrl:argument2 rdf:resource="urn:swrl#p"/>
+                        </swrl:IndividualPropertyAtom>
+                      </rdf:first>
+                      <rdf:rest>
+                        <rdf:Description>
+                          <rdf:first>
+                            <swrl:IndividualPropertyAtom>
+                              <swrl:propertyPredicate rdf:resource="#hasProcessType"/>
+                              <swrl:argument1 rdf:resource="urn:swrl#p"/>
+                              <swrl:argument2 rdf:resource="urn:swrl#pt"/>
+                            </swrl:IndividualPropertyAtom>
+                          </rdf:first>
+                          <rdf:rest>
+                            <rdf:Description>
+                              <rdf:first>
+                                <swrl:SameIndividualAtom>
+                                  <swrl:argument1 rdf:resource="urn:swrl#pt"/>
+                                  <swrl:argument2 rdf:resource="#Assemble"/>
+                                </swrl:SameIndividualAtom>
+                              </rdf:first>
+                              <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                            </rdf:Description>
+                          </rdf:rest>
+                        </rdf:Description>
+                      </rdf:rest>
+                    </rdf:Description>
+                  </rdf:rest>
+                </rdf:Description>
+              </rdf:rest>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#connectedTo"/>
+          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+          <swrl:argument2 rdf:resource="urn:swrl#s"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#Machine"/>
+          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:ClassAtom>
+              <swrl:classPredicate rdf:resource="#Storage"/>
+              <swrl:argument1 rdf:resource="urn:swrl#s"/>
+            </swrl:ClassAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#hasOutput"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#mat"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest>
+                <rdf:Description>
+                  <rdf:first>
+                    <swrl:IndividualPropertyAtom>
+                      <swrl:propertyPredicate rdf:resource="#hasInput"/>
+                      <swrl:argument1 rdf:resource="urn:swrl#s"/>
+                      <swrl:argument2 rdf:resource="urn:swrl#mat"/>
+                    </swrl:IndividualPropertyAtom>
+                  </rdf:first>
+                  <rdf:rest>
+                    <rdf:Description>
+                      <rdf:first>
+                        <swrl:IndividualPropertyAtom>
+                          <swrl:propertyPredicate rdf:resource="#isMachineOf"/>
+                          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                          <swrl:argument2 rdf:resource="urn:swrl#p"/>
+                        </swrl:IndividualPropertyAtom>
+                      </rdf:first>
+                      <rdf:rest>
+                        <rdf:Description>
+                          <rdf:first>
+                            <swrl:IndividualPropertyAtom>
+                              <swrl:propertyPredicate rdf:resource="#hasProcessType"/>
+                              <swrl:argument1 rdf:resource="urn:swrl#p"/>
+                              <swrl:argument2 rdf:resource="urn:swrl#pt"/>
+                            </swrl:IndividualPropertyAtom>
+                          </rdf:first>
+                          <rdf:rest>
+                            <rdf:Description>
+                              <rdf:first>
+                                <swrl:DifferentIndividualsAtom>
+                                  <swrl:argument1 rdf:resource="urn:swrl#pt"/>
+                                  <swrl:argument2 rdf:resource="#Assemble"/>
+                                </swrl:DifferentIndividualsAtom>
+                              </rdf:first>
+                              <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                            </rdf:Description>
+                          </rdf:rest>
+                        </rdf:Description>
+                      </rdf:rest>
+                    </rdf:Description>
+                  </rdf:rest>
+                </rdf:Description>
+              </rdf:rest>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#connectedTo"/>
+          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+          <swrl:argument2 rdf:resource="urn:swrl#s"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#Storage"/>
+          <swrl:argument1 rdf:resource="urn:swrl#s"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:ClassAtom>
+              <swrl:classPredicate rdf:resource="#Machine"/>
+              <swrl:argument1 rdf:resource="urn:swrl#m"/>
+            </swrl:ClassAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#hasOutput"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#s"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#mat"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest>
+                <rdf:Description>
+                  <rdf:first>
+                    <swrl:IndividualPropertyAtom>
+                      <swrl:propertyPredicate rdf:resource="#hasInput"/>
+                      <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                      <swrl:argument2 rdf:resource="urn:swrl#mat"/>
+                    </swrl:IndividualPropertyAtom>
+                  </rdf:first>
+                  <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                </rdf:Description>
+              </rdf:rest>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#connectedTo"/>
+          <swrl:argument1 rdf:resource="urn:swrl#s"/>
+          <swrl:argument2 rdf:resource="urn:swrl#m"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#Machine"/>
+          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:ClassAtom>
+              <swrl:classPredicate rdf:resource="#ProcessID"/>
+              <swrl:argument1 rdf:resource="urn:swrl#p"/>
+            </swrl:ClassAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#isMachineOf"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#p"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest>
+                <rdf:Description>
+                  <rdf:first>
+                    <swrl:IndividualPropertyAtom>
+                      <swrl:propertyPredicate rdf:resource="#result"/>
+                      <swrl:argument1 rdf:resource="urn:swrl#p"/>
+                      <swrl:argument2 rdf:resource="urn:swrl#prod"/>
+                    </swrl:IndividualPropertyAtom>
+                  </rdf:first>
+                  <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                </rdf:Description>
+              </rdf:rest>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#hasOutput"/>
+          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+          <swrl:argument2 rdf:resource="urn:swrl#prod"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#ProcessID"/>
+          <swrl:argument1 rdf:resource="urn:swrl#p"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:ClassAtom>
+              <swrl:classPredicate rdf:resource="#Machine"/>
+              <swrl:argument1 rdf:resource="urn:swrl#m"/>
+            </swrl:ClassAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#isMachineOf"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#p"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest>
+                <rdf:Description>
+                  <rdf:first>
+                    <swrl:IndividualPropertyAtom>
+                      <swrl:propertyPredicate rdf:resource="#hasProcessType"/>
+                      <swrl:argument1 rdf:resource="urn:swrl#p"/>
+                      <swrl:argument2 rdf:resource="#Assemble"/>
+                    </swrl:IndividualPropertyAtom>
+                  </rdf:first>
+                  <rdf:rest>
+                    <rdf:Description>
+                      <rdf:first>
+                        <swrl:IndividualPropertyAtom>
+                          <swrl:propertyPredicate rdf:resource="#hasComponents"/>
+                          <swrl:argument1 rdf:resource="urn:swrl#p"/>
+                          <swrl:argument2 rdf:resource="urn:swrl#comp"/>
+                        </swrl:IndividualPropertyAtom>
+                      </rdf:first>
+                      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                    </rdf:Description>
+                  </rdf:rest>
+                </rdf:Description>
+              </rdf:rest>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#hasInput"/>
+          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+          <swrl:argument2 rdf:resource="urn:swrl#comp"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#ProcessID"/>
+          <swrl:argument1 rdf:resource="urn:swrl#p"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:ClassAtom>
+              <swrl:classPredicate rdf:resource="#Machine"/>
+              <swrl:argument1 rdf:resource="urn:swrl#m"/>
+            </swrl:ClassAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#isMachineOf"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#m"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#p"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest>
+                <rdf:Description>
+                  <rdf:first>
+                    <swrl:IndividualPropertyAtom>
+                      <swrl:propertyPredicate rdf:resource="#hasProcessType"/>
+                      <swrl:argument1 rdf:resource="urn:swrl#p"/>
+                      <swrl:argument2 rdf:resource="urn:swrl#pt"/>
+                    </swrl:IndividualPropertyAtom>
+                  </rdf:first>
+                  <rdf:rest>
+                    <rdf:Description>
+                      <rdf:first>
+                        <swrl:DifferentIndividualsAtom>
+                          <swrl:argument1 rdf:resource="urn:swrl#pt"/>
+                          <swrl:argument2 rdf:resource="#Assemble"/>
+                        </swrl:DifferentIndividualsAtom>
+                      </rdf:first>
+                      <rdf:rest>
+                        <rdf:Description>
+                          <rdf:first>
+                            <swrl:IndividualPropertyAtom>
+                              <swrl:propertyPredicate rdf:resource="#hasMaterial"/>
+                              <swrl:argument1 rdf:resource="urn:swrl#p"/>
+                              <swrl:argument2 rdf:resource="urn:swrl#mat"/>
+                            </swrl:IndividualPropertyAtom>
+                          </rdf:first>
+                          <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                        </rdf:Description>
+                      </rdf:rest>
+                    </rdf:Description>
+                  </rdf:rest>
+                </rdf:Description>
+              </rdf:rest>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#hasInput"/>
+          <swrl:argument1 rdf:resource="urn:swrl#m"/>
+          <swrl:argument2 rdf:resource="urn:swrl#mat"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#ProcessID"/>
+          <swrl:argument1 rdf:resource="urn:swrl#p"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:IndividualPropertyAtom>
+              <swrl:propertyPredicate rdf:resource="#hasProductName"/>
+              <swrl:argument1 rdf:resource="urn:swrl#p"/>
+              <swrl:argument2 rdf:resource="urn:swrl#e"/>
+            </swrl:IndividualPropertyAtom>
+          </rdf:first>
+          <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#result"/>
+          <swrl:argument1 rdf:resource="urn:swrl#p"/>
+          <swrl:argument2 rdf:resource="urn:swrl#e"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#Storage"/>
+          <swrl:argument1 rdf:resource="urn:swrl#s"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:ClassAtom>
+              <swrl:classPredicate rdf:resource="#EBoM"/>
+              <swrl:argument1 rdf:resource="urn:swrl#m"/>
+            </swrl:ClassAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#isStorageOf"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#s"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#m"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#hasOutput"/>
+          <swrl:argument1 rdf:resource="urn:swrl#s"/>
+          <swrl:argument2 rdf:resource="urn:swrl#m"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#Storage"/>
+          <swrl:argument1 rdf:resource="urn:swrl#s"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:ClassAtom>
+              <swrl:classPredicate rdf:resource="#EBoM"/>
+              <swrl:argument1 rdf:resource="urn:swrl#m"/>
+            </swrl:ClassAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#isStorageOf"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#s"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#m"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#hasInput"/>
+          <swrl:argument1 rdf:resource="urn:swrl#s"/>
+          <swrl:argument2 rdf:resource="urn:swrl#m"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#Storage"/>
+          <swrl:argument1 rdf:resource="urn:swrl#s"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:ClassAtom>
+              <swrl:classPredicate rdf:resource="#Material"/>
+              <swrl:argument1 rdf:resource="urn:swrl#m"/>
+            </swrl:ClassAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#isStorageOf"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#s"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#m"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#hasOutput"/>
+          <swrl:argument1 rdf:resource="urn:swrl#s"/>
+          <swrl:argument2 rdf:resource="urn:swrl#m"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<swrl:Imp>
+  <swrl:body>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:ClassAtom>
+          <swrl:classPredicate rdf:resource="#Storage"/>
+          <swrl:argument1 rdf:resource="urn:swrl#s"/>
+        </swrl:ClassAtom>
+      </rdf:first>
+      <rdf:rest>
+        <rdf:Description>
+          <rdf:first>
+            <swrl:ClassAtom>
+              <swrl:classPredicate rdf:resource="#Material"/>
+              <swrl:argument1 rdf:resource="urn:swrl#m"/>
+            </swrl:ClassAtom>
+          </rdf:first>
+          <rdf:rest>
+            <rdf:Description>
+              <rdf:first>
+                <swrl:IndividualPropertyAtom>
+                  <swrl:propertyPredicate rdf:resource="#isStorageOf"/>
+                  <swrl:argument1 rdf:resource="urn:swrl#s"/>
+                  <swrl:argument2 rdf:resource="urn:swrl#m"/>
+                </swrl:IndividualPropertyAtom>
+              </rdf:first>
+              <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+            </rdf:Description>
+          </rdf:rest>
+        </rdf:Description>
+      </rdf:rest>
+    </rdf:Description>
+  </swrl:body>
+  <swrl:head>
+    <rdf:Description>
+      <rdf:first>
+        <swrl:IndividualPropertyAtom>
+          <swrl:propertyPredicate rdf:resource="#hasInput"/>
+          <swrl:argument1 rdf:resource="urn:swrl#s"/>
+          <swrl:argument2 rdf:resource="urn:swrl#m"/>
+        </swrl:IndividualPropertyAtom>
+      </rdf:first>
+      <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+    </rdf:Description>
+  </swrl:head>
+</swrl:Imp>
+
+<owl:AllDifferent>
+  <owl:distinctMembers rdf:parseType="Collection">
+    <rdf:Description rdf:about="#Press"/>
+    <rdf:Description rdf:about="#Foaming"/>
+    <rdf:Description rdf:about="#Assemble"/>
+  </owl:distinctMembers>
+</owl:AllDifferent>
+
+
+</rdf:RDF>
