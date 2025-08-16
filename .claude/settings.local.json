@@ -5,7 +5,25 @@
       "Bash",
       "Bash(python:*)"
     ],
-    "deny": [],
+    "deny": [
+      "Read(*)", 
+      "Read(README.md)",
+      "Read(prd.md)",
+      "Read(해야할꺼.md)",
+      "Read(image.png)",
+      "Read(requirements.txt)",
+      "Read(setup.py)",
+      "Read(visualization_PRD.md)",
+      "Read(log/**)",
+      "Read(onto/**)",
+      "Read(owl_to_sim/**)",
+      "Read(scenario/__pycache__/**)",
+      "Read(src/__pycache__/**)",
+      "Read(src/utils/**)",
+      "Read(src/dashboard/**)",
+      "Read(visualizations/**)",
+      "Read(docs/**)"
+    ],
     "ask": [],
     "defaultMode": "acceptEdits"
   }

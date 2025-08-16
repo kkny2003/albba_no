@@ -21,6 +21,8 @@ sys.path.insert(0, project_root)
 import simpy
 from src.core.simulation_engine import SimulationEngine
 from src.core.resource_manager import AdvancedResourceManager
+from src.core.report_manager import ReportManager
+from src.core.material_supply_manager import MaterialSupplyManager, MaterialConfig, SupplyRoute, SupplyStrategy
 from src.Resource.machine import Machine
 from src.Resource.transport import Transport
 from src.Resource.buffer import Buffer
@@ -178,27 +180,19 @@ def create_refrigerator_scenario():
 
     # --- 4. 프로세스(Process) 정의 ---
     
-    # 자재창고 함수 정의 (간단한 함수 기반 접근법)
-    material_supply_counter = {'count': 0}  # 자재 공급 카운터
+    # === MaterialSupplyManager 기반 자재 보충 시스템 ===
+    material_supply_manager = MaterialSupplyManager(env)
     
-    def create_materials(env, material_name, quantity=30):
-        """자재창고에서 자재를 생성하는 함수"""
-        material_supply_counter['count'] += 1
-        request_id = material_supply_counter['count']
-        
-        print(f"[시간 {env.now:.1f}] 자재창고: {material_name} {quantity}개 공급 요청 #{request_id} 접수")
-        
-        # 자재 준비 시간 대기
-        yield env.timeout(2.0)
-        
-        # 자재 생성
-        materials = []
-        for i in range(quantity):
-            material = Product(f'{material_name}_{request_id}_{i+1}', f'{material_name}_자재_{request_id}_{i+1}')
-            materials.append(material)
-        
-        print(f"[시간 {env.now:.1f}] 자재창고: {material_name} {quantity}개 공급 완료 (요청 #{request_id})")
-        return materials
+    # 자재 설정 등록
+    material_configs = {
+        'SidePanelSheet': MaterialConfig('SidePanelSheet', 'SidePanelSheet_자재', 30, 10, 20, supply_time=2.0),
+        'BackSheet': MaterialConfig('BackSheet', 'BackSheet_자재', 30, 10, 20, supply_time=2.0),
+        'TopCoverSheet': MaterialConfig('TopCoverSheet', 'TopCoverSheet_자재', 30, 10, 20, supply_time=2.0),
+        'TopPanelSupportSheet': MaterialConfig('TopPanelSupportSheet', 'TopPanelSupportSheet_자재', 30, 10, 20, supply_time=2.0)
+    }
+    
+    for material_name, config in material_configs.items():
+        material_supply_manager.register_material(material_name, config)
     
     # 버퍼 보충 운송 프로세스들 정의
     replenish_transport_side = TransportProcess(env, 'T_REPLENISH_SIDE', '창고→사이드팰릿보충운송', 
@@ -393,61 +387,34 @@ def create_refrigerator_scenario():
     print(f"   - 팰릿버퍼→Unit1 컨베이어: {len(pallet_to_unit1_conveyors)}대 (자동화)")
     print(f"   - 완전 자동화 공정: 모든 제조 및 운송 작업이 기계에 의해 수행됨")
     
-    # 버퍼 모니터링 및 자동 보충 프로세스 정의 함수들
-    def buffer_monitor(env, buffer, material_name, transport_process, threshold=20, replenish_quantity=30):
-        """팰릿 버퍼 모니터링 및 자동 보충 프로세스"""
-        while True:
-            current_level = buffer.get_current_level()
-            
-            if current_level < threshold:
-                print(f"[시간 {env.now:.1f}] {buffer.name} 재고 부족 감지 (현재: {current_level}개 < 임계값: {threshold}개)")
-                print(f"   자재창고에서 {material_name} {replenish_quantity}개 보충 시작")
-                
-                # 창고에서 자재 공급 요청 (함수 기반)
-                supplied_materials = yield from create_materials(env, material_name, replenish_quantity)
-                
-                # AGV로 운송하여 버퍼에 저장
-                for material in supplied_materials:
-                    yield from transport_process.execute(material)
-                    yield from buffer.put(material)
-                
-                print(f"[시간 {env.now:.1f}] {buffer.name} 보충 완료 (현재 저장량: {buffer.get_current_level()}개)")
-            
-            # 5시간마다 모니터링
-            yield env.timeout(5)
+    # === MaterialSupplyManager 기반 자재 보충 시스템 설정 ===
     
-    # 각 팰릿 버퍼에 대한 모니터링 프로세스들 생성
-    buffer_monitor_processes = [
-        env.process(buffer_monitor(env, side_panel_pallet_buffer, 'SidePanelSheet', replenish_transport_side)),
-        env.process(buffer_monitor(env, back_sheet_pallet_buffer, 'BackSheet', replenish_transport_back)),
-        env.process(buffer_monitor(env, top_cover_pallet_buffer, 'TopCoverSheet', replenish_transport_top)),
-        env.process(buffer_monitor(env, lower_cover_pallet_buffer, 'TopPanelSupportSheet', replenish_transport_lower))
+    # 공급 경로 등록
+    supply_routes = [
+        SupplyRoute('route_side', side_panel_pallet_buffer, replenish_transport_side, material_configs['SidePanelSheet']),
+        SupplyRoute('route_back', back_sheet_pallet_buffer, replenish_transport_back, material_configs['BackSheet']),
+        SupplyRoute('route_top', top_cover_pallet_buffer, replenish_transport_top, material_configs['TopCoverSheet']),
+        SupplyRoute('route_lower', lower_cover_pallet_buffer, replenish_transport_lower, material_configs['TopPanelSupportSheet'])
     ]
     
-    # 팰릿 버퍼 초기 재고 채우기 (시뮬레이션 시작시 각 버퍼에 30개씩 초기 재고)
-    def populate_initial_inventory(env):
-        """시뮬레이션 시작시 팰릿 버퍼에 초기 재고를 채우는 프로세스"""
-        buffer_material_map = [
-            (side_panel_pallet_buffer, 'SidePanelSheet'),
-            (back_sheet_pallet_buffer, 'BackSheet'),
-            (top_cover_pallet_buffer, 'TopCoverSheet'),
-            (lower_cover_pallet_buffer, 'TopPanelSupportSheet')
-        ]
-        
-        for buffer, material_name in buffer_material_map:
-            print(f"[시간 {env.now:.1f}] {buffer.name} 초기 재고 채우기 시작...")
-            
-            # 창고에서 초기 재고용 자재 공급 (함수 기반)
-            initial_materials = yield from create_materials(env, material_name, 30)
-            
-            # 버퍼에 초기 자재 저장
-            for material in initial_materials:
-                yield from buffer.put(material)
-            
-            print(f"[시간 {env.now:.1f}] {buffer.name} 초기 재고 30개 저장 완료")
+    for route in supply_routes:
+        material_supply_manager.register_supply_route(route.source_id, route)
     
-    # 초기 재고 채우기 프로세스 등록
-    initial_inventory_process = env.process(populate_initial_inventory(env))
+    # 자동 모니터링 시작 (임계값 기반)
+    material_supply_manager.start_monitoring(SupplyStrategy.THRESHOLD_BASED)
+    
+    # 초기 재고 설정 (MaterialSupplyManager 활용)
+    def setup_initial_inventory():
+        """초기 재고 설정"""
+        for route in supply_routes:
+            materials = yield from material_supply_manager.create_materials(
+                route.material_config.material_name, 30
+            )
+            for material in materials:
+                yield from route.target_buffer.put(material)
+            print(f"[초기화] {route.target_buffer.name} 재고 30개 설정 완료")
+    
+    env.process(setup_initial_inventory())
     
     # --- 5. 워크플로우(Workflow) 구성 ---
     unit1_workflow = MultiProcessGroup(press_lines)
@@ -456,28 +423,21 @@ def create_refrigerator_scenario():
 
     # Unit1, Unit2, Unit3을 동시에 작동하도록 병렬 워크플로우 구성
     complete_workflow = MultiProcessGroup([unit1_workflow, unit2_workflow, unit3_workflow])
+    
+    # --- 6. 자동 생산 시작 설정 ---
+    # 단순히 워크플로우를 프로세스에 등록 (제품 1개로 시작)
+    initial_product = Product('AUTO_ORDER_1', '자동생산주문')
+    env.process(complete_workflow.execute(initial_product))
 
     return {
         'env': env,
         'engine': engine,
         'workflow': complete_workflow,
         'pallet_buffers': pallet_buffers,
-        'buffer_monitors': buffer_monitor_processes,
-        'material_supply_counter': material_supply_counter
+        'material_supply_manager': material_supply_manager,
+        'report_manager': material_supply_manager.report_manager,
+        'supply_statistics': material_supply_manager.get_supply_statistics()
     }
-
-def production_starter(env, workflow, pallet_buffers, num_orders=3):
-    """시뮬레이션을 시작하고 정해진 수량만큼 생산 오더를 생성하는 프로세스"""
-    for i in range(num_orders):
-        print(f"\n--- [시간 {env.now:.2f}] 냉장고 생산 주문 {i+1} 시작 ---")
-        
-        # 기존 방식과 동일하게 초기 제품으로 생산 시작
-        # 팰릿 버퍼의 자재는 버퍼 모니터링 프로세스와 운송 프로세스를 통해 자동으로 Unit1 공정에 공급됨
-        initial_product = Product(f'ORDER_{i+1}', '생산주문')
-        yield from workflow.execute(initial_product)
-        print(f"--- [시간 {env.now:.2f}] 냉장고 생산 주문 {i+1} 완료 ---")
-        
-        yield env.timeout(10)
 
 def main():
     """메인 실행 함수"""
@@ -494,8 +454,10 @@ def main():
         workflow = scenario_data['workflow']
         pallet_buffers = scenario_data['pallet_buffers']
 
-        print("\n### 시뮬레이션 실행 ###")
-        engine.add_process(production_starter, workflow, pallet_buffers, 3)
+        print("\n### 시뮬레이션 자동 실행 ###")
+        print("시뮬레이션이 자동으로 시작됩니다...")
+        
+        # 자동 생산이 설정되어 있으므로 바로 시뮬레이션 실행
         engine.run(until=1000)
         
     finally:
