@@ -369,17 +369,9 @@
 			<ProcessType>Assemble</ProcessType>
 			<ProcessDetail>Robot_Assembly_A1</ProcessDetail>
 			<Components>
-				<ComponentName>SidePanel1</ComponentName>
-				<ComponentName>SidePanel2</ComponentName>
 				<ComponentName>SidePanel3</ComponentName>
-				<ComponentName>BackSheet1</ComponentName>
-				<ComponentName>BackSheet2</ComponentName>
 				<ComponentName>BackSheet3</ComponentName>
-				<ComponentName>TopCover1</ComponentName>
-				<ComponentName>TopCover2</ComponentName>
 				<ComponentName>TopCover3</ComponentName>
-				<ComponentName>LowerCover1</ComponentName>
-				<ComponentName>LowerCover2</ComponentName>
 				<ComponentName>LowerCover3</ComponentName>
 			</Components>
 			<PartName>SubDoor1</PartName>

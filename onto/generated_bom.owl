@@ -621,17 +621,9 @@
 <owl:NamedIndividual rdf:about="#A1">
   <rdf:type rdf:resource="#ProcessID"/>
   <hasProcessType rdf:resource="#Assemble"/>
-  <hasComponents rdf:resource="#SidePanel1"/>
-  <hasComponents rdf:resource="#SidePanel2"/>
   <hasComponents rdf:resource="#SidePanel3"/>
-  <hasComponents rdf:resource="#BackSheet1"/>
-  <hasComponents rdf:resource="#BackSheet2"/>
   <hasComponents rdf:resource="#BackSheet3"/>
-  <hasComponents rdf:resource="#TopCover1"/>
-  <hasComponents rdf:resource="#TopCover2"/>
   <hasComponents rdf:resource="#TopCover3"/>
-  <hasComponents rdf:resource="#LowerCover1"/>
-  <hasComponents rdf:resource="#LowerCover2"/>
   <hasComponents rdf:resource="#LowerCover3"/>
   <hasPrecedingProcess rdf:resource="#P1-P12"/>
   <hasProductName rdf:resource="#SubDoor1"/>
