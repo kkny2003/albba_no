@@ -48,23 +48,23 @@ def create_refrigerator_scenario():
     resource_manager.register_resource("transport", capacity=10, resource_type=ResourceType.TRANSPORT)
 
     # --- 2. 제품(Product) 및 부품(Resource) 정의 ---
-    side_panel_sheet = Resource('R_SIDE_S', 'SidePanelSheet', ResourceType.RAW_MATERIAL)
-    back_sheet = Resource('R_BACK_S', 'BackSheet', ResourceType.RAW_MATERIAL)
-    top_cover_sheet = Resource('R_TOP_S', 'TopCoverSheet', ResourceType.RAW_MATERIAL)
-    top_support_sheet = Resource('R_SUPPORT_S', 'TopPanelSupportSheet', ResourceType.RAW_MATERIAL)
+    side_panel_sheet = Product('R_SIDE_S', 'SidePanelSheet', '사이드패널시트', resource_type=ResourceType.RAW_MATERIAL)
+    back_sheet = Product('R_BACK_S', 'BackSheet', '백시트', resource_type=ResourceType.RAW_MATERIAL)
+    top_cover_sheet = Product('R_TOP_S', 'TopCoverSheet', '탑커버시트', resource_type=ResourceType.RAW_MATERIAL)
+    top_support_sheet = Product('R_SUPPORT_S', 'TopPanelSupportSheet', '탑패널서포트시트', resource_type=ResourceType.RAW_MATERIAL)
     
-    side_panel = Resource('R_SIDE_P', 'SidePanel', ResourceType.SEMI_FINISHED)
-    back_panel = Resource('R_BACK_P', 'BackPanel', ResourceType.SEMI_FINISHED)
-    top_cover = Resource('R_TOP_P', 'TopCover', ResourceType.SEMI_FINISHED)
-    top_support = Resource('R_SUPPORT_P', 'TopPanelSupport', ResourceType.SEMI_FINISHED)
+    side_panel = Product('R_SIDE_P', 'SidePanel', '사이드패널', resource_type=ResourceType.SEMI_FINISHED)
+    back_panel = Product('R_BACK_P', 'BackPanel', '백패널', resource_type=ResourceType.SEMI_FINISHED)
+    top_cover = Product('R_TOP_P', 'TopCover', '탑커버', resource_type=ResourceType.SEMI_FINISHED)
+    top_support = Product('R_SUPPORT_P', 'TopPanelSupport', '탑패널서포트', resource_type=ResourceType.SEMI_FINISHED)
 
-    door_shell = Resource('R_DOOR_SHELL', 'DoorShellAssembly', ResourceType.SEMI_FINISHED)
+    door_shell = Product('R_DOOR_SHELL', 'DoorShellAssembly', '도어쉘조립체', resource_type=ResourceType.SEMI_FINISHED)
     
-    main_body = Resource('R_MAIN_BODY', 'RefrigeratorMainBody', ResourceType.SEMI_FINISHED)
-    hinge = Resource('R_HINGE', 'Hinge', ResourceType.SEMI_FINISHED)
-    functional_part = Resource('R_FUNC_PART', 'FunctionalPart', ResourceType.SEMI_FINISHED)
+    main_body = Product('R_MAIN_BODY', 'RefrigeratorMainBody', '냉장고본체', resource_type=ResourceType.SEMI_FINISHED)
+    hinge = Product('R_HINGE', 'Hinge', '힌지', resource_type=ResourceType.SEMI_FINISHED)
+    functional_part = Product('R_FUNC_PART', 'FunctionalPart', '기능부품', resource_type=ResourceType.SEMI_FINISHED)
 
-    final_refrigerator = Resource('R_FINAL', 'FinishedRefrigerator', ResourceType.FINISHED_PRODUCT)
+    final_refrigerator = Product('R_FINAL', 'FinishedRefrigerator', '완성냉장고', resource_type=ResourceType.FINISHED_PRODUCT)
 
     # --- 자재창고 및 팰릿 스택 버퍼 정의 ---
     # Unit1 앞단에 설치할 4개의 팰릿 스택 버퍼 (50개 용량)
