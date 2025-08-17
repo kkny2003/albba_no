@@ -57,9 +57,8 @@ class MaterialSupplyManager:
         self.supply_count = 0
         self.total_supplies = {}
         
-        # 활성 상태 관리
-        self.is_monitoring = False
-        self.monitoring_process = None
+        # 모니터링 프로세스 관리 (resource_manager 패턴 따름)
+        self._monitoring_process = None
         
     def register_material(self, material_resource: Any):
         """
@@ -193,15 +192,15 @@ class MaterialSupplyManager:
         else:
             print(f"[MaterialSupplyManager] 경고: 버퍼 {buffer_id}에 대한 공급 경로를 찾을 수 없음")
             
-    def start_monitoring(self, strategy: SupplyStrategy = SupplyStrategy.THRESHOLD_BASED):
+    def start_supply_monitoring(self, strategy: SupplyStrategy = SupplyStrategy.THRESHOLD_BASED):
         """
         자재 보충 모니터링을 시작합니다 (기존 프레임워크 활용)
         
         Args:
             strategy: 보충 전략
         """
-        if self.is_monitoring:
-            print("[MaterialSupplyManager] 이미 모니터링이 실행 중입니다")
+        if self._monitoring_process is not None:
+            print("[MaterialSupplyManager] 이미 자재 보충 모니터링이 실행 중입니다")
             return
             
         # ReportManager의 AlertSystem을 통한 알림 콜백 등록
@@ -209,12 +208,11 @@ class MaterialSupplyManager:
         
         # 스케줄 기반 모니터링만 별도 프로세스로 실행
         if strategy == SupplyStrategy.SCHEDULED:
-            self.monitoring_process = self.env.process(self._scheduled_monitoring_loop())
+            self._monitoring_process = self.env.process(self._scheduled_monitoring_loop())
         else:
             # 임계값 기반 모니터링은 ReportManager의 AlertSystem이 처리
             print("[MaterialSupplyManager] 임계값 기반 모니터링 - ReportManager AlertSystem 활용")
             
-        self.is_monitoring = True
         print(f"[MaterialSupplyManager] 자재 보충 모니터링 시작 (전략: {strategy.value})")
         
     def _scheduled_monitoring_loop(self):
@@ -259,12 +257,12 @@ class MaterialSupplyManager:
             if current_level <= warning_threshold:
                 yield from self.auto_replenish(route_id)
                 
-    def stop_monitoring(self):
-        """모니터링을 중지합니다"""
-        if self.monitoring_process:
-            self.monitoring_process.interrupt()
+    def stop_supply_monitoring(self):
+        """자재 보충 모니터링을 중지합니다"""
+        if self._monitoring_process:
+            self._monitoring_process.interrupt()
+            self._monitoring_process = None
             
-        self.is_monitoring = False
         print("[MaterialSupplyManager] 자재 보충 모니터링 중지")
         
     def get_supply_statistics(self) -> Dict[str, Any]:
@@ -278,7 +276,7 @@ class MaterialSupplyManager:
             'total_supply_operations': self.supply_count,
             'material_supplies': self.total_supplies.copy(),
             'registered_routes': len(self.supply_routes),
-            'is_monitoring': self.is_monitoring,
+            'is_monitoring': self._monitoring_process is not None,
             'current_time': self.env.now
         }
         

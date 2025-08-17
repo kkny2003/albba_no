@@ -24,7 +24,7 @@ import simpy
 from src.core.simulation_engine import SimulationEngine
 from src.core.resource_manager import AdvancedResourceManager
 from src.core.report_manager import ReportManager
-from src.core.material_supply_manager import MaterialSupplyManager, MaterialConfig, SupplyRoute, SupplyStrategy
+from src.core.material_supply_manager import MaterialSupplyManager, SupplyRoute, SupplyStrategy
 from src.Resource.machine import Machine
 from src.Resource.transport import Transport
 from src.Resource.buffer import Buffer
@@ -422,7 +422,7 @@ def create_refrigerator_scenario():
         material_supply_manager.register_supply_route(route.source_id, route)
     
     # 자동 모니터링 시작 (임계값 기반)
-    material_supply_manager.start_monitoring(SupplyStrategy.THRESHOLD_BASED)
+    material_supply_manager.start_supply_monitoring(SupplyStrategy.THRESHOLD_BASED)
     
     # 초기 재고 설정 (프레임워크 활용)
     material_supply_manager.setup_initial_inventory()

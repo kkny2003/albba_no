@@ -224,7 +224,7 @@ class ManufacturingProcess(BaseProcess):
         생산 버퍼 상태 조회 (BaseProcess 기능 활용)
         
         Returns:
-            Dict: 생산 버퍼 상태 정보
+            Dict: 생산 버퍼 상태 정보 (상세 정보 포함)
         """
         buffer_status = self.get_output_buffer_status()
         return {
@@ -232,7 +232,15 @@ class ManufacturingProcess(BaseProcess):
             'products_in_buffer': buffer_status['current_count'],
             'buffer_capacity': buffer_status['capacity'],
             'production_blocked': buffer_status['waiting_for_transport'],
-            'batch_info': self.get_batch_status()
+            'batch_info': self.get_batch_status(),
+            'production_buffer_count': buffer_status['current_count'],
+            'production_buffer_capacity': buffer_status['capacity'],
+            'production_utilization_rate': buffer_status['utilization_rate'],
+            'production_buffer_full': buffer_status['is_full'],
+            'waiting_for_production_transport': buffer_status['waiting_for_transport'],
+            'production_blocking_enabled': buffer_status['blocking_enabled'],
+            'batch_status': self.get_batch_status(),
+            'production_line_items': self.get_current_batch()
         }
     
     def is_production_blocked(self) -> bool:
@@ -267,34 +275,6 @@ class ManufacturingProcess(BaseProcess):
             capacity: 버퍼 용량 (1 이상)
         """
         return self.set_output_buffer_capacity(capacity)
-    
-    def enable_production_blocking(self, enable: bool = True):
-        """
-        생산 출력 blocking 기능 활성화/비활성화 (BaseProcess 기능 활용)
-        
-        Args:
-            enable: blocking 활성화 여부 (기본값: True)
-        """
-        return self.enable_output_blocking_feature(enable)
-    
-    def get_production_buffer_status(self):
-        """
-        생산 출력 버퍼 상태 조회 (BaseProcess 기능 활용)
-        
-        Returns:
-            Dict: 생산 출력 버퍼 상태 정보
-        """
-        buffer_status = self.get_output_buffer_status()
-        return {
-            'production_buffer_count': buffer_status['current_count'],
-            'production_buffer_capacity': buffer_status['capacity'],
-            'production_utilization_rate': buffer_status['utilization_rate'],
-            'production_buffer_full': buffer_status['is_full'],
-            'waiting_for_production_transport': buffer_status['waiting_for_transport'],
-            'production_blocking_enabled': buffer_status['blocking_enabled'],
-            'batch_status': self.get_batch_status(),
-            'production_line_items': self.get_current_batch()
-        }
     
     def transport_produced_items(self, count: int = None):
         """
