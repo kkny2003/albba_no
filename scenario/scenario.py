@@ -11,12 +11,14 @@
 
 import os
 import sys
-import io
 from datetime import datetime
 
 # 프로젝트 루트를 파이썬 모듈 검색 경로에 추가
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
+
+# 간단한 로깅 프레임워크 가져오기
+from src.utils.log_util import LogContext, log_execution, quick_log
 
 import simpy
 from src.core.simulation_engine import SimulationEngine
@@ -439,57 +441,24 @@ def create_refrigerator_scenario():
         'supply_statistics': material_supply_manager.get_supply_statistics()
     }
 
+@log_execution("냉장고_제조공정_시뮬레이션")
 def main():
-    """메인 실행 함수"""
-    output_capture = io.StringIO()
-    original_stdout = sys.stdout
+    """메인 실행 함수 - 간단한 로깅 적용"""
+    print("### 냉장고 제조공정 시뮬레이션 초기화 ###")
+    scenario_data = create_refrigerator_scenario()
+    env = scenario_data['env']
+    engine = scenario_data['engine']
+    workflow = scenario_data['workflow']
+    pallet_buffers = scenario_data['pallet_buffers']
+
+    print("\n### 시뮬레이션 자동 실행 ###")
+    print("시뮬레이션이 자동으로 시작됩니다...")
     
-    try:
-        sys.stdout = output_capture
-        
-        print("### 냉장고 제조공정 시뮬레이션 초기화 ###")
-        scenario_data = create_refrigerator_scenario()
-        env = scenario_data['env']
-        engine = scenario_data['engine']
-        workflow = scenario_data['workflow']
-        pallet_buffers = scenario_data['pallet_buffers']
-
-        print("\n### 시뮬레이션 자동 실행 ###")
-        print("시뮬레이션이 자동으로 시작됩니다...")
-        
-        # 자동 생산이 설정되어 있으므로 바로 시뮬레이션 실행
-        engine.run(until=1000)
-        
-    finally:
-        sys.stdout = original_stdout
-        captured_output = output_capture.getvalue()
-        output_capture.close()
-        
-        save_output_to_md(captured_output)
-        print(captured_output)
-
-def save_output_to_md(output_text):
-    """캡처된 출력을 Markdown 파일로 저장하는 함수"""
-    log_dir = os.path.join(project_root, 'log')
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-        
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = os.path.join(log_dir, f"refrigerator_simulation_log_{timestamp}.md")
+    # 자동 생산이 설정되어 있으므로 바로 시뮬레이션 실행
+    engine.run(until=1000)
     
-    md_content = f"""# 냉장고 제조공정 시뮬레이션 로그
-
-**시뮬레이션 실행 시간**: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-
-## 시뮬레이션 출력 로그
-{output_text}
-"""
-    try:
-        with open(filename, 'w', encoding='utf-8') as f:
-            f.write(md_content)
-        print(f"\n시뮬레이션 로그가 '{filename}' 파일로 저장되었습니다.")
-    except Exception as e:
-        print(f"\n파일 저장 중 오류 발생: {e}")
+    print("\n### 시뮬레이션 완료 ###")
+    print("모든 로그가 자동으로 MD 파일로 저장되었습니다.")
 
 if __name__ == "__main__":
     main()

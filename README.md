@@ -48,6 +48,13 @@
 - **고급 시각화**: 선 그래프, 히스토그램, 박스 플롯, 산점도
 - **데이터 내보내기**: CSV 포맷 자동 저장 및 분석 지원
 
+### 📝 프레임워크화된 로깅 시스템
+- **LogManager**: 로그 설정과 관리
+- **LogContext**: 컨텍스트 매니저로 출력 캡처
+- **@log_execution**: 데코레이터로 함수 실행 로깅
+- **다양한 포맷**: 기본 MD, 상세 MD, 텍스트 포맷 지원
+- **간단한 사용법**: 기존 복잡한 로깅 코드를 한 줄로 단순화
+
 ## 🚀 빠른 시작
 
 ### 설치
@@ -239,6 +246,65 @@ manufacturing-simulation-framework/
 - **AdvancedResourceManager**: 자원 관리 최적화로 실행 속도 향상
 - **배치 처리**: 다중 아이템 동시 처리로 처리량 증대
 - **중앙화된 통계**: 효율적인 데이터 수집 및 분석
+
+### 📝 로깅 프레임워크 사용 예제
+
+#### 기본 사용법
+```python
+from src.utils.log_util import LogContext
+
+# 간단한 로깅
+with LogContext("시뮬레이션_실행"):
+    run_simulation()
+```
+
+#### 데코레이터 사용법
+```python
+from src.utils.log_util import log_execution
+
+@log_execution("함수_실행_로깅")
+def my_function():
+    # 함수 코드
+    pass
+```
+
+#### 커스텀 설정
+```python
+from src.utils.log_util import LogManager, LogContext
+
+# 상세한 로그 포맷 사용
+custom_manager = LogManager(
+    log_dir="custom_logs",
+    format_type="detailed_md"
+)
+
+with LogContext("커스텀_로깅", custom_manager, {"테스트": "상세포맷"}):
+    run_test()
+```
+
+**기존 복잡한 코드:**
+```python
+# 기존 방식 (복잡함)
+output_capture = io.StringIO()
+original_stdout = sys.stdout
+try:
+    sys.stdout = output_capture
+    run_simulation()
+finally:
+    sys.stdout = original_stdout
+    captured_output = output_capture.getvalue()
+    output_capture.close()
+    save_output_to_md(captured_output)
+```
+
+**새로운 간단한 코드:**
+```python
+# 새로운 방식 (간단함)
+@log_execution("시뮬레이션")
+def run_simulation():
+    # 시뮬레이션 코드
+    pass
+```
 
 
 

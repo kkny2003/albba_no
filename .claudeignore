@@ -17,18 +17,3 @@
 
 # 나머지 전체 ignore
 *
-
-# 추가 보안 규칙: 민감한 설정/비밀 파일은 명시적으로 차단
-# 사용자 요청에 따라 Claude나 유사 도구가 접근하지 못하도록 합니다.
-# 우선순위가 높은 deny 규칙이므로 allow 규칙 이후에 배치합니다.
-.env
-.env.*
-secrets/
-secrets/**
-config/credentials.json
-build/
-# 프로젝트 내 예상 민감 경로
-src/config/settings.py
-src/config/*.py
-onto/infer.py
-onto/generated_bom.owl
