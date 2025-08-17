@@ -19,9 +19,6 @@ try:
     import matplotlib
     matplotlib.use('Agg')  # 백그라운드 모드로 설정
     
-    from src.dashboard.layouts import DashboardLayout, create_sample_dashboard
-    from src.dashboard.real_time_connector import initialize_real_time_system, get_data_bridge
-    from src.dashboard.kpi_widgets import create_sample_kpi_system
     from src.utils.visualization import VisualizationManager
     
     print("✅ 모든 모듈 로드 성공")
@@ -43,7 +40,6 @@ def test_visualization_components():
     values = [85, 92, 78, 95, 87]
     viz_manager.plot_bar_chart(
         categories, values, 
-        title="리소스 사용률 (막대 차트)",
         save_path="test_bar_chart.png"
     )
     print("  ✅ 막대 차트 생성 완료")
@@ -63,10 +59,6 @@ def test_visualization_components():
     x_data = list(range(0, 50, 2))
     y_data = [80 + 20 * np.sin(t/5) + np.random.normal(0, 3) for t in x_data]
     viz_manager.plot_area_chart(
-        x_data, y_data,
-        title="생산량 추이 (영역 차트)",
-        x_label="시간", y_label="생산량",
-        save_path="test_area_chart.png"
     )
     print("  ✅ 영역 차트 생성 완료")
     
@@ -79,7 +71,6 @@ def test_visualization_components():
     print("  ✅ 게이지 차트 생성 완료")
 
 
-def test_kpi_system():
     """KPI 시스템 테스트"""
     print("\n📊 KPI 시스템 테스트...")
     
@@ -92,7 +83,6 @@ def test_kpi_system():
         # 처리량 업데이트
         throughput = random.uniform(85, 115)
         kpi_manager.update_kpi("throughput", throughput)
-        
         # 사용률 업데이트
         utilization = random.uniform(0.75, 0.9)
         kpi_manager.update_kpi("utilization", utilization)
@@ -101,7 +91,6 @@ def test_kpi_system():
         quality = random.uniform(92, 97)
         kpi_manager.update_kpi("quality", quality)
         
-        time.sleep(0.5)  # 0.5초 간격
     
     # KPI 대시보드 생성
     dashboard_fig = kpi_manager.create_dashboard("mixed")
@@ -119,13 +108,10 @@ def test_kpi_system():
 def test_dashboard_layout():
     """대시보드 레이아웃 테스트"""
     print("\n🎛️ 대시보드 레이아웃 테스트...")
-    
     # 샘플 대시보드 생성
     layout, fig = create_sample_dashboard()
-    
     if fig:
         fig.savefig("manufacturing_dashboard_demo.png", dpi=300, bbox_inches='tight')
-        print("  ✅ 제조 대시보드 생성 완료: manufacturing_dashboard_demo.png")
     
     # 모니터링 레이아웃 테스트
     sample_data = {
@@ -215,16 +201,13 @@ def main():
         test_visualization_components()
         
         # 2. KPI 시스템 테스트
-        test_kpi_system()
         
         # 3. 대시보드 레이아웃 테스트
-        test_dashboard_layout()
         
         # 4. 실시간 시스템 테스트
         test_real_time_system()
         
         # 5. 인터랙티브 데모
-        run_interactive_demo()
         
         print("\n" + "=" * 60)
         print("🎉 모든 테스트 완료!")

@@ -185,16 +185,35 @@ def create_refrigerator_scenario():
     # === MaterialSupplyManager 기반 자재 보충 시스템 ===
     material_supply_manager = MaterialSupplyManager(env)
     
-    # 자재 설정 등록
-    material_configs = {
-        'SidePanelSheet': MaterialConfig('SidePanelSheet', 'SidePanelSheet_자재', 30, 10, 20, supply_time=2.0),
-        'BackSheet': MaterialConfig('BackSheet', 'BackSheet_자재', 30, 10, 20, supply_time=2.0),
-        'TopCoverSheet': MaterialConfig('TopCoverSheet', 'TopCoverSheet_자재', 30, 10, 20, supply_time=2.0),
-        'TopPanelSupportSheet': MaterialConfig('TopPanelSupportSheet', 'TopPanelSupportSheet_자재', 30, 10, 20, supply_time=2.0)
-    }
+    # Resource 객체에 자재 보충 설정 추가
+    material_supply_manager.configure_material_resource(side_panel_sheet, {
+        'default_quantity': 30,
+        'min_threshold': 10,
+        'warning_threshold': 20,
+        'supply_time': 2.0
+    })
+    material_supply_manager.configure_material_resource(back_sheet, {
+        'default_quantity': 30,
+        'min_threshold': 10,
+        'warning_threshold': 20,
+        'supply_time': 2.0
+    })
+    material_supply_manager.configure_material_resource(top_cover_sheet, {
+        'default_quantity': 30,
+        'min_threshold': 10,
+        'warning_threshold': 20,
+        'supply_time': 2.0
+    })
+    material_supply_manager.configure_material_resource(top_support_sheet, {
+        'default_quantity': 30,
+        'min_threshold': 10,
+        'warning_threshold': 20,
+        'supply_time': 2.0
+    })
     
-    for material_name, config in material_configs.items():
-        material_supply_manager.register_material(material_name, config)
+    # 자재 등록
+    for resource in [side_panel_sheet, back_sheet, top_cover_sheet, top_support_sheet]:
+        material_supply_manager.register_material(resource)
     
     # 버퍼 보충 운송 프로세스들 정의
     replenish_transport_side = TransportProcess(env, 'T_REPLENISH_SIDE', '창고→사이드팰릿보충운송', 
@@ -391,12 +410,12 @@ def create_refrigerator_scenario():
     
     # === MaterialSupplyManager 기반 자재 보충 시스템 설정 ===
     
-    # 공급 경로 등록
+    # 공급 경로 등록 (Resource 객체 직접 사용)
     supply_routes = [
-        SupplyRoute('route_side', side_panel_pallet_buffer, replenish_transport_side, material_configs['SidePanelSheet']),
-        SupplyRoute('route_back', back_sheet_pallet_buffer, replenish_transport_back, material_configs['BackSheet']),
-        SupplyRoute('route_top', top_cover_pallet_buffer, replenish_transport_top, material_configs['TopCoverSheet']),
-        SupplyRoute('route_lower', lower_cover_pallet_buffer, replenish_transport_lower, material_configs['TopPanelSupportSheet'])
+        SupplyRoute('route_side', side_panel_pallet_buffer, replenish_transport_side, side_panel_sheet),
+        SupplyRoute('route_back', back_sheet_pallet_buffer, replenish_transport_back, back_sheet),
+        SupplyRoute('route_top', top_cover_pallet_buffer, replenish_transport_top, top_cover_sheet),
+        SupplyRoute('route_lower', lower_cover_pallet_buffer, replenish_transport_lower, top_support_sheet)
     ]
     
     for route in supply_routes:
@@ -405,18 +424,8 @@ def create_refrigerator_scenario():
     # 자동 모니터링 시작 (임계값 기반)
     material_supply_manager.start_monitoring(SupplyStrategy.THRESHOLD_BASED)
     
-    # 초기 재고 설정 (MaterialSupplyManager 활용)
-    def setup_initial_inventory():
-        """초기 재고 설정"""
-        for route in supply_routes:
-            materials = yield from material_supply_manager.create_materials(
-                route.material_config.material_name, 30
-            )
-            for material in materials:
-                yield from route.target_buffer.put(material)
-            print(f"[초기화] {route.target_buffer.name} 재고 30개 설정 완료")
-    
-    env.process(setup_initial_inventory())
+    # 초기 재고 설정 (프레임워크 활용)
+    material_supply_manager.setup_initial_inventory()
     
     # --- 5. 워크플로우(Workflow) 구성 ---
     unit1_workflow = MultiProcessGroup(press_lines)

@@ -23,24 +23,12 @@ class SupplyStrategy(Enum):
 
 
 @dataclass
-class MaterialConfig:
-    """자재 설정 클래스"""
-    material_name: str
-    material_type: str
-    default_quantity: int = 30
-    min_threshold: int = 10
-    warning_threshold: int = 20
-    max_capacity: Optional[int] = None
-    supply_time: float = 2.0  # 자재 생성 시간
-    
-
-@dataclass
 class SupplyRoute:
-    """자재 공급 경로 설정"""
+    """자재 공급 경로 설정 (Resource 클래스 활용)"""
     source_id: str
     target_buffer: Any
     transport_process: TransportProcess
-    material_config: MaterialConfig
+    material_resource: Any  # Resource 객체 직접 사용
     
 
 class MaterialSupplyManager:
@@ -62,8 +50,7 @@ class MaterialSupplyManager:
         self.env = env
         self.report_manager = report_manager or ReportManager(env)
         
-        # 자재 설정과 공급 경로 관리
-        self.material_configs: Dict[str, MaterialConfig] = {}
+        # 공급 경로 관리 (Resource 클래스 활용)
         self.supply_routes: Dict[str, SupplyRoute] = {}
         
         # 공급 통계
@@ -74,15 +61,14 @@ class MaterialSupplyManager:
         self.is_monitoring = False
         self.monitoring_process = None
         
-    def register_material(self, material_name: str, material_config: MaterialConfig):
+    def register_material(self, material_resource: Any):
         """
-        자재 설정을 등록합니다
+        자재를 등록합니다 (Resource 클래스 활용)
         
         Args:
-            material_name: 자재명
-            material_config: 자재 설정
+            material_resource: Resource 객체 (자재 보충 속성이 포함된)
         """
-        self.material_configs[material_name] = material_config
+        material_name = material_resource.name
         self.total_supplies[material_name] = 0
         
     def register_supply_route(self, route_id: str, supply_route: SupplyRoute):
@@ -95,36 +81,46 @@ class MaterialSupplyManager:
         """
         self.supply_routes[route_id] = supply_route
         
-        # ReportManager에 버퍼 등록 및 임계값 설정
+        # ReportManager에 버퍼 등록 및 임계값 설정 (Resource 클래스 활용)
         buffer = supply_route.target_buffer
-        material_config = supply_route.material_config
+        material_resource = supply_route.material_resource
         
+        # ReportManager를 통한 리소스 등록
         self.report_manager.register_resource(buffer.resource_id, buffer)
+        
+        # Resource의 properties에서 임계값 가져오기
+        warning_threshold = material_resource.get_property('warning_threshold', 20)
+        min_threshold = material_resource.get_property('min_threshold', 10)
+        
+        # AlertSystem을 통한 임계값 설정
         self.report_manager.alert_system.set_threshold_rule(
             f"{buffer.resource_id}_current_level",
-            warning=material_config.warning_threshold,
-            critical=material_config.min_threshold
+            warning=warning_threshold,
+            critical=min_threshold
         )
         
-    def create_materials(self, material_name: str, quantity: Optional[int] = None) -> List[Product]:
+    def create_materials(self, material_resource: Any, quantity: Optional[int] = None) -> List[Product]:
         """
-        자재를 생성합니다 (SimPy 제너레이터)
+        자재를 생성합니다 (SimPy 제너레이터, Resource 클래스 활용)
         
         Args:
-            material_name: 자재명
-            quantity: 생성할 수량 (None인 경우 기본값 사용)
+            material_resource: Resource 객체
+            quantity: 생성할 수량 (None인 경우 Resource의 default_quantity 사용)
             
         Yields:
             List[Product]: 생성된 자재 리스트
         """
-        if material_name not in self.material_configs:
-            raise ValueError(f"등록되지 않은 자재: {material_name}")
-            
-        config = self.material_configs[material_name]
-        actual_quantity = quantity or config.default_quantity
+        material_name = material_resource.name
+        material_type = material_resource.resource_type.value
+        
+        # Resource의 properties에서 설정 가져오기
+        default_quantity = material_resource.get_property('default_quantity', 30)
+        supply_time = material_resource.get_property('supply_time', 2.0)
+        
+        actual_quantity = quantity or default_quantity
         
         # 자재 생성 시간 대기
-        yield self.env.timeout(config.supply_time)
+        yield self.env.timeout(supply_time)
         
         # 공급 통계 업데이트
         self.supply_count += 1
@@ -132,7 +128,7 @@ class MaterialSupplyManager:
         
         # 자재 생성
         materials = [
-            Product(f'{material_name}_{self.supply_count}_{i}', config.material_type)
+            Product(f'{material_name}_{self.supply_count}_{i}', material_type)
             for i in range(actual_quantity)
         ]
         
@@ -152,11 +148,12 @@ class MaterialSupplyManager:
             return
             
         route = self.supply_routes[route_id]
-        material_name = route.material_config.material_name
+        material_resource = route.material_resource
+        material_name = material_resource.name
         
         try:
             # 자재 생성
-            materials = yield from self.create_materials(material_name, quantity)
+            materials = yield from self.create_materials(material_resource, quantity)
             
             # 운송 및 버퍼에 투입
             for material in materials:
@@ -198,7 +195,7 @@ class MaterialSupplyManager:
             
     def start_monitoring(self, strategy: SupplyStrategy = SupplyStrategy.THRESHOLD_BASED):
         """
-        자재 보충 모니터링을 시작합니다
+        자재 보충 모니터링을 시작합니다 (기존 프레임워크 활용)
         
         Args:
             strategy: 보충 전략
@@ -207,54 +204,59 @@ class MaterialSupplyManager:
             print("[MaterialSupplyManager] 이미 모니터링이 실행 중입니다")
             return
             
-        # ReportManager의 알림 콜백 등록
+        # ReportManager의 AlertSystem을 통한 알림 콜백 등록
         self.report_manager.alert_system.register_alert_callback(self.handle_buffer_alert)
         
-        # 모니터링 프로세스 시작
-        self.monitoring_process = self.env.process(self._monitoring_loop(strategy))
+        # 스케줄 기반 모니터링만 별도 프로세스로 실행
+        if strategy == SupplyStrategy.SCHEDULED:
+            self.monitoring_process = self.env.process(self._scheduled_monitoring_loop())
+        else:
+            # 임계값 기반 모니터링은 ReportManager의 AlertSystem이 처리
+            print("[MaterialSupplyManager] 임계값 기반 모니터링 - ReportManager AlertSystem 활용")
+            
         self.is_monitoring = True
-        
         print(f"[MaterialSupplyManager] 자재 보충 모니터링 시작 (전략: {strategy.value})")
         
-    def _monitoring_loop(self, strategy: SupplyStrategy):
+    def _scheduled_monitoring_loop(self):
         """
-        모니터링 루프 (내부 메서드)
-        
-        Args:
-            strategy: 보충 전략
+        스케줄 기반 모니터링 루프 (내부 메서드)
+        ReportManager의 실시간 상태 수집 기능 활용
         """
         while True:
             try:
-                # ReportManager를 통한 실시간 상태 수집
+                # ReportManager를 통한 실시간 상태 수집 (기존 프레임워크 활용)
                 status_data = self.report_manager.collect_real_time_status()
                 
-                # 전략에 따른 처리
-                if strategy == SupplyStrategy.THRESHOLD_BASED:
-                    # 임계값 기반 모니터링은 알림 시스템에 의해 처리됨
-                    pass
-                elif strategy == SupplyStrategy.SCHEDULED:
-                    # 스케줄 기반 보충 로직
-                    yield from self._scheduled_replenishment()
+                # 스케줄 기반 보충 로직 실행
+                yield from self._scheduled_replenishment()
                     
                 yield self.env.timeout(5.0)  # 5초마다 모니터링
                 
             except Exception as e:
-                print(f"[MaterialSupplyManager] 모니터링 오류: {e}")
+                print(f"[MaterialSupplyManager] 스케줄 모니터링 오류: {e}")
                 yield self.env.timeout(10.0)
                 
     def _scheduled_replenishment(self):
-        """스케줄 기반 보충 로직"""
+        """스케줄 기반 보충 로직 (ReportManager의 실시간 상태 활용)"""
         current_time = self.env.now
+        
+        # ReportManager를 통한 실시간 상태 수집 (기존 프레임워크 활용)
+        status_data = self.report_manager.collect_real_time_status()
         
         # 정해진 시간 간격으로 모든 버퍼 체크 및 보충
         for route_id, route in self.supply_routes.items():
             buffer = route.target_buffer
-            config = route.material_config
+            material_resource = route.material_resource
             
-            current_level = buffer.get_current_level()
+            # ReportManager의 실시간 상태에서 버퍼 레벨 확인
+            buffer_status = status_data.get('resources', {}).get(buffer.resource_id, {})
+            current_level = buffer_status.get('current_level', buffer.get_current_level())
+            
+            # Resource의 properties에서 경고 임계값 가져오기
+            warning_threshold = material_resource.get_property('warning_threshold', 20)
             
             # 경고 임계값 이하인 경우 보충
-            if current_level <= config.warning_threshold:
+            if current_level <= warning_threshold:
                 yield from self.auto_replenish(route_id)
                 
     def stop_monitoring(self):
@@ -275,7 +277,6 @@ class MaterialSupplyManager:
         return {
             'total_supply_operations': self.supply_count,
             'material_supplies': self.total_supplies.copy(),
-            'registered_materials': len(self.material_configs),
             'registered_routes': len(self.supply_routes),
             'is_monitoring': self.is_monitoring,
             'current_time': self.env.now
@@ -290,22 +291,60 @@ class MaterialSupplyManager:
         for route_id in self.supply_routes.keys():
             self.env.process(self.auto_replenish(route_id))
             
-    def configure_material_from_dict(self, config_dict: Dict[str, Any]) -> MaterialConfig:
+    def configure_material_resource(self, resource: Any, config_dict: Dict[str, Any]) -> Any:
         """
-        딕셔너리에서 MaterialConfig 생성
+        Resource 객체에 자재 보충 설정을 추가합니다
         
         Args:
-            config_dict: 자재 설정 딕셔너리
+            resource: Resource 객체
+            config_dict: 자재 보충 설정 딕셔너리
             
         Returns:
-            MaterialConfig: 생성된 자재 설정
+            Any: 설정이 추가된 Resource 객체
         """
-        return MaterialConfig(
-            material_name=config_dict['material_name'],
-            material_type=config_dict.get('material_type', config_dict['material_name']),
-            default_quantity=config_dict.get('default_quantity', 30),
-            min_threshold=config_dict.get('min_threshold', 10),
-            warning_threshold=config_dict.get('warning_threshold', 20),
-            max_capacity=config_dict.get('max_capacity'),
-            supply_time=config_dict.get('supply_time', 2.0)
-        )
+        # Resource의 properties에 자재 보충 설정 추가
+        resource.set_property('default_quantity', config_dict.get('default_quantity', 30))
+        resource.set_property('min_threshold', config_dict.get('min_threshold', 10))
+        resource.set_property('warning_threshold', config_dict.get('warning_threshold', 20))
+        resource.set_property('max_capacity', config_dict.get('max_capacity'))
+        resource.set_property('supply_time', config_dict.get('supply_time', 2.0))
+        
+        return resource
+        
+    def setup_initial_inventory(self, material_quantities: Optional[Dict[str, int]] = None):
+        """
+        초기 재고를 설정합니다 (시뮬레이션 시간 소모 없음)
+        
+        Args:
+            material_quantities: 자재별 초기 수량 딕셔너리 
+                               (None인 경우 각 자재의 default_quantity 사용)
+        """
+        print("[MaterialSupplyManager] 초기 재고 설정 시작")
+        
+        for route_id, route in self.supply_routes.items():
+            material_resource = route.material_resource
+            material_name = material_resource.name
+            material_type = material_resource.resource_type.value
+            
+            # Resource의 properties에서 기본 수량 가져오기
+            default_quantity = material_resource.get_property('default_quantity', 30)
+            
+            # 초기 수량 결정
+            if material_quantities and material_name in material_quantities:
+                initial_quantity = material_quantities[material_name]
+            else:
+                initial_quantity = default_quantity
+            
+            # 자재를 직접 생성 (시뮬레이션 시간 소모 없이)
+            materials = [
+                Product(f'{material_name}_INIT_{i}', material_type)
+                for i in range(initial_quantity)
+            ]
+            
+            # 버퍼에 직접 추가 (시뮬레이션 시간 소모 없이)
+            for material in materials:
+                route.target_buffer.store.put(material)
+            
+            print(f"[초기화] {route.target_buffer.name} 재고 {initial_quantity}개 설정 완료")
+        
+        print("[MaterialSupplyManager] 초기 재고 설정 완료")
