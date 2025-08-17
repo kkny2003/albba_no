@@ -81,15 +81,4 @@ class SimulationEngine:
         self.processes.clear()
         self.resources.clear()
         
-    def get_statistics(self) -> Dict[str, Any]:
-        """시뮬레이션 통계를 반환합니다.
-        
-        Returns:
-            Dict[str, Any]: 통계 정보 딕셔너리
-        """
-        return {
-            'simulation_time': self.env.now,
-            'total_processes': len(self.processes),
-            'total_resources': len(self.resources),
-            'random_seed': self.random_seed
-        }
+

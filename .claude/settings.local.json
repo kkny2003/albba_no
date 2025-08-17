@@ -6,7 +6,7 @@
       "Bash(python:*)"
     ],
     "deny": [
-      "Read(*)", 
+      "Read(*)",
       "Read(README.md)",
       "Read(prd.md)",
       "Read(해야할꺼.md)",
@@ -26,5 +26,6 @@
     ],
     "ask": [],
     "defaultMode": "acceptEdits"
-  }
+  },
+  "outputStyle": "Learning"
 }

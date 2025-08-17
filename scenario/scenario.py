@@ -438,6 +438,7 @@ def create_refrigerator_scenario():
     # --- 6. 자동 생산 시작 설정 ---
     # 단순히 워크플로우를 프로세스에 등록 (제품 1개로 시작)
     initial_product = Product('AUTO_ORDER_1', '자동생산주문')
+    # TODO(human): SimulationEngine의 add_process를 사용하여 프로세스 등록 개선
     env.process(complete_workflow.execute(initial_product))
 
     return {
