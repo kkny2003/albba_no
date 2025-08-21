@@ -19,7 +19,6 @@
       "Read(onto/**)",
       "Read(owl_to_sim/**)",
       "Read(**/__pycache__/**)",
-      "Read(src/utils/**)",
       "Read(visualizations/**)",
       "Read(docs/**)"
     ],
